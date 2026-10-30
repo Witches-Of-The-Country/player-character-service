@@ -12,7 +12,7 @@ import jakarta.persistence.Table;
 import java.util.UUID;
 
 @Entity
-@Table(name = "ability_scores")
+@Table(name = "ability_scores", schema = "player_character")
 public class AbilityScoresJpaEntity {
 
     @Id

@@ -17,7 +17,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "characters")
+@Table(name = "characters", schema = "player_character")
 public class PlayerCharacterJpaEntity {
 
     @Id

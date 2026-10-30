@@ -40,9 +40,9 @@ class PlayerCharacterPersistenceAdapterTest {
                 14,
                 Ruleset.SRD_2024,
                 AbilityScoreMethod.STANDARD_ARRAY,
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                UUID.randomUUID(),
+                UUID.fromString("21000000-0000-0000-0000-000000000003"), // Dwarf (SRD_2024)
+                UUID.fromString("22000000-0000-0000-0000-000000000006"), // Soldier (SRD_2024)
+                UUID.fromString("20000000-0000-0000-0000-000000000005"), // Fighter (SRD_2024)
                 scores
         );
 
