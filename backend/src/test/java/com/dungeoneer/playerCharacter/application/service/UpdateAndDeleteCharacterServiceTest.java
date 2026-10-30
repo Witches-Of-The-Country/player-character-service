@@ -80,6 +80,59 @@ class UpdateAndDeleteCharacterServiceTest {
     }
 
     @Test
+    @DisplayName("TP-03: Partial update updates only hit points when other fields are null")
+    void shouldUpdateOnlyHitPointsWhenOtherFieldsAreNull() {
+        PlayerCharacter existing = new PlayerCharacter(
+                characterId, "Boromir", 5, 45, 45, 0, 16, 1, 30, 3,
+                Ruleset.SRD_2024, AbilityScoreMethod.POINT_BUY, UUID.randomUUID(), UUID.randomUUID(), userId,
+                new AbilityScores(16, 12, 14, 10, 12, 14), "Initial notes",
+                HpCalculationMethod.MAX, false, List.of(),
+                Instant.now(), Instant.now()
+        );
+
+        when(playerCharacterRepository.findByIdAndUserId(characterId, userId)).thenReturn(Optional.of(existing));
+        when(playerCharacterRepository.save(any(PlayerCharacter.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        // Only hitPointsCurrent is updated; name, hitPointsTemp, notes are null
+        UpdateCharacterCommand command = new UpdateCharacterCommand(
+                characterId, userId, null, 25, null, null
+        );
+
+        CharacterSheetResult result = updateService.updateCharacter(command);
+
+        assertThat(result.name()).isEqualTo("Boromir"); // preserved
+        assertThat(result.hitPointsCurrent()).isEqualTo(25); // updated
+        assertThat(result.hitPointsTemp()).isEqualTo(0); // preserved
+        assertThat(result.notes()).isEqualTo("Initial notes"); // preserved
+    }
+
+    @Test
+    @DisplayName("TP-03: Partial update updates only notes when other fields are null")
+    void shouldUpdateOnlyNotesWhenOtherFieldsAreNull() {
+        PlayerCharacter existing = new PlayerCharacter(
+                characterId, "Boromir", 5, 45, 45, 5, 16, 1, 30, 3,
+                Ruleset.SRD_2024, AbilityScoreMethod.POINT_BUY, UUID.randomUUID(), UUID.randomUUID(), userId,
+                new AbilityScores(16, 12, 14, 10, 12, 14), "Initial notes",
+                HpCalculationMethod.MAX, false, List.of(),
+                Instant.now(), Instant.now()
+        );
+
+        when(playerCharacterRepository.findByIdAndUserId(characterId, userId)).thenReturn(Optional.of(existing));
+        when(playerCharacterRepository.save(any(PlayerCharacter.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateCharacterCommand command = new UpdateCharacterCommand(
+                characterId, userId, null, null, null, "Updated notes only"
+        );
+
+        CharacterSheetResult result = updateService.updateCharacter(command);
+
+        assertThat(result.name()).isEqualTo("Boromir"); // preserved
+        assertThat(result.hitPointsCurrent()).isEqualTo(45); // preserved
+        assertThat(result.hitPointsTemp()).isEqualTo(5); // preserved
+        assertThat(result.notes()).isEqualTo("Updated notes only"); // updated
+    }
+
+    @Test
     @DisplayName("TE-02: Update throws CharacterNotFoundException when character belongs to another user")
     void shouldRejectUpdateFromDifferentUser() {
         UUID otherUser = UUID.randomUUID();

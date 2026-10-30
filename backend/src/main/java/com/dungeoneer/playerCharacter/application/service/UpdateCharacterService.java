@@ -35,11 +35,24 @@ public class UpdateCharacterService implements UpdateCharacterUseCase {
         PlayerCharacter character = playerCharacterRepository.findByIdAndUserId(command.characterId(), command.userId())
                 .orElseThrow(() -> new CharacterNotFoundException("Character not found or access denied: " + command.characterId()));
 
+        String newName = (command.name() != null && !command.name().isBlank())
+                ? command.name().trim()
+                : character.getName();
+        int newHpCurrent = command.hitPointsCurrent() != null
+                ? command.hitPointsCurrent()
+                : character.getHitPointsCurrent();
+        int newHpTemp = command.hitPointsTemp() != null
+                ? command.hitPointsTemp()
+                : character.getHitPointsTemp();
+        String newNotes = command.notes() != null
+                ? command.notes()
+                : character.getNotes();
+
         PlayerCharacter updated = character.updateSheet(
-                command.name(),
-                command.hitPointsCurrent(),
-                command.hitPointsTemp(),
-                command.notes()
+                newName,
+                newHpCurrent,
+                newHpTemp,
+                newNotes
         );
 
         PlayerCharacter saved = playerCharacterRepository.save(updated);

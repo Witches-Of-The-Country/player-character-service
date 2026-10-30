@@ -54,6 +54,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -235,6 +236,18 @@ class PlayerCharacterControllerTest {
                         .header("X-User-Id", userId.toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Galdor the Brave"));
+
+        // Test PATCH with partial payload (e.g. only hitPointsCurrent)
+        UpdateCharacterRequest patchRequest = new UpdateCharacterRequest(null, 5, null, null);
+        when(updateCharacterUseCase.updateCharacter(any(UpdateCharacterCommand.class)))
+                .thenReturn(createMockSheet(characterId, userId, "Galdor the Brave"));
+
+        mockMvc.perform(patch("/api/characters/{id}", characterId)
+                        .header("X-User-Id", userId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(patchRequest)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("Galdor the Brave"));
 

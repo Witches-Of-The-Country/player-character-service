@@ -25,6 +25,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -130,8 +131,8 @@ public class PlayerCharacterController {
         return ResponseEntity.ok(PlayerCharacterWebMapper.toResponse(result));
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<CharacterSheetResponse> updateCharacter(
+    @PatchMapping("/{id}")
+    public ResponseEntity<CharacterSheetResponse> patchCharacter(
             @RequestHeader("X-User-Id") UUID userId,
             @PathVariable("id") UUID id,
             @Valid @RequestBody UpdateCharacterRequest request
@@ -140,6 +141,15 @@ public class PlayerCharacterController {
                 PlayerCharacterWebMapper.toCommand(id, userId, request)
         );
         return ResponseEntity.ok(PlayerCharacterWebMapper.toResponse(result));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<CharacterSheetResponse> updateCharacter(
+            @RequestHeader("X-User-Id") UUID userId,
+            @PathVariable("id") UUID id,
+            @Valid @RequestBody UpdateCharacterRequest request
+    ) {
+        return patchCharacter(userId, id, request);
     }
 
     @DeleteMapping("/{id}")
