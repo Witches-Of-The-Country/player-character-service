@@ -1,6 +1,8 @@
 package com.dungeoneer.playerCharacter.adapter.out.persistence;
 
 import com.dungeoneer.playerCharacter.domain.model.AbilityScoreMethod;
+import com.dungeoneer.playerCharacter.domain.model.ClassProgression;
+import com.dungeoneer.playerCharacter.domain.model.HpCalculationMethod;
 import com.dungeoneer.playerCharacter.domain.model.PlayerCharacter;
 import com.dungeoneer.playerCharacter.domain.model.Ruleset;
 import jakarta.persistence.CascadeType;
@@ -10,10 +12,13 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -65,11 +70,24 @@ public class PlayerCharacterJpaEntity {
     @Column(name = "background_id", nullable = false)
     private UUID backgroundId;
 
-    @Column(name = "user_id")
+    @Column(name = "user_id", nullable = false)
     private UUID userId;
+
+    @Column(name = "notes", nullable = false, columnDefinition = "TEXT")
+    private String notes;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "hp_calculation_method", length = 15, nullable = false)
+    private HpCalculationMethod hpCalculationMethod;
+
+    @Column(name = "has_pending_level_choices", nullable = false)
+    private boolean hasPendingLevelChoices;
 
     @OneToOne(mappedBy = "character", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private AbilityScoresJpaEntity abilityScores;
+
+    @OneToMany(mappedBy = "character", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    private List<ClassProgressionJpaEntity> classProgressions = new ArrayList<>();
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -96,7 +114,11 @@ public class PlayerCharacterJpaEntity {
             UUID lineageId,
             UUID backgroundId,
             UUID userId,
+            String notes,
+            HpCalculationMethod hpCalculationMethod,
+            boolean hasPendingLevelChoices,
             AbilityScoresJpaEntity abilityScores,
+            List<ClassProgressionJpaEntity> classProgressions,
             Instant createdAt,
             Instant updatedAt
     ) {
@@ -115,12 +137,13 @@ public class PlayerCharacterJpaEntity {
         this.lineageId = lineageId;
         this.backgroundId = backgroundId;
         this.userId = userId;
+        this.notes = notes != null ? notes : "";
+        this.hpCalculationMethod = hpCalculationMethod != null ? hpCalculationMethod : HpCalculationMethod.MAX;
+        this.hasPendingLevelChoices = hasPendingLevelChoices;
         this.abilityScores = abilityScores;
-        if (this.abilityScores != null) {
-            this.abilityScores.setCharacter(this);
-        }
-        this.createdAt = createdAt;
-        this.updatedAt = updatedAt;
+        this.classProgressions = classProgressions != null ? classProgressions : new ArrayList<>();
+        this.createdAt = createdAt != null ? createdAt : Instant.now();
+        this.updatedAt = updatedAt != null ? updatedAt : Instant.now();
     }
 
     public static PlayerCharacterJpaEntity fromDomain(PlayerCharacter domain) {
@@ -139,21 +162,36 @@ public class PlayerCharacterJpaEntity {
                 domain.getAbilityScoreMethod(),
                 domain.getLineageId(),
                 domain.getBackgroundId(),
-                domain.getUserId(),
+                domain.getUserId() != null ? domain.getUserId() : UUID.fromString("00000000-0000-0000-0000-000000000000"),
+                domain.getNotes(),
+                domain.getHpCalculationMethod(),
+                domain.isHasPendingLevelChoices(),
                 null,
+                new ArrayList<>(),
                 domain.getCreatedAt(),
                 domain.getUpdatedAt()
         );
 
         if (domain.getAbilityScores() != null) {
-            AbilityScoresJpaEntity scoresEntity = AbilityScoresJpaEntity.fromDomain(domain.getAbilityScores(), entity);
-            entity.setAbilityScores(scoresEntity);
+            AbilityScoresJpaEntity abilityScoresJpa = AbilityScoresJpaEntity.fromDomain(domain.getAbilityScores(), entity);
+            entity.setAbilityScores(abilityScoresJpa);
+        }
+
+        if (domain.getClassProgressions() != null) {
+            List<ClassProgressionJpaEntity> progressEntities = domain.getClassProgressions().stream()
+                    .map(cp -> ClassProgressionJpaEntity.fromDomain(cp, entity))
+                    .toList();
+            entity.setClassProgressions(new ArrayList<>(progressEntities));
         }
 
         return entity;
     }
 
     public PlayerCharacter toDomain() {
+        List<ClassProgression> domainProgressions = (this.classProgressions != null)
+                ? this.classProgressions.stream().map(ClassProgressionJpaEntity::toDomain).toList()
+                : List.of();
+
         return new PlayerCharacter(
                 this.id,
                 this.name,
@@ -171,6 +209,10 @@ public class PlayerCharacterJpaEntity {
                 this.backgroundId,
                 this.userId,
                 this.abilityScores != null ? this.abilityScores.toDomain() : null,
+                this.notes,
+                this.hpCalculationMethod,
+                this.hasPendingLevelChoices,
+                domainProgressions,
                 this.createdAt,
                 this.updatedAt
         );
@@ -296,15 +338,44 @@ public class PlayerCharacterJpaEntity {
         this.userId = userId;
     }
 
+    public String getNotes() {
+        return notes;
+    }
+
+    public void setNotes(String notes) {
+        this.notes = notes;
+    }
+
+    public HpCalculationMethod getHpCalculationMethod() {
+        return hpCalculationMethod;
+    }
+
+    public void setHpCalculationMethod(HpCalculationMethod hpCalculationMethod) {
+        this.hpCalculationMethod = hpCalculationMethod;
+    }
+
+    public boolean isHasPendingLevelChoices() {
+        return hasPendingLevelChoices;
+    }
+
+    public void setHasPendingLevelChoices(boolean hasPendingLevelChoices) {
+        this.hasPendingLevelChoices = hasPendingLevelChoices;
+    }
+
     public AbilityScoresJpaEntity getAbilityScores() {
         return abilityScores;
     }
 
     public void setAbilityScores(AbilityScoresJpaEntity abilityScores) {
         this.abilityScores = abilityScores;
-        if (abilityScores != null) {
-            abilityScores.setCharacter(this);
-        }
+    }
+
+    public List<ClassProgressionJpaEntity> getClassProgressions() {
+        return classProgressions;
+    }
+
+    public void setClassProgressions(List<ClassProgressionJpaEntity> classProgressions) {
+        this.classProgressions = classProgressions;
     }
 
     public Instant getCreatedAt() {

@@ -8,6 +8,8 @@ import com.dungeoneer.playerCharacter.domain.model.Ruleset;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 @Component
 public class ReferenceDataPersistenceAdapter implements ReferenceDataRepository {
@@ -48,5 +50,20 @@ public class ReferenceDataPersistenceAdapter implements ReferenceDataRepository 
                 ? backgroundRepository.findAll()
                 : backgroundRepository.findByRuleset(ruleset);
         return entities.stream().map(BackgroundJpaEntity::toDomain).toList();
+    }
+
+    @Override
+    public Optional<Archetype> findArchetypeById(UUID id) {
+        return archetypeRepository.findById(id).map(ArchetypeJpaEntity::toDomain);
+    }
+
+    @Override
+    public Optional<Lineage> findLineageById(UUID id) {
+        return lineageRepository.findById(id).map(LineageJpaEntity::toDomain);
+    }
+
+    @Override
+    public Optional<Background> findBackgroundById(UUID id) {
+        return backgroundRepository.findById(id).map(BackgroundJpaEntity::toDomain);
     }
 }

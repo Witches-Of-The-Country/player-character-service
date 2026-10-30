@@ -4,6 +4,7 @@ import com.dungeoneer.playerCharacter.application.port.out.PlayerCharacterReposi
 import com.dungeoneer.playerCharacter.domain.model.PlayerCharacter;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -26,5 +27,28 @@ public class PlayerCharacterPersistenceAdapter implements PlayerCharacterReposit
     @Override
     public Optional<PlayerCharacter> findById(UUID id) {
         return repository.findById(id).map(PlayerCharacterJpaEntity::toDomain);
+    }
+
+    @Override
+    public Optional<PlayerCharacter> findByIdAndUserId(UUID id, UUID userId) {
+        return repository.findByIdAndUserId(id, userId).map(PlayerCharacterJpaEntity::toDomain);
+    }
+
+    @Override
+    public List<PlayerCharacter> findAllByUserIdOrderByUpdatedAtDesc(UUID userId) {
+        return repository.findAllByUserIdOrderByUpdatedAtDesc(userId)
+                .stream()
+                .map(PlayerCharacterJpaEntity::toDomain)
+                .toList();
+    }
+
+    @Override
+    public void deleteByIdAndUserId(UUID id, UUID userId) {
+        repository.deleteByIdAndUserId(id, userId);
+    }
+
+    @Override
+    public boolean existsByIdAndUserId(UUID id, UUID userId) {
+        return repository.existsByIdAndUserId(id, userId);
     }
 }

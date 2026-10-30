@@ -239,4 +239,77 @@ class PlayerCharacterTest {
         assertNotNull(character.getCreatedAt());
         assertNotNull(character.getUpdatedAt());
     }
+
+    @Test
+    @DisplayName("Should successfully update mutable sheet fields via updateSheet")
+    void shouldUpdateMutableSheetFieldsSuccessfully() {
+        UUID lineageId = UUID.randomUUID();
+        UUID backgroundId = UUID.randomUUID();
+        AbilityScores scores = createValidAbilityScores();
+
+        PlayerCharacter character = PlayerCharacter.createNew(
+                "Aramil",
+                3,
+                24,
+                Ruleset.SRD_2024,
+                AbilityScoreMethod.POINT_BUY,
+                lineageId,
+                backgroundId,
+                UUID.randomUUID(),
+                scores
+        );
+
+        PlayerCharacter updated = character.updateSheet("Aramil the Brave", 18, 5, "Campaign notes");
+
+        assertEquals("Aramil the Brave", updated.getName());
+        assertEquals(18, updated.getHitPointsCurrent());
+        assertEquals(5, updated.getHitPointsTemp());
+        assertEquals("Campaign notes", updated.getNotes());
+        // Immutable attributes preserved
+        assertEquals(character.getId(), updated.getId());
+        assertEquals(character.getLevel(), updated.getLevel());
+        assertEquals(character.getHitPointsMax(), updated.getHitPointsMax());
+        assertEquals(character.getRuleset(), updated.getRuleset());
+        assertEquals(character.getAbilityScores(), updated.getAbilityScores());
+    }
+
+    @Test
+    @DisplayName("Should reject invalid hit points or name during updateSheet")
+    void shouldRejectInvalidUpdateSheetValues() {
+        UUID lineageId = UUID.randomUUID();
+        UUID backgroundId = UUID.randomUUID();
+        AbilityScores scores = createValidAbilityScores();
+
+        PlayerCharacter character = PlayerCharacter.createNew(
+                "Aramil",
+                3,
+                24,
+                Ruleset.SRD_2024,
+                AbilityScoreMethod.POINT_BUY,
+                lineageId,
+                backgroundId,
+                UUID.randomUUID(),
+                scores
+        );
+
+        // Name blank
+        assertThrows(CharacterValidationException.class, () ->
+                character.updateSheet("   ", 20, 0, "notes")
+        );
+
+        // HP current > max
+        assertThrows(CharacterValidationException.class, () ->
+                character.updateSheet("Aramil", 25, 0, "notes")
+        );
+
+        // HP current < 0
+        assertThrows(CharacterValidationException.class, () ->
+                character.updateSheet("Aramil", -1, 0, "notes")
+        );
+
+        // HP temp < 0
+        assertThrows(CharacterValidationException.class, () ->
+                character.updateSheet("Aramil", 20, -5, "notes")
+        );
+    }
 }
