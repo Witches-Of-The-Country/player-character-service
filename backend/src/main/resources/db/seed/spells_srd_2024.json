@@ -1,0 +1,80 @@
+[
+  {
+    "ruleset": "SRD_2024",
+    "slug": "guidance-2024",
+    "name_en": "Guidance",
+    "name": "Orientação",
+    "level": 0,
+    "school": "Adivinhação",
+    "casting_time": "1 ação",
+    "range_area": "Toque",
+    "components": "V, S",
+    "duration": "Concentração, até 1 minuto",
+    "description": "Você canaliza insight divino para uma criatura tocada. Uma vez antes da magia encerrar, a criatura pode adicionar um d4 ao resultado de um teste de perícia à sua escolha."
+  },
+  {
+    "ruleset": "SRD_2024",
+    "slug": "light-2024",
+    "name_en": "Light",
+    "name": "Luz",
+    "level": 0,
+    "school": "Evocação",
+    "casting_time": "1 ação",
+    "range_area": "Toque",
+    "components": "V, M (um vaga-lume)",
+    "duration": "1 hora",
+    "description": "Você infunde um objeto com luminescência radiante. O objeto projeta luz brilhante num raio de 6 metros e penumbra por mais 6 metros."
+  },
+  {
+    "ruleset": "SRD_2024",
+    "slug": "cure-wounds-2024",
+    "name_en": "Cure Wounds",
+    "name": "Curar Ferimentos",
+    "level": 1,
+    "school": "Abjuração",
+    "casting_time": "1 ação",
+    "range_area": "Toque",
+    "components": "V, S",
+    "duration": "Instantânea",
+    "description": "Uma onda de energia restauradora cura a criatura tocada em 2d8 + seu modificador de conjuração (revisão de 2024)."
+  },
+  {
+    "ruleset": "SRD_2024",
+    "slug": "magic-missile-2024",
+    "name_en": "Magic Missile",
+    "name": "Mísseis Mágicos",
+    "level": 1,
+    "school": "Evocação",
+    "casting_time": "1 ação",
+    "range_area": "36 metros",
+    "components": "V, S",
+    "duration": "Instantânea",
+    "description": "Você conjura três dardos cintilantes de energia mágica que atingem alvos visíveis dentro do alcance infalivelmente, infligindo 1d4 + 1 de dano de energia cada."
+  },
+  {
+    "ruleset": "SRD_2024",
+    "slug": "healing-word-2024",
+    "name_en": "Healing Word",
+    "name": "Palavra Curativa",
+    "level": 1,
+    "school": "Abjuração",
+    "casting_time": "1 ação bônus",
+    "range_area": "18 metros",
+    "components": "V",
+    "duration": "Instantânea",
+    "description": "Com uma palavra de encorajamento rápida, uma criatura à vista recupera 2d4 + seu modificador de habilidade de conjuração."
+  },
+  {
+    "ruleset": "SRD_2024",
+    "slug": "fireball-2024",
+    "name_en": "Fireball",
+    "name": "Bola de Fogo",
+    "level": 3,
+    "school": "Evocação",
+    "casting_time": "1 ação",
+    "range_area": "45 metros",
+    "components": "V, S, M (uma esfera de enxofre)",
+    "duration": "Instantânea",
+    "description": "Um raio de poder ígneo detona num raio de 6 metros causando 8d6 de dano de fogo em salvaguarda de Destreza."
+  }
+]
