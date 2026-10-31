@@ -14,14 +14,14 @@ public interface SpringDataArchetypeRepository extends JpaRepository<ArchetypeJp
 
     @Query(value = """
         SELECT * FROM player_character.archetypes a
-        WHERE (:ruleset IS NULL OR a.ruleset = :#{#ruleset?.name()})
-          AND (:q IS NULL OR :q = '' OR to_tsvector('portuguese', coalesce(a.name, '') || ' ' || coalesce(a.primary_ability, '')) @@ plainto_tsquery('portuguese', :q))
-          AND (:afterName IS NULL OR a.name > :afterName OR (a.name = :afterName AND a.id > :afterId))
+        WHERE (CAST(:ruleset AS VARCHAR) IS NULL OR a.ruleset = CAST(:ruleset AS VARCHAR))
+          AND (CAST(:q AS VARCHAR) IS NULL OR CAST(:q AS VARCHAR) = '' OR to_tsvector('portuguese', coalesce(a.name, '') || ' ' || coalesce(a.primary_ability, '')) @@ plainto_tsquery('portuguese', CAST(:q AS VARCHAR)))
+          AND (CAST(:afterName AS VARCHAR) IS NULL OR a.name > CAST(:afterName AS VARCHAR) OR (a.name = CAST(:afterName AS VARCHAR) AND a.id > CAST(:afterId AS UUID)))
         ORDER BY a.name ASC, a.id ASC
         LIMIT :limit
         """, nativeQuery = true)
     List<ArchetypeJpaEntity> findArchetypesWithCursor(
-            @Param("ruleset") Ruleset ruleset,
+            @Param("ruleset") String ruleset,
             @Param("q") String q,
             @Param("afterName") String afterName,
             @Param("afterId") UUID afterId,

@@ -12,14 +12,14 @@ public interface SpringDataFeatRepository extends JpaRepository<FeatJpaEntity, U
 
     @Query(value = """
         SELECT * FROM player_character.feats f
-        WHERE (:ruleset IS NULL OR f.ruleset = :#{#ruleset?.name()})
-          AND (:q IS NULL OR :q = '' OR to_tsvector('portuguese', coalesce(f.name, '') || ' ' || coalesce(f.name_en, '') || ' ' || coalesce(f.description, '')) @@ plainto_tsquery('portuguese', :q))
-          AND (:afterName IS NULL OR f.name > :afterName OR (f.name = :afterName AND f.id > :afterId))
+        WHERE (CAST(:ruleset AS VARCHAR) IS NULL OR f.ruleset = CAST(:ruleset AS VARCHAR))
+          AND (CAST(:q AS VARCHAR) IS NULL OR CAST(:q AS VARCHAR) = '' OR to_tsvector('portuguese', coalesce(f.name, '') || ' ' || coalesce(f.name_en, '') || ' ' || coalesce(f.description, '')) @@ plainto_tsquery('portuguese', CAST(:q AS VARCHAR)))
+          AND (CAST(:afterName AS VARCHAR) IS NULL OR f.name > CAST(:afterName AS VARCHAR) OR (f.name = CAST(:afterName AS VARCHAR) AND f.id > CAST(:afterId AS UUID)))
         ORDER BY f.name ASC, f.id ASC
         LIMIT :limit
         """, nativeQuery = true)
     List<FeatJpaEntity> findFeatsWithCursor(
-            @Param("ruleset") Ruleset ruleset,
+            @Param("ruleset") String ruleset,
             @Param("q") String q,
             @Param("afterName") String afterName,
             @Param("afterId") UUID afterId,

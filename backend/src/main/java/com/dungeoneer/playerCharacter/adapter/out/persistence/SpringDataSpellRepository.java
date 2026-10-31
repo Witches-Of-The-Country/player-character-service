@@ -12,16 +12,16 @@ public interface SpringDataSpellRepository extends JpaRepository<SpellJpaEntity,
 
     @Query(value = """
         SELECT * FROM player_character.spells s
-        WHERE (:ruleset IS NULL OR s.ruleset = :#{#ruleset?.name()})
-          AND (:level IS NULL OR s.level = :level)
-          AND (:school IS NULL OR LOWER(s.school) = LOWER(:school))
-          AND (:q IS NULL OR :q = '' OR to_tsvector('portuguese', coalesce(s.name, '') || ' ' || coalesce(s.name_en, '') || ' ' || coalesce(s.description, '')) @@ plainto_tsquery('portuguese', :q))
-          AND (:afterName IS NULL OR s.name > :afterName OR (s.name = :afterName AND s.id > :afterId))
+        WHERE (CAST(:ruleset AS VARCHAR) IS NULL OR s.ruleset = CAST(:ruleset AS VARCHAR))
+          AND (CAST(:level AS INTEGER) IS NULL OR s.level = CAST(:level AS INTEGER))
+          AND (CAST(:school AS VARCHAR) IS NULL OR LOWER(s.school) = LOWER(CAST(:school AS VARCHAR)))
+          AND (CAST(:q AS VARCHAR) IS NULL OR CAST(:q AS VARCHAR) = '' OR to_tsvector('portuguese', coalesce(s.name, '') || ' ' || coalesce(s.name_en, '') || ' ' || coalesce(s.description, '')) @@ plainto_tsquery('portuguese', CAST(:q AS VARCHAR)))
+          AND (CAST(:afterName AS VARCHAR) IS NULL OR s.name > CAST(:afterName AS VARCHAR) OR (s.name = CAST(:afterName AS VARCHAR) AND s.id > CAST(:afterId AS UUID)))
         ORDER BY s.name ASC, s.id ASC
         LIMIT :limit
         """, nativeQuery = true)
     List<SpellJpaEntity> findSpellsWithCursor(
-            @Param("ruleset") Ruleset ruleset,
+            @Param("ruleset") String ruleset,
             @Param("level") Integer level,
             @Param("school") String school,
             @Param("q") String q,

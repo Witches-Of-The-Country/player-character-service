@@ -69,4 +69,27 @@ class ReferenceDataPersistenceAdapterTest {
         List<Background> all = adapter.findBackgroundsByRuleset(null);
         assertThat(all).hasSize(12);
     }
+
+    @Test
+    @DisplayName("should query cursor paginated spells and search via FTS")
+    void shouldFindSpellsWithCursorAndFts() {
+        var spells = adapter.findSpellsWithCursor(null, null, null, null, null, null, 10);
+        assertThat(spells).isNotEmpty();
+
+        var searchSpells = adapter.findSpellsWithCursor(null, null, null, "Fogo", null, null, 10);
+        assertThat(searchSpells).isNotEmpty();
+        assertThat(searchSpells).allMatch(s -> s.getName().contains("Fogo") || s.getNameEn().contains("Fire"));
+
+        var classes = adapter.findArchetypesWithCursor(null, null, null, null, 10);
+        assertThat(classes).isNotEmpty();
+
+        var lineages = adapter.findLineagesWithCursor(null, null, null, null, 10);
+        assertThat(lineages).isNotEmpty();
+
+        var feats = adapter.findFeatsWithCursor(null, null, null, null, 10);
+        assertThat(feats).isNotEmpty();
+
+        var items = adapter.findItemsWithCursor(null, null, null, null, null, null, 10);
+        assertThat(items).isNotEmpty();
+    }
 }

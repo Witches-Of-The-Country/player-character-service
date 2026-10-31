@@ -12,16 +12,16 @@ public interface SpringDataItemRepository extends JpaRepository<ItemJpaEntity, U
 
     @Query(value = """
         SELECT * FROM player_character.items i
-        WHERE (:ruleset IS NULL OR i.ruleset = :#{#ruleset?.name()})
-          AND (:itemCategory IS NULL OR i.item_category = :itemCategory)
-          AND (:rarity IS NULL OR i.rarity = :rarity)
-          AND (:q IS NULL OR :q = '' OR to_tsvector('portuguese', coalesce(i.name, '') || ' ' || coalesce(i.name_en, '') || ' ' || coalesce(i.description, '')) @@ plainto_tsquery('portuguese', :q))
-          AND (:afterName IS NULL OR i.name > :afterName OR (i.name = :afterName AND i.id > :afterId))
+        WHERE (CAST(:ruleset AS VARCHAR) IS NULL OR i.ruleset = CAST(:ruleset AS VARCHAR))
+          AND (CAST(:itemCategory AS VARCHAR) IS NULL OR i.item_category = CAST(:itemCategory AS VARCHAR))
+          AND (CAST(:rarity AS VARCHAR) IS NULL OR i.rarity = CAST(:rarity AS VARCHAR))
+          AND (CAST(:q AS VARCHAR) IS NULL OR CAST(:q AS VARCHAR) = '' OR to_tsvector('portuguese', coalesce(i.name, '') || ' ' || coalesce(i.name_en, '') || ' ' || coalesce(i.description, '')) @@ plainto_tsquery('portuguese', CAST(:q AS VARCHAR)))
+          AND (CAST(:afterName AS VARCHAR) IS NULL OR i.name > CAST(:afterName AS VARCHAR) OR (i.name = CAST(:afterName AS VARCHAR) AND i.id > CAST(:afterId AS UUID)))
         ORDER BY i.name ASC, i.id ASC
         LIMIT :limit
         """, nativeQuery = true)
     List<ItemJpaEntity> findItemsWithCursor(
-            @Param("ruleset") Ruleset ruleset,
+            @Param("ruleset") String ruleset,
             @Param("itemCategory") String itemCategory,
             @Param("rarity") String rarity,
             @Param("q") String q,

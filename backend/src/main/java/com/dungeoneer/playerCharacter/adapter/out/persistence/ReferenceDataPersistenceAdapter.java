@@ -79,17 +79,20 @@ public class ReferenceDataPersistenceAdapter implements ReferenceDataRepository 
 
     @Override
     public List<SpellJpaEntity> findSpellsWithCursor(Ruleset ruleset, Integer level, String school, String q, String afterName, UUID afterId, int limit) {
-        return spellRepository.findSpellsWithCursor(ruleset, level, school, q, afterName, afterId, limit);
+        String rulesetStr = (ruleset != null) ? ruleset.name() : null;
+        return spellRepository.findSpellsWithCursor(rulesetStr, level, school, q, afterName, afterId, limit);
     }
 
     @Override
     public List<FeatJpaEntity> findFeatsWithCursor(Ruleset ruleset, String q, String afterName, UUID afterId, int limit) {
-        return featRepository.findFeatsWithCursor(ruleset, q, afterName, afterId, limit);
+        String rulesetStr = (ruleset != null) ? ruleset.name() : null;
+        return featRepository.findFeatsWithCursor(rulesetStr, q, afterName, afterId, limit);
     }
 
     @Override
     public List<Item> findItemsWithCursor(Ruleset ruleset, String category, String rarity, String q, String afterName, UUID afterId, int limit) {
-        return itemRepository.findItemsWithCursor(ruleset, category, rarity, q, afterName, afterId, limit)
+        String rulesetStr = (ruleset != null) ? ruleset.name() : null;
+        return itemRepository.findItemsWithCursor(rulesetStr, category, rarity, q, afterName, afterId, limit)
                 .stream()
                 .map(e -> new Item(
                         e.getId(),
@@ -112,7 +115,8 @@ public class ReferenceDataPersistenceAdapter implements ReferenceDataRepository 
 
     @Override
     public List<Archetype> findArchetypesWithCursor(Ruleset ruleset, String q, String afterName, UUID afterId, int limit) {
-        return archetypeRepository.findArchetypesWithCursor(ruleset, q, afterName, afterId, limit)
+        String rulesetStr = (ruleset != null) ? ruleset.name() : null;
+        return archetypeRepository.findArchetypesWithCursor(rulesetStr, q, afterName, afterId, limit)
                 .stream()
                 .map(ArchetypeJpaEntity::toDomain)
                 .toList();
@@ -120,7 +124,8 @@ public class ReferenceDataPersistenceAdapter implements ReferenceDataRepository 
 
     @Override
     public List<Lineage> findLineagesWithCursor(Ruleset ruleset, String q, String afterName, UUID afterId, int limit) {
-        return lineageRepository.findLineagesWithCursor(ruleset, q, afterName, afterId, limit)
+        String rulesetStr = (ruleset != null) ? ruleset.name() : null;
+        return lineageRepository.findLineagesWithCursor(rulesetStr, q, afterName, afterId, limit)
                 .stream()
                 .map(LineageJpaEntity::toDomain)
                 .toList();
