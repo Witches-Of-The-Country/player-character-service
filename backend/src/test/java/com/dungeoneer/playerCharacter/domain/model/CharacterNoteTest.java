@@ -87,6 +87,33 @@ class CharacterNoteTest {
     }
 
     @Test
+    @DisplayName("Should correctly update title and body while preserving ID, character ID, and createdAt")
+    void shouldUpdateTitleAndBodySuccessfully() {
+        UUID charId = UUID.randomUUID();
+        CharacterNote original = CharacterNote.createNew(charId, "Original Title", "Original Body");
+
+        CharacterNote updated = original.update("Updated Title", "Updated Body");
+
+        assertEquals(original.getId(), updated.getId());
+        assertEquals(charId, updated.getCharacterId());
+        assertEquals(original.getCreatedAt(), updated.getCreatedAt());
+        assertEquals("Updated Title", updated.getTitle());
+        assertEquals("Updated Body", updated.getBody());
+    }
+
+    @Test
+    @DisplayName("Should throw exception when updating with invalid title or body")
+    void shouldThrowExceptionWhenUpdatingWithInvalidInputs() {
+        UUID charId = UUID.randomUUID();
+        CharacterNote original = CharacterNote.createNew(charId, "Original Title", "Original Body");
+
+        assertThrows(CharacterValidationException.class, () -> original.update("", "Valid body"));
+        assertThrows(CharacterValidationException.class, () -> original.update("Valid title", ""));
+        assertThrows(CharacterValidationException.class, () -> original.update("A".repeat(256), "Valid body"));
+        assertThrows(CharacterValidationException.class, () -> original.update("Valid title", "A".repeat(10001)));
+    }
+
+    @Test
     @DisplayName("Should correctly compare equality based on id")
     void shouldTestEqualsAndHashCode() {
         UUID id = UUID.randomUUID();

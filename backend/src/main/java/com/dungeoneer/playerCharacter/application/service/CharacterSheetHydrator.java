@@ -8,8 +8,8 @@ import com.dungeoneer.playerCharacter.domain.model.Lineage;
 import com.dungeoneer.playerCharacter.domain.model.PlayerCharacter;
 import com.dungeoneer.playerCharacter.domain.model.Srd2014RulesEngine;
 
+import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -105,9 +105,19 @@ public final class CharacterSheetHydrator {
         AbilityScores scores = character.getAbilityScores();
         int prof = character.getProficiencyBonus();
 
-        Set<String> profSkills = (background != null && background.getSkillProficiencies() != null)
-                ? background.getSkillProficiencies().stream().map(String::trim).map(String::toUpperCase).collect(Collectors.toSet())
-                : Set.of();
+        Set<String> profSkills = new HashSet<>();
+        if (background != null && background.getSkillProficiencies() != null) {
+            profSkills.addAll(background.getSkillProficiencies().stream()
+                    .map(String::trim)
+                    .map(String::toUpperCase)
+                    .toList());
+        }
+        if (character != null && character.getSkillProficiencies() != null) {
+            profSkills.addAll(character.getSkillProficiencies().stream()
+                    .map(String::trim)
+                    .map(String::toUpperCase)
+                    .toList());
+        }
 
         Map<String, Integer> result = new LinkedHashMap<>();
 

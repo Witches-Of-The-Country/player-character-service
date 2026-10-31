@@ -37,6 +37,7 @@ public class PlayerCharacter {
     private final HpCalculationMethod hpCalculationMethod;
     private final boolean hasPendingLevelChoices;
     private final List<ClassProgression> classProgressions;
+    private final List<String> skillProficiencies;
     private final Instant createdAt;
     private final Instant updatedAt;
 
@@ -61,6 +62,7 @@ public class PlayerCharacter {
             HpCalculationMethod hpCalculationMethod,
             boolean hasPendingLevelChoices,
             List<ClassProgression> classProgressions,
+            List<String> skillProficiencies,
             Instant createdAt,
             Instant updatedAt
     ) {
@@ -106,8 +108,63 @@ public class PlayerCharacter {
         this.classProgressions = classProgressions != null
                 ? Collections.unmodifiableList(new ArrayList<>(classProgressions))
                 : Collections.emptyList();
+        this.skillProficiencies = skillProficiencies != null
+                ? Collections.unmodifiableList(new ArrayList<>(skillProficiencies))
+                : Collections.emptyList();
         this.createdAt = createdAt != null ? createdAt : Instant.now();
         this.updatedAt = updatedAt != null ? updatedAt : Instant.now();
+    }
+
+    // Overload without skillProficiencies for backwards compatibility
+    public PlayerCharacter(
+            UUID id,
+            String name,
+            int level,
+            int hitPointsCurrent,
+            int hitPointsMax,
+            int hitPointsTemp,
+            int armorClass,
+            int initiativeBonus,
+            int speed,
+            int proficiencyBonus,
+            Ruleset ruleset,
+            AbilityScoreMethod abilityScoreMethod,
+            UUID lineageId,
+            UUID backgroundId,
+            UUID userId,
+            AbilityScores abilityScores,
+            String notes,
+            HpCalculationMethod hpCalculationMethod,
+            boolean hasPendingLevelChoices,
+            List<ClassProgression> classProgressions,
+            Instant createdAt,
+            Instant updatedAt
+    ) {
+        this(
+                id,
+                name,
+                level,
+                hitPointsCurrent,
+                hitPointsMax,
+                hitPointsTemp,
+                armorClass,
+                initiativeBonus,
+                speed,
+                proficiencyBonus,
+                ruleset,
+                abilityScoreMethod,
+                lineageId,
+                backgroundId,
+                userId,
+                abilityScores,
+                notes,
+                hpCalculationMethod,
+                hasPendingLevelChoices,
+                classProgressions,
+                Collections.emptyList(),
+                createdAt,
+                updatedAt
+        );
     }
 
     // Backwards-compatible constructor for existing tests and call sites
@@ -152,6 +209,7 @@ public class PlayerCharacter {
                 HpCalculationMethod.MAX,
                 level > 1,
                 Collections.emptyList(),
+                Collections.emptyList(),
                 createdAt,
                 updatedAt
         );
@@ -180,6 +238,7 @@ public class PlayerCharacter {
                 abilityScores,
                 "",
                 HpCalculationMethod.MAX,
+                Collections.emptyList(),
                 Collections.emptyList()
         );
     }
@@ -197,6 +256,38 @@ public class PlayerCharacter {
             String notes,
             HpCalculationMethod hpCalculationMethod,
             List<ClassProgression> classProgressions
+    ) {
+        return createNew(
+                name,
+                level,
+                hitPointsMax,
+                ruleset,
+                abilityScoreMethod,
+                lineageId,
+                backgroundId,
+                userId,
+                abilityScores,
+                notes,
+                hpCalculationMethod,
+                classProgressions,
+                Collections.emptyList()
+        );
+    }
+
+    public static PlayerCharacter createNew(
+            String name,
+            int level,
+            int hitPointsMax,
+            Ruleset ruleset,
+            AbilityScoreMethod abilityScoreMethod,
+            UUID lineageId,
+            UUID backgroundId,
+            UUID userId,
+            AbilityScores abilityScores,
+            String notes,
+            HpCalculationMethod hpCalculationMethod,
+            List<ClassProgression> classProgressions,
+            List<String> skillProficiencies
     ) {
         if (abilityScores == null) {
             throw new CharacterValidationException("AbilityScores cannot be null.");
@@ -231,6 +322,7 @@ public class PlayerCharacter {
                 hpCalculationMethod != null ? hpCalculationMethod : HpCalculationMethod.MAX,
                 hasPendingChoices,
                 classProgressions,
+                skillProficiencies != null ? skillProficiencies : Collections.emptyList(),
                 now,
                 now
         );
@@ -266,6 +358,7 @@ public class PlayerCharacter {
                 this.hpCalculationMethod,
                 this.hasPendingLevelChoices,
                 this.classProgressions,
+                this.skillProficiencies,
                 this.createdAt,
                 Instant.now()
         );
@@ -384,6 +477,10 @@ public class PlayerCharacter {
 
     public List<ClassProgression> getClassProgressions() {
         return classProgressions;
+    }
+
+    public List<String> getSkillProficiencies() {
+        return skillProficiencies;
     }
 
     public Instant getCreatedAt() {

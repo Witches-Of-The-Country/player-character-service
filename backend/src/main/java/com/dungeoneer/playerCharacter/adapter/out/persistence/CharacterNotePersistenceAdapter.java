@@ -5,6 +5,7 @@ import com.dungeoneer.playerCharacter.domain.model.CharacterNote;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Component
@@ -21,6 +22,12 @@ public class CharacterNotePersistenceAdapter implements CharacterNoteRepositoryP
         CharacterNoteJpaEntity entity = CharacterNoteJpaEntity.fromDomain(note);
         CharacterNoteJpaEntity saved = repository.save(entity);
         return saved.toDomain();
+    }
+
+    @Override
+    public Optional<CharacterNote> findByIdAndCharacterId(UUID id, UUID characterId) {
+        return repository.findByIdAndCharacterId(id, characterId)
+                .map(CharacterNoteJpaEntity::toDomain);
     }
 
     @Override

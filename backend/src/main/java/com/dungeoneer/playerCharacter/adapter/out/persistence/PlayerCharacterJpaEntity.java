@@ -15,9 +15,12 @@ import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -89,6 +92,10 @@ public class PlayerCharacterJpaEntity {
     @OneToMany(mappedBy = "character", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<ClassProgressionJpaEntity> classProgressions = new ArrayList<>();
 
+    @Column(name = "skill_proficiencies", nullable = false, columnDefinition = "varchar[]")
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    private String[] skillProficiencies = new String[0];
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -119,6 +126,7 @@ public class PlayerCharacterJpaEntity {
             boolean hasPendingLevelChoices,
             AbilityScoresJpaEntity abilityScores,
             List<ClassProgressionJpaEntity> classProgressions,
+            String[] skillProficiencies,
             Instant createdAt,
             Instant updatedAt
     ) {
@@ -142,11 +150,67 @@ public class PlayerCharacterJpaEntity {
         this.hasPendingLevelChoices = hasPendingLevelChoices;
         this.abilityScores = abilityScores;
         this.classProgressions = classProgressions != null ? classProgressions : new ArrayList<>();
+        this.skillProficiencies = skillProficiencies != null ? skillProficiencies : new String[0];
         this.createdAt = createdAt != null ? createdAt : Instant.now();
         this.updatedAt = updatedAt != null ? updatedAt : Instant.now();
     }
 
+    public PlayerCharacterJpaEntity(
+            UUID id,
+            String name,
+            int level,
+            int hitPointsCurrent,
+            int hitPointsMax,
+            int hitPointsTemp,
+            int armorClass,
+            int initiativeBonus,
+            int speed,
+            int proficiencyBonus,
+            Ruleset ruleset,
+            AbilityScoreMethod abilityScoreMethod,
+            UUID lineageId,
+            UUID backgroundId,
+            UUID userId,
+            String notes,
+            HpCalculationMethod hpCalculationMethod,
+            boolean hasPendingLevelChoices,
+            AbilityScoresJpaEntity abilityScores,
+            List<ClassProgressionJpaEntity> classProgressions,
+            Instant createdAt,
+            Instant updatedAt
+    ) {
+        this(
+                id,
+                name,
+                level,
+                hitPointsCurrent,
+                hitPointsMax,
+                hitPointsTemp,
+                armorClass,
+                initiativeBonus,
+                speed,
+                proficiencyBonus,
+                ruleset,
+                abilityScoreMethod,
+                lineageId,
+                backgroundId,
+                userId,
+                notes,
+                hpCalculationMethod,
+                hasPendingLevelChoices,
+                abilityScores,
+                classProgressions,
+                new String[0],
+                createdAt,
+                updatedAt
+        );
+    }
+
     public static PlayerCharacterJpaEntity fromDomain(PlayerCharacter domain) {
+        String[] skills = (domain.getSkillProficiencies() != null)
+                ? domain.getSkillProficiencies().toArray(new String[0])
+                : new String[0];
+
         PlayerCharacterJpaEntity entity = new PlayerCharacterJpaEntity(
                 domain.getId(),
                 domain.getName(),
@@ -168,6 +232,7 @@ public class PlayerCharacterJpaEntity {
                 domain.isHasPendingLevelChoices(),
                 null,
                 new ArrayList<>(),
+                skills,
                 domain.getCreatedAt(),
                 domain.getUpdatedAt()
         );
@@ -192,6 +257,10 @@ public class PlayerCharacterJpaEntity {
                 ? this.classProgressions.stream().map(ClassProgressionJpaEntity::toDomain).toList()
                 : List.of();
 
+        List<String> domainSkills = (this.skillProficiencies != null)
+                ? Arrays.asList(this.skillProficiencies)
+                : List.of();
+
         return new PlayerCharacter(
                 this.id,
                 this.name,
@@ -213,6 +282,7 @@ public class PlayerCharacterJpaEntity {
                 this.hpCalculationMethod,
                 this.hasPendingLevelChoices,
                 domainProgressions,
+                domainSkills,
                 this.createdAt,
                 this.updatedAt
         );
@@ -376,6 +446,14 @@ public class PlayerCharacterJpaEntity {
 
     public void setClassProgressions(List<ClassProgressionJpaEntity> classProgressions) {
         this.classProgressions = classProgressions;
+    }
+
+    public String[] getSkillProficiencies() {
+        return skillProficiencies;
+    }
+
+    public void setSkillProficiencies(String[] skillProficiencies) {
+        this.skillProficiencies = skillProficiencies != null ? skillProficiencies : new String[0];
     }
 
     public Instant getCreatedAt() {

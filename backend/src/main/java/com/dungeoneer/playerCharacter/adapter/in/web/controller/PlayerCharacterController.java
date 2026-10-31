@@ -8,6 +8,7 @@ import com.dungeoneer.playerCharacter.adapter.in.web.dto.CreateCharacterNoteRequ
 import com.dungeoneer.playerCharacter.adapter.in.web.dto.CreateCharacterRequest;
 import com.dungeoneer.playerCharacter.adapter.in.web.dto.HpRollResponse;
 import com.dungeoneer.playerCharacter.adapter.in.web.dto.RollHpRequest;
+import com.dungeoneer.playerCharacter.adapter.in.web.dto.UpdateCharacterNoteRequest;
 import com.dungeoneer.playerCharacter.adapter.in.web.dto.UpdateCharacterRequest;
 import com.dungeoneer.playerCharacter.adapter.in.web.mapper.PlayerCharacterWebMapper;
 import com.dungeoneer.playerCharacter.application.dto.CharacterNoteResult;
@@ -24,6 +25,7 @@ import com.dungeoneer.playerCharacter.application.port.in.ListCharacterNotesUseC
 import com.dungeoneer.playerCharacter.application.port.in.ListCharactersUseCase;
 import com.dungeoneer.playerCharacter.application.port.in.RollAbilityScoresUseCase;
 import com.dungeoneer.playerCharacter.application.port.in.RollHitPointsUseCase;
+import com.dungeoneer.playerCharacter.application.port.in.UpdateCharacterNoteUseCase;
 import com.dungeoneer.playerCharacter.application.port.in.UpdateCharacterUseCase;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -57,6 +59,7 @@ public class PlayerCharacterController {
     private final RollHitPointsUseCase rollHitPointsUseCase;
     private final AddCharacterNoteUseCase addCharacterNoteUseCase;
     private final ListCharacterNotesUseCase listCharacterNotesUseCase;
+    private final UpdateCharacterNoteUseCase updateCharacterNoteUseCase;
 
     public PlayerCharacterController(
             CreateCharacterUseCase createCharacterUseCase,
@@ -67,7 +70,8 @@ public class PlayerCharacterController {
             RollAbilityScoresUseCase rollAbilityScoresUseCase,
             RollHitPointsUseCase rollHitPointsUseCase,
             AddCharacterNoteUseCase addCharacterNoteUseCase,
-            ListCharacterNotesUseCase listCharacterNotesUseCase
+            ListCharacterNotesUseCase listCharacterNotesUseCase,
+            UpdateCharacterNoteUseCase updateCharacterNoteUseCase
     ) {
         this.createCharacterUseCase = createCharacterUseCase;
         this.getCharacterUseCase = getCharacterUseCase;
@@ -78,6 +82,7 @@ public class PlayerCharacterController {
         this.rollHitPointsUseCase = rollHitPointsUseCase;
         this.addCharacterNoteUseCase = addCharacterNoteUseCase;
         this.listCharacterNotesUseCase = listCharacterNotesUseCase;
+        this.updateCharacterNoteUseCase = updateCharacterNoteUseCase;
     }
 
     @PostMapping("/ability-rolls")
@@ -189,6 +194,22 @@ public class PlayerCharacterController {
                 .buildAndExpand(response.id())
                 .toUri();
         return ResponseEntity.created(location).body(response);
+    }
+
+    @PutMapping("/{id}/notes/{noteId}")
+    public ResponseEntity<CharacterNoteResponse> updateCharacterNote(
+            @RequestHeader("X-User-Id") UUID userId,
+            @PathVariable("id") UUID id,
+            @PathVariable("noteId") UUID noteId,
+            @Valid @RequestBody UpdateCharacterNoteRequest request
+    ) {
+        CharacterNoteResult result = updateCharacterNoteUseCase.updateNote(
+                id,
+                noteId,
+                userId,
+                PlayerCharacterWebMapper.toCommand(request)
+        );
+        return ResponseEntity.ok(PlayerCharacterWebMapper.toResponse(result));
     }
 
     @GetMapping("/{id}/notes")

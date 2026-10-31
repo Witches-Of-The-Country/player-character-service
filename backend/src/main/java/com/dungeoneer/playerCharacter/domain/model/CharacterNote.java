@@ -45,6 +45,10 @@ public class CharacterNote {
         return new CharacterNote(UUID.randomUUID(), characterId, title, body, Instant.now());
     }
 
+    public CharacterNote update(String title, String body) {
+        return new CharacterNote(this.id, this.characterId, title, body, this.createdAt);
+    }
+
     public UUID getId() {
         return id;
     }

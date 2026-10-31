@@ -5,6 +5,7 @@ import com.dungeoneer.core.web.GlobalExceptionHandler;
 import com.dungeoneer.playerCharacter.adapter.in.web.dto.CreateCharacterNoteRequest;
 import com.dungeoneer.playerCharacter.adapter.in.web.dto.CreateCharacterRequest;
 import com.dungeoneer.playerCharacter.adapter.in.web.dto.RollHpRequest;
+import com.dungeoneer.playerCharacter.adapter.in.web.dto.UpdateCharacterNoteRequest;
 import com.dungeoneer.playerCharacter.adapter.in.web.dto.UpdateCharacterRequest;
 import com.dungeoneer.playerCharacter.application.dto.AddCharacterNoteCommand;
 import com.dungeoneer.playerCharacter.application.dto.CharacterNoteResult;
@@ -15,6 +16,7 @@ import com.dungeoneer.playerCharacter.application.dto.RollAbilityScoresResult;
 import com.dungeoneer.playerCharacter.application.dto.RollHitPointsCommand;
 import com.dungeoneer.playerCharacter.application.dto.RollHitPointsResult;
 import com.dungeoneer.playerCharacter.application.dto.UpdateCharacterCommand;
+import com.dungeoneer.playerCharacter.application.dto.UpdateCharacterNoteCommand;
 import com.dungeoneer.playerCharacter.application.port.in.AddCharacterNoteUseCase;
 import com.dungeoneer.playerCharacter.application.port.in.CreateCharacterUseCase;
 import com.dungeoneer.playerCharacter.application.port.in.DeleteCharacterUseCase;
@@ -23,6 +25,7 @@ import com.dungeoneer.playerCharacter.application.port.in.ListCharacterNotesUseC
 import com.dungeoneer.playerCharacter.application.port.in.ListCharactersUseCase;
 import com.dungeoneer.playerCharacter.application.port.in.RollAbilityScoresUseCase;
 import com.dungeoneer.playerCharacter.application.port.in.RollHitPointsUseCase;
+import com.dungeoneer.playerCharacter.application.port.in.UpdateCharacterNoteUseCase;
 import com.dungeoneer.playerCharacter.application.port.in.UpdateCharacterUseCase;
 import com.dungeoneer.playerCharacter.domain.exception.CharacterNotFoundException;
 import com.dungeoneer.playerCharacter.domain.exception.CharacterValidationException;
@@ -55,7 +58,6 @@ import java.util.UUID;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -93,6 +95,8 @@ class PlayerCharacterControllerTest {
     private AddCharacterNoteUseCase addCharacterNoteUseCase;
     @MockitoBean
     private ListCharacterNotesUseCase listCharacterNotesUseCase;
+    @MockitoBean
+    private UpdateCharacterNoteUseCase updateCharacterNoteUseCase;
 
     private CharacterSheetResult createMockSheet(UUID characterId, UUID userId, String name) {
         return new CharacterSheetResult(
@@ -399,6 +403,70 @@ class PlayerCharacterControllerTest {
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.title").value("Validation Error"))
                 .andExpect(jsonPath("$.status").value(422));
+    }
+
+    @Test
+    @DisplayName("PUT /api/characters/{id}/notes/{noteId} updates note and returns 200 OK")
+    void shouldUpdateCharacterNoteSuccessfully() throws Exception {
+        UUID userId = UUID.randomUUID();
+        UUID characterId = UUID.randomUUID();
+        UUID noteId = UUID.randomUUID();
+        Instant now = Instant.now();
+
+        UpdateCharacterNoteRequest request = new UpdateCharacterNoteRequest("Updated Title", "Updated Body");
+        CharacterNoteResult result = new CharacterNoteResult(noteId, characterId, "Updated Title", "Updated Body", now);
+
+        when(updateCharacterNoteUseCase.updateNote(eq(characterId), eq(noteId), eq(userId), any(UpdateCharacterNoteCommand.class)))
+                .thenReturn(result);
+
+        mockMvc.perform(put("/api/characters/" + characterId + "/notes/" + noteId)
+                        .header("X-User-Id", userId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(noteId.toString()))
+                .andExpect(jsonPath("$.characterId").value(characterId.toString()))
+                .andExpect(jsonPath("$.title").value("Updated Title"))
+                .andExpect(jsonPath("$.body").value("Updated Body"));
+    }
+
+    @Test
+    @DisplayName("PUT /api/characters/{id}/notes/{noteId} rejects blank title with 422 Unprocessable Entity")
+    void shouldReturn422WhenUpdatingNoteWithBlankTitle() throws Exception {
+        UUID userId = UUID.randomUUID();
+        UUID characterId = UUID.randomUUID();
+        UUID noteId = UUID.randomUUID();
+
+        UpdateCharacterNoteRequest request = new UpdateCharacterNoteRequest("", "Valid body");
+
+        mockMvc.perform(put("/api/characters/" + characterId + "/notes/" + noteId)
+                        .header("X-User-Id", userId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.title").value("Validation Error"))
+                .andExpect(jsonPath("$.status").value(422));
+    }
+
+    @Test
+    @DisplayName("PUT /api/characters/{id}/notes/{noteId} returns 404 Not Found when character or note not found")
+    void shouldReturn404WhenUpdatingNonExistentNote() throws Exception {
+        UUID userId = UUID.randomUUID();
+        UUID characterId = UUID.randomUUID();
+        UUID noteId = UUID.randomUUID();
+
+        UpdateCharacterNoteRequest request = new UpdateCharacterNoteRequest("Title", "Body");
+
+        when(updateCharacterNoteUseCase.updateNote(eq(characterId), eq(noteId), eq(userId), any(UpdateCharacterNoteCommand.class)))
+                .thenThrow(new CharacterNotFoundException("Character note not found: " + noteId));
+
+        mockMvc.perform(put("/api/characters/" + characterId + "/notes/" + noteId)
+                        .header("X-User-Id", userId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.title").value("Resource Not Found"))
+                .andExpect(jsonPath("$.status").value(404));
     }
 
     @Test

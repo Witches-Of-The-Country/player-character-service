@@ -11,6 +11,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -50,6 +51,23 @@ class CharacterNotePersistenceAdapterTest {
         ArgumentCaptor<CharacterNoteJpaEntity> captor = ArgumentCaptor.forClass(CharacterNoteJpaEntity.class);
         verify(repository).save(captor.capture());
         assertThat(captor.getValue().getTitle()).isEqualTo("Title");
+    }
+
+    @Test
+    @DisplayName("Should find note by id and character id")
+    void shouldFindByIdAndCharacterId() {
+        UUID charId = UUID.randomUUID();
+        UUID noteId = UUID.randomUUID();
+        CharacterNoteJpaEntity entity = new CharacterNoteJpaEntity(noteId, charId, "Title", "Body", Instant.now());
+
+        when(repository.findByIdAndCharacterId(noteId, charId)).thenReturn(Optional.of(entity));
+
+        Optional<CharacterNote> result = adapter.findByIdAndCharacterId(noteId, charId);
+
+        assertThat(result).isPresent();
+        assertThat(result.get().getId()).isEqualTo(noteId);
+        assertThat(result.get().getCharacterId()).isEqualTo(charId);
+        assertThat(result.get().getTitle()).isEqualTo("Title");
     }
 
     @Test

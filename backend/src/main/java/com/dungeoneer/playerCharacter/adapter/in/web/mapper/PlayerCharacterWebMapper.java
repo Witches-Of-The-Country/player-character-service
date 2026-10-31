@@ -8,21 +8,25 @@ import com.dungeoneer.playerCharacter.adapter.in.web.dto.CreateCharacterNoteRequ
 import com.dungeoneer.playerCharacter.adapter.in.web.dto.CreateCharacterRequest;
 import com.dungeoneer.playerCharacter.adapter.in.web.dto.CreatePlayerCharacterRequest;
 import com.dungeoneer.playerCharacter.adapter.in.web.dto.HpRollResponse;
+import com.dungeoneer.playerCharacter.adapter.in.web.dto.UpdateCharacterNoteRequest;
 import com.dungeoneer.playerCharacter.adapter.in.web.dto.UpdateCharacterRequest;
 import com.dungeoneer.playerCharacter.application.dto.AddCharacterNoteCommand;
 import com.dungeoneer.playerCharacter.application.dto.CharacterNoteResult;
 import com.dungeoneer.playerCharacter.application.dto.CharacterResponseDto;
 import com.dungeoneer.playerCharacter.application.dto.CharacterSheetResult;
 import com.dungeoneer.playerCharacter.application.dto.CharacterSummaryResult;
+import com.dungeoneer.playerCharacter.application.dto.ClassProgressionCommand;
 import com.dungeoneer.playerCharacter.application.dto.CreateCharacterCommand;
 import com.dungeoneer.playerCharacter.application.dto.RollAbilityScoresResult;
 import com.dungeoneer.playerCharacter.application.dto.RollHitPointsResult;
 import com.dungeoneer.playerCharacter.application.dto.UpdateCharacterCommand;
+import com.dungeoneer.playerCharacter.application.dto.UpdateCharacterNoteCommand;
 import com.dungeoneer.playerCharacter.domain.model.AbilityScoreMethod;
 import com.dungeoneer.playerCharacter.domain.model.HpCalculationMethod;
 import com.dungeoneer.playerCharacter.domain.model.PlayerCharacter;
 import com.dungeoneer.playerCharacter.domain.model.Ruleset;
 
+import java.util.List;
 import java.util.UUID;
 
 public final class PlayerCharacterWebMapper {
@@ -37,6 +41,16 @@ public final class PlayerCharacterWebMapper {
         int intel = getAbilityScore(request.abilityScores(), "intelligence");
         int wis = getAbilityScore(request.abilityScores(), "wisdom");
         int cha = getAbilityScore(request.abilityScores(), "charisma");
+
+        List<ClassProgressionCommand> classProgressions = request.classProgressions() != null
+                ? request.classProgressions().stream()
+                .map(cp -> new ClassProgressionCommand(cp.archetypeId(), cp.subclassId(), cp.classLevel()))
+                .toList()
+                : List.of();
+
+        List<String> skillProficiencies = request.skillProficiencies() != null
+                ? request.skillProficiencies()
+                : List.of();
 
         return new CreateCharacterCommand(
                 userId,
@@ -58,7 +72,9 @@ public final class PlayerCharacterWebMapper {
                 request.abilityRollId(),
                 request.hpCalculationMethod() != null ? request.hpCalculationMethod() : HpCalculationMethod.MAX,
                 request.hpRollId(),
-                request.notes()
+                request.notes(),
+                classProgressions,
+                skillProficiencies
         );
     }
 
@@ -103,19 +119,19 @@ public final class PlayerCharacterWebMapper {
         );
     }
 
-    public static CharacterSummaryResponse toResponse(CharacterSummaryResult summary) {
+    public static CharacterSummaryResponse toResponse(CharacterSummaryResult result) {
         return new CharacterSummaryResponse(
-                summary.id(),
-                summary.name(),
-                summary.level(),
-                summary.ruleset(),
-                summary.className(),
-                summary.lineageName(),
-                summary.backgroundName(),
-                summary.hitPointsCurrent(),
-                summary.hitPointsMax(),
-                summary.armorClass(),
-                summary.updatedAt()
+                result.id(),
+                result.name(),
+                result.level(),
+                result.ruleset(),
+                result.className(),
+                result.lineageName(),
+                result.backgroundName(),
+                result.hitPointsCurrent(),
+                result.hitPointsMax(),
+                result.armorClass(),
+                result.updatedAt()
         );
     }
 
@@ -194,6 +210,13 @@ public final class PlayerCharacterWebMapper {
 
     public static AddCharacterNoteCommand toCommand(CreateCharacterNoteRequest request) {
         return new AddCharacterNoteCommand(
+                request.title(),
+                request.body()
+        );
+    }
+
+    public static UpdateCharacterNoteCommand toCommand(UpdateCharacterNoteRequest request) {
+        return new UpdateCharacterNoteCommand(
                 request.title(),
                 request.body()
         );

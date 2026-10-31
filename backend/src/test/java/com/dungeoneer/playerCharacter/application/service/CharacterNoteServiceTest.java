@@ -2,6 +2,7 @@ package com.dungeoneer.playerCharacter.application.service;
 
 import com.dungeoneer.playerCharacter.application.dto.AddCharacterNoteCommand;
 import com.dungeoneer.playerCharacter.application.dto.CharacterNoteResult;
+import com.dungeoneer.playerCharacter.application.dto.UpdateCharacterNoteCommand;
 import com.dungeoneer.playerCharacter.application.port.out.CharacterNoteRepositoryPort;
 import com.dungeoneer.playerCharacter.application.port.out.PlayerCharacterRepositoryPort;
 import com.dungeoneer.playerCharacter.domain.exception.CharacterNotFoundException;
@@ -92,6 +93,70 @@ class CharacterNoteServiceTest {
         assertThrows(CharacterValidationException.class, () -> service.addNote(null, userId, command));
         assertThrows(CharacterValidationException.class, () -> service.addNote(characterId, null, command));
         assertThrows(CharacterValidationException.class, () -> service.addNote(characterId, userId, null));
+    }
+
+    @Test
+    @DisplayName("Should successfully update note when character and note exist and belong to user")
+    void shouldUpdateNoteSuccessfully() {
+        UUID noteId = UUID.randomUUID();
+        when(playerCharacterRepository.findByIdAndUserId(characterId, userId))
+                .thenReturn(Optional.of(playerCharacter));
+
+        CharacterNote existing = new CharacterNote(noteId, characterId, "Old Title", "Old Body", Instant.now().minusSeconds(60));
+        when(characterNoteRepository.findByIdAndCharacterId(noteId, characterId))
+                .thenReturn(Optional.of(existing));
+
+        CharacterNote updated = new CharacterNote(noteId, characterId, "New Title", "New Body", existing.getCreatedAt());
+        when(characterNoteRepository.save(any(CharacterNote.class))).thenReturn(updated);
+
+        UpdateCharacterNoteCommand command = new UpdateCharacterNoteCommand("New Title", "New Body");
+        CharacterNoteResult result = service.updateNote(characterId, noteId, userId, command);
+
+        assertThat(result).isNotNull();
+        assertThat(result.id()).isEqualTo(noteId);
+        assertThat(result.title()).isEqualTo("New Title");
+        assertThat(result.body()).isEqualTo("New Body");
+        verify(characterNoteRepository).save(any(CharacterNote.class));
+    }
+
+    @Test
+    @DisplayName("Should throw CharacterNotFoundException when updating note for non-existent or inaccessible character")
+    void shouldThrowNotFoundWhenUpdatingNoteForNonExistentCharacter() {
+        UUID noteId = UUID.randomUUID();
+        when(playerCharacterRepository.findByIdAndUserId(characterId, userId))
+                .thenReturn(Optional.empty());
+
+        UpdateCharacterNoteCommand command = new UpdateCharacterNoteCommand("New Title", "New Body");
+
+        assertThrows(CharacterNotFoundException.class, () -> service.updateNote(characterId, noteId, userId, command));
+        verify(characterNoteRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Should throw CharacterNotFoundException when note to update is not found")
+    void shouldThrowNotFoundWhenNoteToUpdateNotFound() {
+        UUID noteId = UUID.randomUUID();
+        when(playerCharacterRepository.findByIdAndUserId(characterId, userId))
+                .thenReturn(Optional.of(playerCharacter));
+        when(characterNoteRepository.findByIdAndCharacterId(noteId, characterId))
+                .thenReturn(Optional.empty());
+
+        UpdateCharacterNoteCommand command = new UpdateCharacterNoteCommand("New Title", "New Body");
+
+        assertThrows(CharacterNotFoundException.class, () -> service.updateNote(characterId, noteId, userId, command));
+        verify(characterNoteRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Should throw CharacterValidationException when required parameters are null in updateNote")
+    void shouldValidateArgumentsInUpdateNote() {
+        UUID noteId = UUID.randomUUID();
+        UpdateCharacterNoteCommand command = new UpdateCharacterNoteCommand("Title", "Body");
+
+        assertThrows(CharacterValidationException.class, () -> service.updateNote(null, noteId, userId, command));
+        assertThrows(CharacterValidationException.class, () -> service.updateNote(characterId, null, userId, command));
+        assertThrows(CharacterValidationException.class, () -> service.updateNote(characterId, noteId, null, command));
+        assertThrows(CharacterValidationException.class, () -> service.updateNote(characterId, noteId, userId, null));
     }
 
     @Test

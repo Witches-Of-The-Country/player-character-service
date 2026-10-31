@@ -29,6 +29,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -164,11 +165,24 @@ public class CreateCharacterService implements CreateCharacterUseCase {
         int proficiencyBonus = rulesEngine.calculateProficiencyBonus(command.level());
         boolean hasPendingLevelChoices = command.level() > 1;
 
-        ClassProgression progression = ClassProgression.createInitial(
-                command.archetypeId(),
-                command.subclassId(),
-                command.level()
-        );
+        List<ClassProgression> progressions;
+        if (command.classProgressions() != null && !command.classProgressions().isEmpty()) {
+            int totalClassLevel = command.classProgressions().stream()
+                    .mapToInt(cp -> cp.classLevel() != null ? cp.classLevel() : 0)
+                    .sum();
+            if (totalClassLevel != command.level()) {
+                throw new CharacterValidationException("Sum of class progression levels (" + totalClassLevel + ") must equal character level (" + command.level() + ").");
+            }
+            progressions = command.classProgressions().stream()
+                    .map(cp -> new ClassProgression(UUID.randomUUID(), null, cp.archetypeId(), cp.subclassId(), cp.classLevel()))
+                    .toList();
+        } else {
+            progressions = List.of(ClassProgression.createInitial(
+                    command.archetypeId(),
+                    command.subclassId(),
+                    command.level()
+            ));
+        }
 
         Instant now = Instant.now();
         PlayerCharacter character = new PlayerCharacter(
@@ -191,7 +205,8 @@ public class CreateCharacterService implements CreateCharacterUseCase {
                 command.notes(),
                 hpMethod,
                 hasPendingLevelChoices,
-                List.of(progression),
+                progressions,
+                command.skillProficiencies() != null ? command.skillProficiencies() : Collections.emptyList(),
                 now,
                 now
         );

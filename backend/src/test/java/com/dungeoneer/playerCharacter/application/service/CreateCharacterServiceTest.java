@@ -1,6 +1,7 @@
 package com.dungeoneer.playerCharacter.application.service;
 
 import com.dungeoneer.playerCharacter.application.dto.CharacterSheetResult;
+import com.dungeoneer.playerCharacter.application.dto.ClassProgressionCommand;
 import com.dungeoneer.playerCharacter.application.dto.CreateCharacterCommand;
 import com.dungeoneer.playerCharacter.application.port.out.AbilityRollRepositoryPort;
 import com.dungeoneer.playerCharacter.application.port.out.HpRollRepositoryPort;
@@ -257,5 +258,85 @@ class CreateCharacterServiceTest {
 
         assertThatThrownBy(() -> service.createCharacter(command))
                 .isInstanceOf(CharacterValidationException.class);
+    }
+
+    @Test
+    @DisplayName("TP-02: Creates multiclass character with multiple class progressions and skill proficiencies")
+    void shouldCreateMulticlassCharacterSuccessfully() {
+        UUID secondaryArchetypeId = UUID.randomUUID();
+        List<ClassProgressionCommand> multiclassProgressions = List.of(
+                new ClassProgressionCommand(archetypeId, null, 3),
+                new ClassProgressionCommand(secondaryArchetypeId, null, 2)
+        );
+        List<String> chosenSkills = List.of("Acrobatics", "Survival");
+
+        CreateCharacterCommand command = new CreateCharacterCommand(
+                userId,
+                "Multiclass Veteran",
+                5,
+                Ruleset.SRD_2024,
+                lineageId,
+                backgroundId,
+                archetypeId,
+                null,
+                AbilityScoreMethod.STANDARD_ARRAY,
+                15, 14, 13, 12, 10, 8,
+                Map.of("STRENGTH", 2, "CONSTITUTION", 1),
+                null,
+                HpCalculationMethod.AVERAGE,
+                null,
+                "Multiclass notes",
+                multiclassProgressions,
+                chosenSkills
+        );
+
+        when(playerCharacterRepository.save(any(PlayerCharacter.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        CharacterSheetResult result = service.createCharacter(command);
+
+        assertThat(result).isNotNull();
+        assertThat(result.classProgressions()).hasSize(2);
+        assertThat(result.classProgressions().get(0).getClassLevel()).isEqualTo(3);
+        assertThat(result.classProgressions().get(1).getClassLevel()).isEqualTo(2);
+
+        ArgumentCaptor<PlayerCharacter> captor = ArgumentCaptor.forClass(PlayerCharacter.class);
+        verify(playerCharacterRepository).save(captor.capture());
+        PlayerCharacter savedChar = captor.getValue();
+        assertThat(savedChar.getSkillProficiencies()).containsExactlyInAnyOrder("Acrobatics", "Survival");
+    }
+
+    @Test
+    @DisplayName("TE-02: Throws CharacterValidationException when multiclass level sum does not match total character level")
+    void shouldThrowValidationExceptionWhenMulticlassLevelsDoNotMatchTotalLevel() {
+        UUID secondaryArchetypeId = UUID.randomUUID();
+        List<ClassProgressionCommand> multiclassProgressions = List.of(
+                new ClassProgressionCommand(archetypeId, null, 2),
+                new ClassProgressionCommand(secondaryArchetypeId, null, 1) // sum is 3, total level is 5
+        );
+
+        CreateCharacterCommand command = new CreateCharacterCommand(
+                userId,
+                "Invalid Multiclass Hero",
+                5,
+                Ruleset.SRD_2024,
+                lineageId,
+                backgroundId,
+                archetypeId,
+                null,
+                AbilityScoreMethod.STANDARD_ARRAY,
+                15, 14, 13, 12, 10, 8,
+                Map.of("STRENGTH", 2, "CONSTITUTION", 1),
+                null,
+                HpCalculationMethod.AVERAGE,
+                null,
+                "Invalid multiclass",
+                multiclassProgressions,
+                List.of()
+        );
+
+        assertThatThrownBy(() -> service.createCharacter(command))
+                .isInstanceOf(CharacterValidationException.class)
+                .hasMessageContaining("Sum of class progression levels");
     }
 }

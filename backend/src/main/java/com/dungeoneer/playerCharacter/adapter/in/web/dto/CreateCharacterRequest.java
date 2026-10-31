@@ -3,12 +3,15 @@ package com.dungeoneer.playerCharacter.adapter.in.web.dto;
 import com.dungeoneer.playerCharacter.domain.model.AbilityScoreMethod;
 import com.dungeoneer.playerCharacter.domain.model.HpCalculationMethod;
 import com.dungeoneer.playerCharacter.domain.model.Ruleset;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -50,6 +53,45 @@ public record CreateCharacterRequest(
 
         UUID hpRollId,
 
-        String notes
+        String notes,
+
+        List<@Valid ClassProgressionRequest> classProgressions,
+
+        List<String> skillProficiencies
 ) {
+        public CreateCharacterRequest(
+                String name,
+                Integer level,
+                Ruleset ruleset,
+                UUID lineageId,
+                UUID backgroundId,
+                UUID archetypeId,
+                UUID subclassId,
+                AbilityScoreMethod abilityScoreMethod,
+                Map<String, Integer> abilityScores,
+                Map<String, Integer> abilityScoreBonuses,
+                UUID abilityRollId,
+                HpCalculationMethod hpCalculationMethod,
+                UUID hpRollId,
+                String notes
+        ) {
+                this(
+                        name,
+                        level,
+                        ruleset,
+                        lineageId,
+                        backgroundId,
+                        archetypeId,
+                        subclassId,
+                        abilityScoreMethod,
+                        abilityScores,
+                        abilityScoreBonuses,
+                        abilityRollId,
+                        hpCalculationMethod,
+                        hpRollId,
+                        notes,
+                        Collections.emptyList(),
+                        Collections.emptyList()
+                );
+        }
 }

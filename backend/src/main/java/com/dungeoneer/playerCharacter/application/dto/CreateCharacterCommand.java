@@ -9,6 +9,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -74,8 +76,61 @@ public record CreateCharacterCommand(
 
         UUID hpRollId,
 
-        String notes
+        String notes,
+
+        List<ClassProgressionCommand> classProgressions,
+
+        List<String> skillProficiencies
 ) {
+        // Overloaded constructor without classProgressions & skillProficiencies for backwards compatibility
+        public CreateCharacterCommand(
+                UUID userId,
+                String name,
+                Integer level,
+                Ruleset ruleset,
+                UUID lineageId,
+                UUID backgroundId,
+                UUID archetypeId,
+                UUID subclassId,
+                AbilityScoreMethod abilityScoreMethod,
+                Integer strength,
+                Integer dexterity,
+                Integer constitution,
+                Integer intelligence,
+                Integer wisdom,
+                Integer charisma,
+                Map<String, Integer> abilityScoreBonuses,
+                UUID abilityRollId,
+                HpCalculationMethod hpCalculationMethod,
+                UUID hpRollId,
+                String notes
+        ) {
+                this(
+                        userId,
+                        name,
+                        level,
+                        ruleset,
+                        lineageId,
+                        backgroundId,
+                        archetypeId,
+                        subclassId,
+                        abilityScoreMethod,
+                        strength,
+                        dexterity,
+                        constitution,
+                        intelligence,
+                        wisdom,
+                        charisma,
+                        abilityScoreBonuses,
+                        abilityRollId,
+                        hpCalculationMethod,
+                        hpRollId,
+                        notes,
+                        Collections.emptyList(),
+                        Collections.emptyList()
+                );
+        }
+
         // Backwards compatible constructor for legacy tests/mappers
         public CreateCharacterCommand(
                 String name,
@@ -113,7 +168,9 @@ public record CreateCharacterCommand(
                         null,
                         HpCalculationMethod.MAX,
                         null,
-                        ""
+                        "",
+                        Collections.emptyList(),
+                        Collections.emptyList()
                 );
         }
 }
