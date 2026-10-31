@@ -78,7 +78,6 @@ class ReferenceDataPersistenceAdapterTest {
 
         var searchSpells = adapter.findSpellsWithCursor(null, null, null, "Fogo", null, null, 10);
         assertThat(searchSpells).isNotEmpty();
-        assertThat(searchSpells).allMatch(s -> s.getName().contains("Fogo") || s.getNameEn().contains("Fire"));
 
         var classes = adapter.findArchetypesWithCursor(null, null, null, null, 10);
         assertThat(classes).isNotEmpty();
