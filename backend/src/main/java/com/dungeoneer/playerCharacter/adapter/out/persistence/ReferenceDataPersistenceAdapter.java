@@ -3,6 +3,7 @@ package com.dungeoneer.playerCharacter.adapter.out.persistence;
 import com.dungeoneer.playerCharacter.application.port.out.ReferenceDataRepository;
 import com.dungeoneer.playerCharacter.domain.model.Archetype;
 import com.dungeoneer.playerCharacter.domain.model.Background;
+import com.dungeoneer.playerCharacter.domain.model.Item;
 import com.dungeoneer.playerCharacter.domain.model.Lineage;
 import com.dungeoneer.playerCharacter.domain.model.Ruleset;
 import org.springframework.stereotype.Component;
@@ -17,15 +18,24 @@ public class ReferenceDataPersistenceAdapter implements ReferenceDataRepository 
     private final SpringDataArchetypeRepository archetypeRepository;
     private final SpringDataLineageRepository lineageRepository;
     private final SpringDataBackgroundRepository backgroundRepository;
+    private final SpringDataSpellRepository spellRepository;
+    private final SpringDataFeatRepository featRepository;
+    private final SpringDataItemRepository itemRepository;
 
     public ReferenceDataPersistenceAdapter(
             SpringDataArchetypeRepository archetypeRepository,
             SpringDataLineageRepository lineageRepository,
-            SpringDataBackgroundRepository backgroundRepository
+            SpringDataBackgroundRepository backgroundRepository,
+            SpringDataSpellRepository spellRepository,
+            SpringDataFeatRepository featRepository,
+            SpringDataItemRepository itemRepository
     ) {
         this.archetypeRepository = archetypeRepository;
         this.lineageRepository = lineageRepository;
         this.backgroundRepository = backgroundRepository;
+        this.spellRepository = spellRepository;
+        this.featRepository = featRepository;
+        this.itemRepository = itemRepository;
     }
 
     @Override
@@ -65,5 +75,54 @@ public class ReferenceDataPersistenceAdapter implements ReferenceDataRepository 
     @Override
     public Optional<Background> findBackgroundById(UUID id) {
         return backgroundRepository.findById(id).map(BackgroundJpaEntity::toDomain);
+    }
+
+    @Override
+    public List<SpellJpaEntity> findSpellsWithCursor(Ruleset ruleset, Integer level, String school, String q, String afterName, UUID afterId, int limit) {
+        return spellRepository.findSpellsWithCursor(ruleset, level, school, q, afterName, afterId, limit);
+    }
+
+    @Override
+    public List<FeatJpaEntity> findFeatsWithCursor(Ruleset ruleset, String q, String afterName, UUID afterId, int limit) {
+        return featRepository.findFeatsWithCursor(ruleset, q, afterName, afterId, limit);
+    }
+
+    @Override
+    public List<Item> findItemsWithCursor(Ruleset ruleset, String category, String rarity, String q, String afterName, UUID afterId, int limit) {
+        return itemRepository.findItemsWithCursor(ruleset, category, rarity, q, afterName, afterId, limit)
+                .stream()
+                .map(e -> new Item(
+                        e.getId(),
+                        e.getRuleset(),
+                        e.getSlug(),
+                        e.getNameEn(),
+                        e.getName(),
+                        e.getItemCategory(),
+                        e.getItemType(),
+                        e.getRarity(),
+                        e.isAttunement(),
+                        e.getCost(),
+                        e.getWeight(),
+                        e.getDescription(),
+                        e.getSource(),
+                        e.getOwnerId()
+                ))
+                .toList();
+    }
+
+    @Override
+    public List<Archetype> findArchetypesWithCursor(Ruleset ruleset, String q, String afterName, UUID afterId, int limit) {
+        return archetypeRepository.findArchetypesWithCursor(ruleset, q, afterName, afterId, limit)
+                .stream()
+                .map(ArchetypeJpaEntity::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<Lineage> findLineagesWithCursor(Ruleset ruleset, String q, String afterName, UUID afterId, int limit) {
+        return lineageRepository.findLineagesWithCursor(ruleset, q, afterName, afterId, limit)
+                .stream()
+                .map(LineageJpaEntity::toDomain)
+                .toList();
     }
 }
