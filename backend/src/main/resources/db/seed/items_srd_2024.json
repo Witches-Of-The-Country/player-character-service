@@ -1,0 +1,54 @@
+[
+  {
+    "ruleset": "SRD_2024",
+    "slug": "longsword-2024",
+    "name_en": "Longsword",
+    "name": "Espada Longa",
+    "item_category": "WEAPON",
+    "item_type": "Arma Marcial Corpo a Corpo",
+    "rarity": "NONE",
+    "attunement": false,
+    "cost": "15 po",
+    "weight": "1,5 kg",
+    "description": "Espada versátil das regras atualizadas de 2024. Causa 1d8 cortante (1d10 versátil) e possui a propriedade de Domínio de Arma Sap (Abalar)."
+  },
+  {
+    "ruleset": "SRD_2024",
+    "slug": "plate-armor-2024",
+    "name_en": "Plate Armor",
+    "name": "Armadura de Placas",
+    "item_category": "ARMOR",
+    "item_type": "Armadura Pesada",
+    "rarity": "NONE",
+    "attunement": false,
+    "cost": "1500 po",
+    "weight": "30 kg",
+    "description": "Armadura completa de placas metálicas moldadas. Concede CA 18, exige Força 15 e impõe desvantagem em Furtividade."
+  },
+  {
+    "ruleset": "SRD_2024",
+    "slug": "potion-of-healing-2024",
+    "name_en": "Potion of Healing",
+    "name": "Poção de Cura",
+    "item_category": "MAGIC",
+    "item_type": "Poção",
+    "rarity": "COMMON",
+    "attunement": false,
+    "cost": "50 po",
+    "weight": "0,2 kg",
+    "description": "Elixir medicinal alquímico. Recupera 2d4 + 2 pontos de vida, utilizável com uma Ação Bônus nas regras revisadas de 2024."
+  },
+  {
+    "ruleset": "SRD_2024",
+    "slug": "cloak-of-protection-2024",
+    "name_en": "Cloak of Protection",
+    "name": "Manto de Proteção",
+    "item_category": "MAGIC",
+    "item_type": "Item Maravilhoso",
+    "rarity": "UNCOMMON",
+    "attunement": true,
+    "cost": "1000 po",
+    "weight": "0,5 kg",
+    "description": "Você ganha +1 de bônus na Classe de Armadura e em todas as salvaguardas enquanto estiver vestindo este manto."
+  }
+]
