@@ -1,0 +1,42 @@
+[
+  {
+    "ruleset": "SRD_2024",
+    "slug": "alert-2024",
+    "name_en": "Alert",
+    "name": "Alerta",
+    "prerequisites": "Nível 1 (Talento de Origem)",
+    "description": "Você ganha proficiência em Iniciativa e pode trocar sua rolagem de iniciativa com a de um aliado voluntário no início do combate."
+  },
+  {
+    "ruleset": "SRD_2024",
+    "slug": "magic-initiate-2024",
+    "name_en": "Magic Initiate",
+    "name": "Iniciado em Magia",
+    "prerequisites": "Nível 1 (Talento de Origem)",
+    "description": "Você aprende dois truques e uma magia de 1º círculo de uma lista de classes específica (Clérigo, Druida ou Mago), podendo conjurá-la uma vez por descanso longo sem gastar espaços de magia."
+  },
+  {
+    "ruleset": "SRD_2024",
+    "slug": "tough-2024",
+    "name_en": "Tough",
+    "name": "Vigoroso",
+    "prerequisites": "Nível 1 (Talento de Origem)",
+    "description": "Seus pontos de vida máximos aumentam em uma quantia igual a duas vezes o seu nível de personagem, e aumentam em 2 PV adicionais a cada nível subsequente."
+  },
+  {
+    "ruleset": "SRD_2024",
+    "slug": "savage-attacker-2024",
+    "name_en": "Savage Attacker",
+    "name": "Atacante Selvagem",
+    "prerequisites": "Nível 1 (Talento de Origem)",
+    "description": "Uma vez por turno, ao atingir um alvo com uma arma, você pode rolar o dado de dano da arma duas vezes e utilizar o maior resultado."
+  },
+  {
+    "ruleset": "SRD_2024",
+    "slug": "war-caster-2024",
+    "name_en": "War Caster",
+    "name": "Conjurador de Batalha",
+    "prerequisites": "Nível 4, capacidade de conjurar pelo menos uma magia",
+    "description": "Você tem vantagem em salvaguardas de Constituição para manter concentração, pode realizar os componentes somáticos empunhando armas e pode conjurar magias como ataque de oportunidade."
+  }
+]
