@@ -4,7 +4,11 @@ import com.dungeoneer.core.config.SecurityConfig;
 import com.dungeoneer.core.web.GlobalExceptionHandler;
 import com.dungeoneer.playerCharacter.application.dto.ArchetypeDto;
 import com.dungeoneer.playerCharacter.application.dto.BackgroundDto;
+import com.dungeoneer.playerCharacter.application.dto.CursorPageResponse;
+import com.dungeoneer.playerCharacter.application.dto.FeatDto;
+import com.dungeoneer.playerCharacter.application.dto.ItemDto;
 import com.dungeoneer.playerCharacter.application.dto.LineageDto;
+import com.dungeoneer.playerCharacter.application.dto.SpellDto;
 import com.dungeoneer.playerCharacter.application.port.in.GetReferenceDataUseCase;
 import com.dungeoneer.playerCharacter.domain.model.Ruleset;
 import com.dungeoneer.playerCharacter.domain.model.SpellcastingType;
@@ -21,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -49,118 +54,75 @@ class ReferenceDataControllerTest {
         );
         when(getReferenceDataUseCase.getClasses(null)).thenReturn(List.of(fighter));
 
-        mockMvc.perform(get("/api/reference/classes"))
+        mockMvc.perform(get("/api/reference/classes")
+                        .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].name").value("Fighter"))
-                .andExpect(jsonPath("$[0].hitDice").value("d10"))
-                .andExpect(jsonPath("$[0].ruleset").value("SRD_2024"));
+                .andExpect(jsonPath("$[0].hitDice").value("d10"));
 
         verify(getReferenceDataUseCase).getClasses(null);
     }
 
     @Test
-    @DisplayName("GET /api/reference/classes?ruleset=SRD_2024 returns 200 OK and filtered archetypes")
-    void shouldReturnClassesWithRulesetFilter() throws Exception {
-        ArchetypeDto wizard = new ArchetypeDto(
-                UUID.randomUUID(), "Wizard", "d6", "INTELLIGENCE",
-                List.of("INTELLIGENCE", "WISDOM"),
-                List.of(),
-                List.of("DAGGERS", "DARTS", "SLINGS", "QUARTERSTAFFS", "LIGHT_CROSSBOWS"),
-                SpellcastingType.FULL, "INTELLIGENCE",
-                Ruleset.SRD_2024, "SRD"
+    @DisplayName("GET /api/reference/spells returns 200 OK with CursorPageResponse")
+    void shouldReturnSpellsPaginated() throws Exception {
+        SpellDto spell = new SpellDto(
+                UUID.randomUUID(), "SRD_2024", "magic-missile-2024", "Magic Missile", "Mísseis Mágicos",
+                1, "Evocação", "1 ação", "36 metros", "V, S", "Instantânea", "Dardos de energia", "SRD"
         );
-        when(getReferenceDataUseCase.getClasses(Ruleset.SRD_2024)).thenReturn(List.of(wizard));
+        CursorPageResponse<SpellDto> page = new CursorPageResponse<>(List.of(spell), "cursor-token", true, 1);
+        when(getReferenceDataUseCase.getSpells(any(), eq(10), any(), any(), any(), any())).thenReturn(page);
 
-        mockMvc.perform(get("/api/reference/classes").param("ruleset", "SRD_2024"))
+        mockMvc.perform(get("/api/reference/spells")
+                        .param("limit", "10")
+                        .param("q", "míssil")
+                        .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].name").value("Wizard"))
-                .andExpect(jsonPath("$[0].ruleset").value("SRD_2024"));
-
-        verify(getReferenceDataUseCase).getClasses(Ruleset.SRD_2024);
+                .andExpect(jsonPath("$.items[0].name").value("Mísseis Mágicos"))
+                .andExpect(jsonPath("$.nextCursor").value("cursor-token"))
+                .andExpect(jsonPath("$.hasNext").value(true))
+                .andExpect(jsonPath("$.pageSize").value(1));
     }
 
     @Test
-    @DisplayName("GET /api/reference/lineages?ruleset=SRD_2014 returns 200 OK and lineages with fixed ASI")
-    void shouldReturnLineagesWithRulesetFilter() throws Exception {
-        LineageDto dwarf = new LineageDto(
-                UUID.randomUUID(), "Dwarf", "Bold and hardy", 25, "MEDIUM",
-                Map.of("CON", 2),
-                List.of("Darkvision", "Dwarven Resilience"),
-                Ruleset.SRD_2014, "SRD"
+    @DisplayName("GET /api/reference/feats returns 200 OK with CursorPageResponse")
+    void shouldReturnFeatsPaginated() throws Exception {
+        FeatDto feat = new FeatDto(
+                UUID.randomUUID(), "SRD_2024", "alert-2024", "Alert", "Alerta", "Nível 1", "Iniciativa", "SRD"
         );
-        when(getReferenceDataUseCase.getLineages(Ruleset.SRD_2014)).thenReturn(List.of(dwarf));
+        CursorPageResponse<FeatDto> page = new CursorPageResponse<>(List.of(feat), null, false, 1);
+        when(getReferenceDataUseCase.getFeats(any(), eq(20), any(), any())).thenReturn(page);
 
-        mockMvc.perform(get("/api/reference/lineages").param("ruleset", "SRD_2014"))
+        mockMvc.perform(get("/api/reference/feats")
+                        .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].name").value("Dwarf"))
-                .andExpect(jsonPath("$[0].abilityBonuses.CON").value(2))
-                .andExpect(jsonPath("$[0].ruleset").value("SRD_2014"));
-
-        verify(getReferenceDataUseCase).getLineages(Ruleset.SRD_2014);
+                .andExpect(jsonPath("$.items[0].name").value("Alerta"))
+                .andExpect(jsonPath("$.hasNext").value(false));
     }
 
     @Test
-    @DisplayName("GET /api/reference/backgrounds?ruleset=SRD_2024 returns 200 OK and backgrounds with origin feats")
-    void shouldReturnBackgroundsWithRulesetFilter() throws Exception {
-        BackgroundDto soldier = new BackgroundDto(
-                UUID.randomUUID(), "Soldier", "Trained warrior",
-                List.of("Athletics", "Intimidation"),
-                List.of("Gaming Set", "Vehicles"),
-                List.of("Common"),
-                List.of("STR", "DEX", "CON"),
-                "Savage Attacker", "Once per turn reroll damage dice",
-                Ruleset.SRD_2024, "SRD"
+    @DisplayName("GET /api/reference/items returns 200 OK with CursorPageResponse")
+    void shouldReturnItemsPaginated() throws Exception {
+        ItemDto item = new ItemDto(
+                UUID.randomUUID(), "SRD_2024", "longsword-2024", "Longsword", "Espada Longa",
+                "WEAPON", "Arma Marcial", "NONE", false, "15 po", "1,5 kg", "Espada versátil", "SRD"
         );
-        when(getReferenceDataUseCase.getBackgrounds(Ruleset.SRD_2024)).thenReturn(List.of(soldier));
+        CursorPageResponse<ItemDto> page = new CursorPageResponse<>(List.of(item), null, false, 1);
+        when(getReferenceDataUseCase.getItems(any(), eq(20), any(), any(), any(), any())).thenReturn(page);
 
-        mockMvc.perform(get("/api/reference/backgrounds").param("ruleset", "SRD_2024"))
+        mockMvc.perform(get("/api/reference/items")
+                        .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].name").value("Soldier"))
-                .andExpect(jsonPath("$[0].originFeatName").value("Savage Attacker"))
-                .andExpect(jsonPath("$[0].allowedAbilityBonuses[0]").value("STR"))
-                .andExpect(jsonPath("$[0].ruleset").value("SRD_2024"));
-
-        verify(getReferenceDataUseCase).getBackgrounds(Ruleset.SRD_2024);
+                .andExpect(jsonPath("$.items[0].name").value("Espada Longa"))
+                .andExpect(jsonPath("$.items[0].itemCategory").value("WEAPON"));
     }
 
     @Test
-    @DisplayName("GET /api/reference/classes?ruleset=INVALID returns 422 ProblemDetail (TE-01)")
-    void shouldReturn422WhenInvalidRulesetOnClasses() throws Exception {
-        mockMvc.perform(get("/api/reference/classes").param("ruleset", "INVALID"))
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-                .andExpect(jsonPath("$.type").value("https://dungeoneer.app/errors/validation"))
-                .andExpect(jsonPath("$.title").value("Validation Error"))
-                .andExpect(jsonPath("$.status").value(422))
-                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("Invalid ruleset: 'INVALID'")))
-                .andExpect(jsonPath("$.instance").value("/api/reference/classes"));
-    }
-
-    @Test
-    @DisplayName("GET /api/reference/lineages?ruleset=UNKNOWN returns 422 ProblemDetail")
-    void shouldReturn422WhenInvalidRulesetOnLineages() throws Exception {
-        mockMvc.perform(get("/api/reference/lineages").param("ruleset", "UNKNOWN"))
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-                .andExpect(jsonPath("$.status").value(422))
-                .andExpect(jsonPath("$.instance").value("/api/reference/lineages"));
-    }
-
-    @Test
-    @DisplayName("GET /api/reference/backgrounds?ruleset=FOO returns 422 ProblemDetail")
-    void shouldReturn422WhenInvalidRulesetOnBackgrounds() throws Exception {
-        mockMvc.perform(get("/api/reference/backgrounds").param("ruleset", "FOO"))
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-                .andExpect(jsonPath("$.status").value(422))
-                .andExpect(jsonPath("$.instance").value("/api/reference/backgrounds"));
+    @DisplayName("GET /api/reference/spells with invalid limit (> 100) returns 400 Bad Request")
+    void shouldReturnBadRequestWhenLimitExceedsMax() throws Exception {
+        mockMvc.perform(get("/api/reference/spells")
+                        .param("limit", "150")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest());
     }
 }

@@ -76,6 +76,8 @@ public record CreateCharacterCommand(
 
         UUID hpRollId,
 
+        List<UUID> hpRollIds,
+
         String notes,
 
         List<ClassProgressionCommand> classProgressions,
@@ -125,9 +127,61 @@ public record CreateCharacterCommand(
                         abilityRollId,
                         hpCalculationMethod,
                         hpRollId,
+                        Collections.emptyList(),
                         notes,
                         Collections.emptyList(),
                         Collections.emptyList()
+                );
+        }
+
+        public CreateCharacterCommand(
+                UUID userId,
+                String name,
+                Integer level,
+                Ruleset ruleset,
+                UUID lineageId,
+                UUID backgroundId,
+                UUID archetypeId,
+                UUID subclassId,
+                AbilityScoreMethod abilityScoreMethod,
+                Integer strength,
+                Integer dexterity,
+                Integer constitution,
+                Integer intelligence,
+                Integer wisdom,
+                Integer charisma,
+                Map<String, Integer> abilityScoreBonuses,
+                UUID abilityRollId,
+                HpCalculationMethod hpCalculationMethod,
+                UUID hpRollId,
+                String notes,
+                List<ClassProgressionCommand> classProgressions,
+                List<String> skillProficiencies
+        ) {
+                this(
+                        userId,
+                        name,
+                        level,
+                        ruleset,
+                        lineageId,
+                        backgroundId,
+                        archetypeId,
+                        subclassId,
+                        abilityScoreMethod,
+                        strength,
+                        dexterity,
+                        constitution,
+                        intelligence,
+                        wisdom,
+                        charisma,
+                        abilityScoreBonuses,
+                        abilityRollId,
+                        hpCalculationMethod,
+                        hpRollId,
+                        Collections.emptyList(),
+                        notes,
+                        classProgressions,
+                        skillProficiencies
                 );
         }
 

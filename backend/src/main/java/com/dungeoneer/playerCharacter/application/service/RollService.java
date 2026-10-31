@@ -106,15 +106,20 @@ public class RollService implements RollAbilityScoresUseCase, RollHitPointsUseCa
         if (command.archetypeId() == null) {
             throw new CharacterValidationException("ArchetypeId is required.");
         }
-        if (command.targetLevel() < 2 || command.targetLevel() > 20) {
-            throw new CharacterValidationException("Target level must be between 2 and 20. Provided: " + command.targetLevel());
+        boolean isSecondary = Boolean.TRUE.equals(command.isSecondaryClass());
+        int minLevel = isSecondary ? 1 : 2;
+        if (command.targetLevel() < minLevel || command.targetLevel() > 20) {
+            throw new CharacterValidationException("Target level must be between " + minLevel + " and 20. Provided: " + command.targetLevel());
         }
+
+        int rollsNeeded = isSecondary ? command.targetLevel() : command.targetLevel() - 1;
 
         Optional<HpRoll> existing = hpRollRepository.findUnusedByUserIdAndArchetypeIdAndTargetLevel(
                 command.userId(),
                 command.archetypeId(),
                 command.targetLevel()
-        );
+        ).filter(r -> r.getRolledHpPerLevel() != null && r.getRolledHpPerLevel().size() == rollsNeeded);
+
         if (existing.isPresent()) {
             HpRoll roll = existing.get();
             return new RollHitPointsResult(
@@ -132,7 +137,6 @@ public class RollService implements RollAbilityScoresUseCase, RollHitPointsUseCa
                 .orElseThrow(() -> new CharacterValidationException("Archetype not found: " + command.archetypeId()));
 
         int dieSides = archetype.getHitDice().getDieValue();
-        int rollsNeeded = command.targetLevel() - 1;
         List<Integer> rolledHp = new ArrayList<>();
 
         for (int i = 0; i < rollsNeeded; i++) {

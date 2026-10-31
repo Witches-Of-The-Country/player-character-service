@@ -1,6 +1,7 @@
 package com.dungeoneer.playerCharacter.application.service;
 
 import com.dungeoneer.playerCharacter.application.dto.CharacterSheetResult;
+import com.dungeoneer.playerCharacter.application.dto.ClassProgressionCommand;
 import com.dungeoneer.playerCharacter.application.dto.CreateCharacterCommand;
 import com.dungeoneer.playerCharacter.application.port.in.CreateCharacterUseCase;
 import com.dungeoneer.playerCharacter.application.port.out.AbilityRollRepositoryPort;
@@ -29,8 +30,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -113,58 +117,6 @@ public class CreateCharacterService implements CreateCharacterUseCase {
                 ? command.hpCalculationMethod()
                 : HpCalculationMethod.MAX;
 
-        HpRoll hpRoll = null;
-        int hitPointsMax;
-        if (command.level() > 1 && hpMethod == HpCalculationMethod.ROLLED) {
-            if (command.hpRollId() == null) {
-                throw new InvalidRollTokenException("HpRollId is required for ROLLED HP calculation method at level > 1.");
-            }
-            hpRoll = hpRollRepository.findById(command.hpRollId())
-                    .orElseThrow(() -> new InvalidRollTokenException("HP roll not found with id: " + command.hpRollId()));
-
-            if (!command.userId().equals(hpRoll.getUserId())) {
-                throw new InvalidRollTokenException("HP roll does not belong to the user.");
-            }
-            if (hpRoll.isUsed()) {
-                throw new RollConflictException("HP roll token has already been used: " + command.hpRollId());
-            }
-            if (!hpRoll.getArchetypeId().equals(command.archetypeId())) {
-                throw new InvalidRollTokenException("HP roll does not match the selected archetype.");
-            }
-            if (hpRoll.getTargetLevel() != command.level()) {
-                throw new InvalidRollTokenException("HP roll target level (" + hpRoll.getTargetLevel() + ") does not match character level (" + command.level() + ").");
-            }
-
-            hitPointsMax = rulesEngine.calculateMaxHitPoints(
-                    command.level(),
-                    archetype.getHitDice(),
-                    finalScores.getConstitutionModifier(),
-                    hpMethod,
-                    hpRoll.getRolledHpPerLevel()
-            );
-        } else {
-            hitPointsMax = rulesEngine.calculateMaxHitPoints(
-                    command.level(),
-                    archetype.getHitDice(),
-                    finalScores.getConstitutionModifier(),
-                    hpMethod,
-                    null
-            );
-        }
-
-        if (abilityRoll != null) {
-            abilityRollRepository.markAsUsed(abilityRoll.getId());
-        }
-        if (hpRoll != null) {
-            hpRollRepository.markAsUsed(hpRoll.getId());
-        }
-
-        int armorClass = rulesEngine.calculateArmorClass(finalScores.getDexterityModifier());
-        int initiativeBonus = rulesEngine.calculateInitiativeBonus(finalScores.getDexterityModifier());
-        int speed = rulesEngine.calculateSpeed(lineage);
-        int proficiencyBonus = rulesEngine.calculateProficiencyBonus(command.level());
-        boolean hasPendingLevelChoices = command.level() > 1;
-
         List<ClassProgression> progressions;
         if (command.classProgressions() != null && !command.classProgressions().isEmpty()) {
             int totalClassLevel = command.classProgressions().stream()
@@ -183,6 +135,132 @@ public class CreateCharacterService implements CreateCharacterUseCase {
                     command.level()
             ));
         }
+
+        List<HpRoll> usedHpRolls = new ArrayList<>();
+        int hitPointsMax;
+
+        boolean isMulticlass = progressions.size() > 1;
+
+        if (isMulticlass) {
+            int conMod = finalScores.getConstitutionModifier();
+            int totalHp = Math.max(1, archetype.getHitDice().getDieValue() + conMod);
+
+            List<UUID> rollIdCandidates = new ArrayList<>();
+            if (command.hpRollIds() != null) {
+                rollIdCandidates.addAll(command.hpRollIds());
+            }
+            if (command.hpRollId() != null && !rollIdCandidates.contains(command.hpRollId())) {
+                rollIdCandidates.add(command.hpRollId());
+            }
+
+            Map<UUID, HpRoll> rollsByArchetype = new HashMap<>();
+            if (hpMethod == HpCalculationMethod.ROLLED && command.level() > 1) {
+                for (UUID rId : rollIdCandidates) {
+                    HpRoll r = hpRollRepository.findById(rId)
+                            .orElseThrow(() -> new InvalidRollTokenException("HP roll not found with id: " + rId));
+                    if (!command.userId().equals(r.getUserId())) {
+                        throw new InvalidRollTokenException("HP roll does not belong to the user.");
+                    }
+                    if (r.isUsed()) {
+                        throw new RollConflictException("HP roll token has already been used: " + rId);
+                    }
+                    rollsByArchetype.put(r.getArchetypeId(), r);
+                }
+            }
+
+            for (ClassProgressionCommand cp : command.classProgressions()) {
+                boolean isPrimary = cp.archetypeId().equals(command.archetypeId());
+                int additionalLevels = isPrimary ? (cp.classLevel() - 1) : cp.classLevel();
+                if (additionalLevels <= 0) {
+                    continue;
+                }
+
+                Archetype classArch = isPrimary
+                        ? archetype
+                        : referenceDataRepository.findArchetypeById(cp.archetypeId())
+                        .orElseThrow(() -> new CharacterValidationException("Archetype not found: " + cp.archetypeId()));
+
+                if (hpMethod == HpCalculationMethod.MAX) {
+                    for (int l = 0; l < additionalLevels; l++) {
+                        totalHp += Math.max(1, classArch.getHitDice().getDieValue() + conMod);
+                    }
+                } else if (hpMethod == HpCalculationMethod.AVERAGE) {
+                    for (int l = 0; l < additionalLevels; l++) {
+                        totalHp += Math.max(1, classArch.getHitDice().getAverageHp() + conMod);
+                    }
+                } else if (hpMethod == HpCalculationMethod.ROLLED) {
+                    HpRoll roll = rollsByArchetype.get(cp.archetypeId());
+                    if (roll == null) {
+                        throw new InvalidRollTokenException("Missing HP roll for class: " + classArch.getName());
+                    }
+                    if (roll.getRolledHpPerLevel() == null || roll.getRolledHpPerLevel().size() != additionalLevels) {
+                        throw new InvalidRollTokenException("HP roll for " + classArch.getName() + " requires " + additionalLevels + " rolls.");
+                    }
+                    for (int rolled : roll.getRolledHpPerLevel()) {
+                        totalHp += Math.max(1, rolled + conMod);
+                    }
+                    if (!usedHpRolls.contains(roll)) {
+                        usedHpRolls.add(roll);
+                    }
+                }
+            }
+            hitPointsMax = totalHp;
+        } else {
+            // Mono-class logic
+            if (command.level() > 1 && hpMethod == HpCalculationMethod.ROLLED) {
+                UUID rollId = command.hpRollId() != null
+                        ? command.hpRollId()
+                        : (command.hpRollIds() != null && !command.hpRollIds().isEmpty() ? command.hpRollIds().get(0) : null);
+                if (rollId == null) {
+                    throw new InvalidRollTokenException("HpRollId is required for ROLLED HP calculation method at level > 1.");
+                }
+                HpRoll hpRoll = hpRollRepository.findById(rollId)
+                        .orElseThrow(() -> new InvalidRollTokenException("HP roll not found with id: " + rollId));
+
+                if (!command.userId().equals(hpRoll.getUserId())) {
+                    throw new InvalidRollTokenException("HP roll does not belong to the user.");
+                }
+                if (hpRoll.isUsed()) {
+                    throw new RollConflictException("HP roll token has already been used: " + rollId);
+                }
+                if (!hpRoll.getArchetypeId().equals(command.archetypeId())) {
+                    throw new InvalidRollTokenException("HP roll does not match the selected archetype.");
+                }
+                if (hpRoll.getTargetLevel() != command.level()) {
+                    throw new InvalidRollTokenException("HP roll target level (" + hpRoll.getTargetLevel() + ") does not match character level (" + command.level() + ").");
+                }
+
+                usedHpRolls.add(hpRoll);
+                hitPointsMax = rulesEngine.calculateMaxHitPoints(
+                        command.level(),
+                        archetype.getHitDice(),
+                        finalScores.getConstitutionModifier(),
+                        hpMethod,
+                        hpRoll.getRolledHpPerLevel()
+                );
+            } else {
+                hitPointsMax = rulesEngine.calculateMaxHitPoints(
+                        command.level(),
+                        archetype.getHitDice(),
+                        finalScores.getConstitutionModifier(),
+                        hpMethod,
+                        null
+                );
+            }
+        }
+
+        if (abilityRoll != null) {
+            abilityRollRepository.markAsUsed(abilityRoll.getId());
+        }
+        for (HpRoll r : usedHpRolls) {
+            hpRollRepository.markAsUsed(r.getId());
+        }
+
+        int armorClass = rulesEngine.calculateArmorClass(finalScores.getDexterityModifier());
+        int initiativeBonus = rulesEngine.calculateInitiativeBonus(finalScores.getDexterityModifier());
+        int speed = rulesEngine.calculateSpeed(lineage);
+        int proficiencyBonus = rulesEngine.calculateProficiencyBonus(command.level());
+        boolean hasPendingLevelChoices = command.level() > 1;
 
         Instant now = Instant.now();
         PlayerCharacter character = new PlayerCharacter(

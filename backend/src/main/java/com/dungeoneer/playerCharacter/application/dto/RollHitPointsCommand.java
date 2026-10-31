@@ -14,8 +14,13 @@ public record RollHitPointsCommand(
         UUID archetypeId,
 
         @NotNull(message = "Target level is required")
-        @Min(value = 2, message = "Rolled hit points start from level 2")
+        @Min(value = 1, message = "Target level must be between 1 and 20")
         @Max(value = 20, message = "Target level cannot exceed 20")
-        Integer targetLevel
+        Integer targetLevel,
+
+        Boolean isSecondaryClass
 ) {
+    public RollHitPointsCommand(UUID userId, UUID archetypeId, Integer targetLevel) {
+        this(userId, archetypeId, targetLevel, false);
+    }
 }
