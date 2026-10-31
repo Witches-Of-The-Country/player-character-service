@@ -103,6 +103,9 @@ public class RollService implements RollAbilityScoresUseCase, RollHitPointsUseCa
         if (command.userId() == null) {
             throw new CharacterValidationException("UserId is required.");
         }
+        if (command.archetypeId() == null) {
+            throw new CharacterValidationException("ArchetypeId is required.");
+        }
         if (command.targetLevel() < 2 || command.targetLevel() > 20) {
             throw new CharacterValidationException("Target level must be between 2 and 20. Provided: " + command.targetLevel());
         }

@@ -1,21 +1,26 @@
 package com.dungeoneer.playerCharacter.adapter.in.web.controller;
 
 import com.dungeoneer.playerCharacter.adapter.in.web.dto.AbilityRollResponse;
+import com.dungeoneer.playerCharacter.adapter.in.web.dto.CharacterNoteResponse;
 import com.dungeoneer.playerCharacter.adapter.in.web.dto.CharacterSheetResponse;
 import com.dungeoneer.playerCharacter.adapter.in.web.dto.CharacterSummaryResponse;
+import com.dungeoneer.playerCharacter.adapter.in.web.dto.CreateCharacterNoteRequest;
 import com.dungeoneer.playerCharacter.adapter.in.web.dto.CreateCharacterRequest;
 import com.dungeoneer.playerCharacter.adapter.in.web.dto.HpRollResponse;
 import com.dungeoneer.playerCharacter.adapter.in.web.dto.RollHpRequest;
 import com.dungeoneer.playerCharacter.adapter.in.web.dto.UpdateCharacterRequest;
 import com.dungeoneer.playerCharacter.adapter.in.web.mapper.PlayerCharacterWebMapper;
+import com.dungeoneer.playerCharacter.application.dto.CharacterNoteResult;
 import com.dungeoneer.playerCharacter.application.dto.CharacterSheetResult;
 import com.dungeoneer.playerCharacter.application.dto.CharacterSummaryResult;
 import com.dungeoneer.playerCharacter.application.dto.RollAbilityScoresResult;
 import com.dungeoneer.playerCharacter.application.dto.RollHitPointsCommand;
 import com.dungeoneer.playerCharacter.application.dto.RollHitPointsResult;
+import com.dungeoneer.playerCharacter.application.port.in.AddCharacterNoteUseCase;
 import com.dungeoneer.playerCharacter.application.port.in.CreateCharacterUseCase;
 import com.dungeoneer.playerCharacter.application.port.in.DeleteCharacterUseCase;
 import com.dungeoneer.playerCharacter.application.port.in.GetCharacterUseCase;
+import com.dungeoneer.playerCharacter.application.port.in.ListCharacterNotesUseCase;
 import com.dungeoneer.playerCharacter.application.port.in.ListCharactersUseCase;
 import com.dungeoneer.playerCharacter.application.port.in.RollAbilityScoresUseCase;
 import com.dungeoneer.playerCharacter.application.port.in.RollHitPointsUseCase;
@@ -50,6 +55,8 @@ public class PlayerCharacterController {
     private final DeleteCharacterUseCase deleteCharacterUseCase;
     private final RollAbilityScoresUseCase rollAbilityScoresUseCase;
     private final RollHitPointsUseCase rollHitPointsUseCase;
+    private final AddCharacterNoteUseCase addCharacterNoteUseCase;
+    private final ListCharacterNotesUseCase listCharacterNotesUseCase;
 
     public PlayerCharacterController(
             CreateCharacterUseCase createCharacterUseCase,
@@ -58,7 +65,9 @@ public class PlayerCharacterController {
             UpdateCharacterUseCase updateCharacterUseCase,
             DeleteCharacterUseCase deleteCharacterUseCase,
             RollAbilityScoresUseCase rollAbilityScoresUseCase,
-            RollHitPointsUseCase rollHitPointsUseCase
+            RollHitPointsUseCase rollHitPointsUseCase,
+            AddCharacterNoteUseCase addCharacterNoteUseCase,
+            ListCharacterNotesUseCase listCharacterNotesUseCase
     ) {
         this.createCharacterUseCase = createCharacterUseCase;
         this.getCharacterUseCase = getCharacterUseCase;
@@ -67,6 +76,8 @@ public class PlayerCharacterController {
         this.deleteCharacterUseCase = deleteCharacterUseCase;
         this.rollAbilityScoresUseCase = rollAbilityScoresUseCase;
         this.rollHitPointsUseCase = rollHitPointsUseCase;
+        this.addCharacterNoteUseCase = addCharacterNoteUseCase;
+        this.listCharacterNotesUseCase = listCharacterNotesUseCase;
     }
 
     @PostMapping("/ability-rolls")
@@ -159,5 +170,36 @@ public class PlayerCharacterController {
     ) {
         deleteCharacterUseCase.deleteCharacter(id, userId);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/notes")
+    public ResponseEntity<CharacterNoteResponse> addCharacterNote(
+            @RequestHeader("X-User-Id") UUID userId,
+            @PathVariable("id") UUID id,
+            @Valid @RequestBody CreateCharacterNoteRequest request
+    ) {
+        CharacterNoteResult result = addCharacterNoteUseCase.addNote(
+                id,
+                userId,
+                PlayerCharacterWebMapper.toCommand(request)
+        );
+        CharacterNoteResponse response = PlayerCharacterWebMapper.toResponse(result);
+        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+                .path("/{noteId}")
+                .buildAndExpand(response.id())
+                .toUri();
+        return ResponseEntity.created(location).body(response);
+    }
+
+    @GetMapping("/{id}/notes")
+    public ResponseEntity<List<CharacterNoteResponse>> listCharacterNotes(
+            @RequestHeader("X-User-Id") UUID userId,
+            @PathVariable("id") UUID id
+    ) {
+        List<CharacterNoteResult> notes = listCharacterNotesUseCase.listNotes(id, userId);
+        List<CharacterNoteResponse> response = notes.stream()
+                .map(PlayerCharacterWebMapper::toResponse)
+                .toList();
+        return ResponseEntity.ok(response);
     }
 }

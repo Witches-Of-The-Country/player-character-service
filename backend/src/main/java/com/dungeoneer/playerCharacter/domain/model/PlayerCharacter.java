@@ -32,6 +32,7 @@ public class PlayerCharacter {
     private final UUID backgroundId;
     private final UUID userId;
     private final AbilityScores abilityScores;
+    @Deprecated
     private final String notes;
     private final HpCalculationMethod hpCalculationMethod;
     private final boolean hasPendingLevelChoices;
@@ -368,6 +369,7 @@ public class PlayerCharacter {
         return abilityScores;
     }
 
+    @Deprecated
     public String getNotes() {
         return notes;
     }

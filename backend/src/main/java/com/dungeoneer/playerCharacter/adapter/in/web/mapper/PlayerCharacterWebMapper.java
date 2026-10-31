@@ -1,12 +1,16 @@
 package com.dungeoneer.playerCharacter.adapter.in.web.mapper;
 
 import com.dungeoneer.playerCharacter.adapter.in.web.dto.AbilityRollResponse;
+import com.dungeoneer.playerCharacter.adapter.in.web.dto.CharacterNoteResponse;
 import com.dungeoneer.playerCharacter.adapter.in.web.dto.CharacterSheetResponse;
 import com.dungeoneer.playerCharacter.adapter.in.web.dto.CharacterSummaryResponse;
+import com.dungeoneer.playerCharacter.adapter.in.web.dto.CreateCharacterNoteRequest;
 import com.dungeoneer.playerCharacter.adapter.in.web.dto.CreateCharacterRequest;
 import com.dungeoneer.playerCharacter.adapter.in.web.dto.CreatePlayerCharacterRequest;
 import com.dungeoneer.playerCharacter.adapter.in.web.dto.HpRollResponse;
 import com.dungeoneer.playerCharacter.adapter.in.web.dto.UpdateCharacterRequest;
+import com.dungeoneer.playerCharacter.application.dto.AddCharacterNoteCommand;
+import com.dungeoneer.playerCharacter.application.dto.CharacterNoteResult;
 import com.dungeoneer.playerCharacter.application.dto.CharacterResponseDto;
 import com.dungeoneer.playerCharacter.application.dto.CharacterSheetResult;
 import com.dungeoneer.playerCharacter.application.dto.CharacterSummaryResult;
@@ -185,6 +189,23 @@ public final class PlayerCharacterWebMapper {
                 sheet.speed(),
                 sheet.proficiencyBonus(),
                 sheet.initiativeBonus()
+        );
+    }
+
+    public static AddCharacterNoteCommand toCommand(CreateCharacterNoteRequest request) {
+        return new AddCharacterNoteCommand(
+                request.title(),
+                request.body()
+        );
+    }
+
+    public static CharacterNoteResponse toResponse(CharacterNoteResult result) {
+        return new CharacterNoteResponse(
+                result.id(),
+                result.characterId(),
+                result.title(),
+                result.body(),
+                result.createdAt()
         );
     }
 

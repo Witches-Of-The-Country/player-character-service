@@ -2,9 +2,12 @@ package com.dungeoneer.playerCharacter.adapter.in.web.controller;
 
 import com.dungeoneer.core.config.SecurityConfig;
 import com.dungeoneer.core.web.GlobalExceptionHandler;
+import com.dungeoneer.playerCharacter.adapter.in.web.dto.CreateCharacterNoteRequest;
 import com.dungeoneer.playerCharacter.adapter.in.web.dto.CreateCharacterRequest;
 import com.dungeoneer.playerCharacter.adapter.in.web.dto.RollHpRequest;
 import com.dungeoneer.playerCharacter.adapter.in.web.dto.UpdateCharacterRequest;
+import com.dungeoneer.playerCharacter.application.dto.AddCharacterNoteCommand;
+import com.dungeoneer.playerCharacter.application.dto.CharacterNoteResult;
 import com.dungeoneer.playerCharacter.application.dto.CharacterSheetResult;
 import com.dungeoneer.playerCharacter.application.dto.CharacterSummaryResult;
 import com.dungeoneer.playerCharacter.application.dto.CreateCharacterCommand;
@@ -12,9 +15,11 @@ import com.dungeoneer.playerCharacter.application.dto.RollAbilityScoresResult;
 import com.dungeoneer.playerCharacter.application.dto.RollHitPointsCommand;
 import com.dungeoneer.playerCharacter.application.dto.RollHitPointsResult;
 import com.dungeoneer.playerCharacter.application.dto.UpdateCharacterCommand;
+import com.dungeoneer.playerCharacter.application.port.in.AddCharacterNoteUseCase;
 import com.dungeoneer.playerCharacter.application.port.in.CreateCharacterUseCase;
 import com.dungeoneer.playerCharacter.application.port.in.DeleteCharacterUseCase;
 import com.dungeoneer.playerCharacter.application.port.in.GetCharacterUseCase;
+import com.dungeoneer.playerCharacter.application.port.in.ListCharacterNotesUseCase;
 import com.dungeoneer.playerCharacter.application.port.in.ListCharactersUseCase;
 import com.dungeoneer.playerCharacter.application.port.in.RollAbilityScoresUseCase;
 import com.dungeoneer.playerCharacter.application.port.in.RollHitPointsUseCase;
@@ -84,6 +89,10 @@ class PlayerCharacterControllerTest {
     private RollAbilityScoresUseCase rollAbilityScoresUseCase;
     @MockitoBean
     private RollHitPointsUseCase rollHitPointsUseCase;
+    @MockitoBean
+    private AddCharacterNoteUseCase addCharacterNoteUseCase;
+    @MockitoBean
+    private ListCharacterNotesUseCase listCharacterNotesUseCase;
 
     private CharacterSheetResult createMockSheet(UUID characterId, UUID userId, String name) {
         return new CharacterSheetResult(
@@ -330,5 +339,105 @@ class PlayerCharacterControllerTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.title").value("Unauthorized"))
                 .andExpect(jsonPath("$.status").value(401));
+    }
+
+    @Test
+    @DisplayName("Bug 3: POST /api/characters/{id}/notes creates note and returns 201 Created")
+    void shouldAddCharacterNoteSuccessfully() throws Exception {
+        UUID userId = UUID.randomUUID();
+        UUID characterId = UUID.randomUUID();
+        UUID noteId = UUID.randomUUID();
+        Instant now = Instant.now();
+
+        CreateCharacterNoteRequest request = new CreateCharacterNoteRequest("Clue", "Found in library");
+        CharacterNoteResult result = new CharacterNoteResult(noteId, characterId, "Clue", "Found in library", now);
+
+        when(addCharacterNoteUseCase.addNote(eq(characterId), eq(userId), any(AddCharacterNoteCommand.class)))
+                .thenReturn(result);
+
+        mockMvc.perform(post("/api/characters/" + characterId + "/notes")
+                        .header("X-User-Id", userId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(header().string("Location", org.hamcrest.Matchers.containsString("/api/characters/" + characterId + "/notes/" + noteId)))
+                .andExpect(jsonPath("$.id").value(noteId.toString()))
+                .andExpect(jsonPath("$.characterId").value(characterId.toString()))
+                .andExpect(jsonPath("$.title").value("Clue"))
+                .andExpect(jsonPath("$.body").value("Found in library"));
+    }
+
+    @Test
+    @DisplayName("Bug 3: POST /api/characters/{id}/notes rejects blank title with 422 Unprocessable Entity")
+    void shouldReturn400WhenAddingNoteWithBlankTitle() throws Exception {
+        UUID userId = UUID.randomUUID();
+        UUID characterId = UUID.randomUUID();
+
+        CreateCharacterNoteRequest request = new CreateCharacterNoteRequest("", "Valid body");
+
+        mockMvc.perform(post("/api/characters/" + characterId + "/notes")
+                        .header("X-User-Id", userId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.title").value("Validation Error"))
+                .andExpect(jsonPath("$.status").value(422));
+    }
+
+    @Test
+    @DisplayName("Bug 3: POST /api/characters/{id}/notes rejects body > 10000 chars with 422 Unprocessable Entity")
+    void shouldReturn400WhenAddingNoteWithOversizedBody() throws Exception {
+        UUID userId = UUID.randomUUID();
+        UUID characterId = UUID.randomUUID();
+
+        CreateCharacterNoteRequest request = new CreateCharacterNoteRequest("Valid title", "A".repeat(10001));
+
+        mockMvc.perform(post("/api/characters/" + characterId + "/notes")
+                        .header("X-User-Id", userId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.title").value("Validation Error"))
+                .andExpect(jsonPath("$.status").value(422));
+    }
+
+    @Test
+    @DisplayName("Bug 3: GET /api/characters/{id}/notes returns 200 OK with list of notes")
+    void shouldListCharacterNotesSuccessfully() throws Exception {
+        UUID userId = UUID.randomUUID();
+        UUID characterId = UUID.randomUUID();
+        UUID n1 = UUID.randomUUID();
+        UUID n2 = UUID.randomUUID();
+        Instant now = Instant.now();
+
+        List<CharacterNoteResult> notes = List.of(
+                new CharacterNoteResult(n1, characterId, "First", "Body 1", now),
+                new CharacterNoteResult(n2, characterId, "Second", "Body 2", now.minusSeconds(60))
+        );
+
+        when(listCharacterNotesUseCase.listNotes(characterId, userId)).thenReturn(notes);
+
+        mockMvc.perform(get("/api/characters/" + characterId + "/notes")
+                        .header("X-User-Id", userId.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].title").value("First"))
+                .andExpect(jsonPath("$[1].title").value("Second"));
+    }
+
+    @Test
+    @DisplayName("Bug 1: POST /api/characters/hp-rolls with null archetypeId returns 422 Unprocessable Entity")
+    void shouldReturn400WhenRollingHpWithNullArchetype() throws Exception {
+        UUID userId = UUID.randomUUID();
+        RollHpRequest request = new RollHpRequest(null, 2);
+
+        mockMvc.perform(post("/api/characters/hp-rolls")
+                        .header("X-User-Id", userId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.title").value("Validation Error"))
+                .andExpect(jsonPath("$.status").value(422));
     }
 }

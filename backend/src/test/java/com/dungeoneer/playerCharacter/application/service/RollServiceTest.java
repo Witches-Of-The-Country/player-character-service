@@ -121,4 +121,48 @@ class RollServiceTest {
         assertThat(result.rolledHpPerLevel()).containsExactly(8, 7);
         verify(hpRollRepository, never()).save(any(HpRoll.class));
     }
+
+    @Test
+    @DisplayName("Bug 1: Throws CharacterValidationException when archetypeId is null")
+    void shouldThrowExceptionWhenArchetypeIdIsNullOnHpRoll() {
+        org.junit.jupiter.api.Assertions.assertThrows(
+                com.dungeoneer.playerCharacter.domain.exception.CharacterValidationException.class,
+                () -> service.rollHitPoints(new RollHitPointsCommand(userId, null, 2))
+        );
+    }
+
+    @Test
+    @DisplayName("Bug 1: Throws CharacterValidationException when userId is null")
+    void shouldThrowExceptionWhenUserIdIsNullOnHpRoll() {
+        org.junit.jupiter.api.Assertions.assertThrows(
+                com.dungeoneer.playerCharacter.domain.exception.CharacterValidationException.class,
+                () -> service.rollHitPoints(new RollHitPointsCommand(null, archetypeId, 2))
+        );
+    }
+
+    @Test
+    @DisplayName("Bug 1: Throws CharacterValidationException when targetLevel is out of range")
+    void shouldThrowExceptionWhenTargetLevelIsOutOfRangeOnHpRoll() {
+        org.junit.jupiter.api.Assertions.assertThrows(
+                com.dungeoneer.playerCharacter.domain.exception.CharacterValidationException.class,
+                () -> service.rollHitPoints(new RollHitPointsCommand(userId, archetypeId, 1))
+        );
+        org.junit.jupiter.api.Assertions.assertThrows(
+                com.dungeoneer.playerCharacter.domain.exception.CharacterValidationException.class,
+                () -> service.rollHitPoints(new RollHitPointsCommand(userId, archetypeId, 21))
+        );
+    }
+
+    @Test
+    @DisplayName("Bug 1: Throws CharacterValidationException when archetype is not found")
+    void shouldThrowExceptionWhenArchetypeNotFoundOnHpRoll() {
+        when(hpRollRepository.findUnusedByUserIdAndArchetypeIdAndTargetLevel(userId, archetypeId, 2))
+                .thenReturn(Optional.empty());
+        when(referenceDataRepository.findArchetypeById(archetypeId)).thenReturn(Optional.empty());
+
+        org.junit.jupiter.api.Assertions.assertThrows(
+                com.dungeoneer.playerCharacter.domain.exception.CharacterValidationException.class,
+                () -> service.rollHitPoints(new RollHitPointsCommand(userId, archetypeId, 2))
+        );
+    }
 }
