@@ -12,6 +12,8 @@ import java.util.Set;
 
 public class Srd2024RulesEngine implements RulesEngine {
 
+    private final Srd2014RulesEngine baseEngine = new Srd2014RulesEngine();
+
     @Override
     public Ruleset getRuleset() {
         return Ruleset.SRD_2024;
@@ -99,8 +101,7 @@ public class Srd2024RulesEngine implements RulesEngine {
             HpCalculationMethod hpCalculationMethod,
             List<Integer> rolledHpPerLevel
     ) {
-        // HP calculation mechanics in 2024 are identical to standard rules
-        return new Srd2014RulesEngine().calculateMaxHitPoints(
+        return baseEngine.calculateMaxHitPoints(
                 level,
                 hitDice,
                 constitutionModifier,
@@ -112,6 +113,29 @@ public class Srd2024RulesEngine implements RulesEngine {
     @Override
     public int calculateArmorClass(int dexterityModifier) {
         return 10 + dexterityModifier;
+    }
+
+    @Override
+    public int calculateArmorClass(
+            int dexterityModifier,
+            ArmorMechanics armor,
+            ArmorMechanics shield,
+            int extraBonus,
+            boolean hasBarbarianUnarmoredDefense,
+            int constitutionModifier,
+            boolean hasMonkUnarmoredDefense,
+            int wisdomModifier
+    ) {
+        return baseEngine.calculateArmorClass(
+                dexterityModifier,
+                armor,
+                shield,
+                extraBonus,
+                hasBarbarianUnarmoredDefense,
+                constitutionModifier,
+                hasMonkUnarmoredDefense,
+                wisdomModifier
+        );
     }
 
     @Override
@@ -127,5 +151,15 @@ public class Srd2024RulesEngine implements RulesEngine {
     @Override
     public int calculateSpeed(Lineage lineage) {
         return (lineage != null && lineage.getSpeed() > 0) ? lineage.getSpeed() : 30;
+    }
+
+    @Override
+    public int getXpForLevel(int level) {
+        return baseEngine.getXpForLevel(level);
+    }
+
+    @Override
+    public int getLevelForXp(int experiencePoints) {
+        return baseEngine.getLevelForXp(experiencePoints);
     }
 }

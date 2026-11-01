@@ -16,6 +16,8 @@ public class Feat {
     private final String description;
     private final String source;
     private final UUID ownerId;
+    private final FeatType featType;
+    private final MechanicalEffects mechanicalEffects;
 
     public Feat(
             UUID id,
@@ -26,7 +28,9 @@ public class Feat {
             String prerequisites,
             String description,
             String source,
-            UUID ownerId
+            UUID ownerId,
+            FeatType featType,
+            MechanicalEffects mechanicalEffects
     ) {
         if (id == null) {
             throw new CharacterValidationException("Feat id cannot be null");
@@ -53,6 +57,34 @@ public class Feat {
         this.description = description.trim();
         this.source = (source != null && !source.trim().isEmpty()) ? source.trim() : "HOMEBREW";
         this.ownerId = ownerId;
+        this.featType = featType != null ? featType : FeatType.GENERAL;
+        this.mechanicalEffects = mechanicalEffects != null ? mechanicalEffects : MechanicalEffects.empty();
+    }
+
+    public Feat(
+            UUID id,
+            Ruleset ruleset,
+            String slug,
+            String nameEn,
+            String name,
+            String prerequisites,
+            String description,
+            String source,
+            UUID ownerId
+    ) {
+        this(
+                id,
+                ruleset,
+                slug,
+                nameEn,
+                name,
+                prerequisites,
+                description,
+                source,
+                ownerId,
+                FeatType.GENERAL,
+                MechanicalEffects.empty()
+        );
     }
 
     public UUID getId() {
@@ -89,6 +121,14 @@ public class Feat {
 
     public UUID getOwnerId() {
         return ownerId;
+    }
+
+    public FeatType getFeatType() {
+        return featType;
+    }
+
+    public MechanicalEffects getMechanicalEffects() {
+        return mechanicalEffects;
     }
 
     @Override

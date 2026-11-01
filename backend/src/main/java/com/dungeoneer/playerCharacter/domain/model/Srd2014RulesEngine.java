@@ -8,6 +8,29 @@ import java.util.Map;
 
 public class Srd2014RulesEngine implements RulesEngine {
 
+    public static final int[] XP_THRESHOLDS = {
+            0,       // Level 1
+            300,     // Level 2
+            900,     // Level 3
+            2700,    // Level 4
+            6500,    // Level 5
+            14000,   // Level 6
+            23000,   // Level 7
+            34000,   // Level 8
+            48000,   // Level 9
+            64000,   // Level 10
+            85000,   // Level 11
+            100000,  // Level 12
+            120000,  // Level 13
+            140000,  // Level 14
+            165000,  // Level 15
+            195000,  // Level 16
+            225000,  // Level 17
+            265000,  // Level 18
+            305000,  // Level 19
+            355000   // Level 20
+    };
+
     @Override
     public Ruleset getRuleset() {
         return Ruleset.SRD_2014;
@@ -67,7 +90,6 @@ public class Srd2014RulesEngine implements RulesEngine {
             throw new CharacterValidationException("Hit dice cannot be null.");
         }
 
-        int method = (hpCalculationMethod != null) ? hpCalculationMethod.ordinal() : HpCalculationMethod.MAX.ordinal();
         HpCalculationMethod calcMethod = (hpCalculationMethod != null) ? hpCalculationMethod : HpCalculationMethod.MAX;
 
         // Level 1 HP
@@ -115,6 +137,54 @@ public class Srd2014RulesEngine implements RulesEngine {
     }
 
     @Override
+    public int calculateArmorClass(
+            int dexterityModifier,
+            ArmorMechanics armor,
+            ArmorMechanics shield,
+            int extraBonus,
+            boolean hasBarbarianUnarmoredDefense,
+            int constitutionModifier,
+            boolean hasMonkUnarmoredDefense,
+            int wisdomModifier
+    ) {
+        int baseAc;
+        if (armor == null) {
+            // Unarmored
+            if (hasBarbarianUnarmoredDefense) {
+                baseAc = 10 + dexterityModifier + constitutionModifier;
+            } else if (hasMonkUnarmoredDefense) {
+                baseAc = 10 + dexterityModifier + wisdomModifier;
+            } else {
+                baseAc = 10 + dexterityModifier;
+            }
+        } else {
+            baseAc = switch (armor.armorCategory()) {
+                case HEAVY -> armor.baseAc() + armor.magicBonus();
+                case MEDIUM -> armor.baseAc() + armor.magicBonus() + Math.min(dexterityModifier, 2);
+                case LIGHT -> armor.baseAc() + armor.magicBonus() + dexterityModifier;
+                case ROBE -> {
+                    int unarmoredBase = 10 + dexterityModifier;
+                    if (hasBarbarianUnarmoredDefense) {
+                        unarmoredBase = 10 + dexterityModifier + constitutionModifier;
+                    } else if (hasMonkUnarmoredDefense) {
+                        unarmoredBase = 10 + dexterityModifier + wisdomModifier;
+                    }
+                    int robeBase = Math.max(armor.baseAc() + dexterityModifier, unarmoredBase);
+                    yield robeBase + armor.magicBonus();
+                }
+                case SHIELD -> 10 + dexterityModifier;
+            };
+        }
+
+        int shieldBonus = 0;
+        if (shield != null && shield.armorCategory() == ArmorCategory.SHIELD) {
+            shieldBonus = shield.baseAc() + shield.magicBonus();
+        }
+
+        return baseAc + shieldBonus + extraBonus;
+    }
+
+    @Override
     public int calculateInitiativeBonus(int dexterityModifier) {
         return dexterityModifier;
     }
@@ -127,6 +197,27 @@ public class Srd2014RulesEngine implements RulesEngine {
     @Override
     public int calculateSpeed(Lineage lineage) {
         return (lineage != null && lineage.getSpeed() > 0) ? lineage.getSpeed() : 30;
+    }
+
+    @Override
+    public int getXpForLevel(int level) {
+        if (level < 1 || level > 20) {
+            throw new CharacterValidationException("Level must be between 1 and 20. Provided: " + level);
+        }
+        return XP_THRESHOLDS[level - 1];
+    }
+
+    @Override
+    public int getLevelForXp(int experiencePoints) {
+        if (experiencePoints < 0) {
+            throw new CharacterValidationException("Experience points cannot be negative.");
+        }
+        for (int i = XP_THRESHOLDS.length - 1; i >= 0; i--) {
+            if (experiencePoints >= XP_THRESHOLDS[i]) {
+                return i + 1;
+            }
+        }
+        return 1;
     }
 
     public static String normalizeAbility(String name) {

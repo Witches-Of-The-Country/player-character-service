@@ -15,6 +15,7 @@ public class PlayerCharacter {
     public static final int MAX_LEVEL = 20;
     public static final int DEFAULT_SPEED = 30;
     public static final int BASE_ARMOR_CLASS = 10;
+    public static final int MAX_ATTUNED_ITEMS = 3;
 
     private final UUID id;
     private final String name;
@@ -38,6 +39,10 @@ public class PlayerCharacter {
     private final boolean hasPendingLevelChoices;
     private final List<ClassProgression> classProgressions;
     private final List<String> skillProficiencies;
+    private final int experiencePoints;
+    private final UUID campaignId;
+    private final List<CharacterItem> items;
+    private final List<CharacterFeat> feats;
     private final Instant createdAt;
     private final Instant updatedAt;
 
@@ -63,6 +68,10 @@ public class PlayerCharacter {
             boolean hasPendingLevelChoices,
             List<ClassProgression> classProgressions,
             List<String> skillProficiencies,
+            int experiencePoints,
+            UUID campaignId,
+            List<CharacterItem> items,
+            List<CharacterFeat> feats,
             Instant createdAt,
             Instant updatedAt
     ) {
@@ -84,6 +93,9 @@ public class PlayerCharacter {
         }
         if (abilityScores == null) {
             throw new CharacterValidationException("AbilityScores cannot be null.");
+        }
+        if (experiencePoints < 0) {
+            throw new CharacterValidationException("Experience points cannot be negative. Provided: " + experiencePoints);
         }
 
         this.id = id != null ? id : UUID.randomUUID();
@@ -111,11 +123,75 @@ public class PlayerCharacter {
         this.skillProficiencies = skillProficiencies != null
                 ? Collections.unmodifiableList(new ArrayList<>(skillProficiencies))
                 : Collections.emptyList();
+        this.experiencePoints = experiencePoints;
+        this.campaignId = campaignId;
+        this.items = items != null
+                ? Collections.unmodifiableList(new ArrayList<>(items))
+                : Collections.emptyList();
+        this.feats = feats != null
+                ? Collections.unmodifiableList(new ArrayList<>(feats))
+                : Collections.emptyList();
         this.createdAt = createdAt != null ? createdAt : Instant.now();
         this.updatedAt = updatedAt != null ? updatedAt : Instant.now();
     }
 
-    // Overload without skillProficiencies for backwards compatibility
+    // Overload for backwards compatibility with earlier constructors
+    public PlayerCharacter(
+            UUID id,
+            String name,
+            int level,
+            int hitPointsCurrent,
+            int hitPointsMax,
+            int hitPointsTemp,
+            int armorClass,
+            int initiativeBonus,
+            int speed,
+            int proficiencyBonus,
+            Ruleset ruleset,
+            AbilityScoreMethod abilityScoreMethod,
+            UUID lineageId,
+            UUID backgroundId,
+            UUID userId,
+            AbilityScores abilityScores,
+            String notes,
+            HpCalculationMethod hpCalculationMethod,
+            boolean hasPendingLevelChoices,
+            List<ClassProgression> classProgressions,
+            List<String> skillProficiencies,
+            Instant createdAt,
+            Instant updatedAt
+    ) {
+        this(
+                id,
+                name,
+                level,
+                hitPointsCurrent,
+                hitPointsMax,
+                hitPointsTemp,
+                armorClass,
+                initiativeBonus,
+                speed,
+                proficiencyBonus,
+                ruleset,
+                abilityScoreMethod,
+                lineageId,
+                backgroundId,
+                userId,
+                abilityScores,
+                notes,
+                hpCalculationMethod,
+                hasPendingLevelChoices,
+                classProgressions,
+                skillProficiencies,
+                0,
+                null,
+                Collections.emptyList(),
+                Collections.emptyList(),
+                createdAt,
+                updatedAt
+        );
+    }
+
     public PlayerCharacter(
             UUID id,
             String name,
@@ -167,7 +243,6 @@ public class PlayerCharacter {
         );
     }
 
-    // Backwards-compatible constructor for existing tests and call sites
     public PlayerCharacter(
             UUID id,
             String name,
@@ -224,65 +299,6 @@ public class PlayerCharacter {
             UUID lineageId,
             UUID backgroundId,
             UUID userId,
-            AbilityScores abilityScores
-    ) {
-        return createNew(
-                name,
-                level,
-                hitPointsMax,
-                ruleset,
-                abilityScoreMethod,
-                lineageId,
-                backgroundId,
-                userId,
-                abilityScores,
-                "",
-                HpCalculationMethod.MAX,
-                Collections.emptyList(),
-                Collections.emptyList()
-        );
-    }
-
-    public static PlayerCharacter createNew(
-            String name,
-            int level,
-            int hitPointsMax,
-            Ruleset ruleset,
-            AbilityScoreMethod abilityScoreMethod,
-            UUID lineageId,
-            UUID backgroundId,
-            UUID userId,
-            AbilityScores abilityScores,
-            String notes,
-            HpCalculationMethod hpCalculationMethod,
-            List<ClassProgression> classProgressions
-    ) {
-        return createNew(
-                name,
-                level,
-                hitPointsMax,
-                ruleset,
-                abilityScoreMethod,
-                lineageId,
-                backgroundId,
-                userId,
-                abilityScores,
-                notes,
-                hpCalculationMethod,
-                classProgressions,
-                Collections.emptyList()
-        );
-    }
-
-    public static PlayerCharacter createNew(
-            String name,
-            int level,
-            int hitPointsMax,
-            Ruleset ruleset,
-            AbilityScoreMethod abilityScoreMethod,
-            UUID lineageId,
-            UUID backgroundId,
-            UUID userId,
             AbilityScores abilityScores,
             String notes,
             HpCalculationMethod hpCalculationMethod,
@@ -323,8 +339,40 @@ public class PlayerCharacter {
                 hasPendingChoices,
                 classProgressions,
                 skillProficiencies != null ? skillProficiencies : Collections.emptyList(),
+                0,
+                null,
+                Collections.emptyList(),
+                Collections.emptyList(),
                 now,
                 now
+        );
+    }
+
+    public static PlayerCharacter createNew(
+            String name,
+            int level,
+            int hitPointsMax,
+            Ruleset ruleset,
+            AbilityScoreMethod abilityScoreMethod,
+            UUID lineageId,
+            UUID backgroundId,
+            UUID userId,
+            AbilityScores abilityScores
+    ) {
+        return createNew(
+                name,
+                level,
+                hitPointsMax,
+                ruleset,
+                abilityScoreMethod,
+                lineageId,
+                backgroundId,
+                userId,
+                abilityScores,
+                "",
+                HpCalculationMethod.MAX,
+                Collections.emptyList(),
+                Collections.emptyList()
         );
     }
 
@@ -359,6 +407,259 @@ public class PlayerCharacter {
                 this.hasPendingLevelChoices,
                 this.classProgressions,
                 this.skillProficiencies,
+                this.experiencePoints,
+                this.campaignId,
+                this.items,
+                this.feats,
+                this.createdAt,
+                Instant.now()
+        );
+    }
+
+    public PlayerCharacter addExperience(int amount) {
+        if (this.campaignId != null) {
+            throw new CharacterValidationException("Cannot manually add XP when character is assigned to a campaign.");
+        }
+        if (amount <= 0) {
+            throw new CharacterValidationException("XP amount must be greater than zero. Provided: " + amount);
+        }
+        return new PlayerCharacter(
+                this.id,
+                this.name,
+                this.level,
+                this.hitPointsCurrent,
+                this.hitPointsMax,
+                this.hitPointsTemp,
+                this.armorClass,
+                this.initiativeBonus,
+                this.speed,
+                this.proficiencyBonus,
+                this.ruleset,
+                this.abilityScoreMethod,
+                this.lineageId,
+                this.backgroundId,
+                this.userId,
+                this.abilityScores,
+                this.notes,
+                this.hpCalculationMethod,
+                this.hasPendingLevelChoices,
+                this.classProgressions,
+                this.skillProficiencies,
+                this.experiencePoints + amount,
+                this.campaignId,
+                this.items,
+                this.feats,
+                this.createdAt,
+                Instant.now()
+        );
+    }
+
+    public PlayerCharacter withLevelUp(
+            int newTotalLevel,
+            int newHpMax,
+            AbilityScores newScores,
+            List<ClassProgression> newProgressions,
+            List<CharacterFeat> newFeats,
+            int newXp,
+            int newArmorClass
+    ) {
+        validateLevel(newTotalLevel);
+        int newProficiency = calculateProficiencyBonus(newTotalLevel);
+        int hpGain = newHpMax - this.hitPointsMax;
+        int newCurrentHp = this.hitPointsCurrent + Math.max(0, hpGain);
+
+        return new PlayerCharacter(
+                this.id,
+                this.name,
+                newTotalLevel,
+                newCurrentHp,
+                newHpMax,
+                this.hitPointsTemp,
+                newArmorClass,
+                newScores.getDexterityModifier(),
+                this.speed,
+                newProficiency,
+                this.ruleset,
+                this.abilityScoreMethod,
+                this.lineageId,
+                this.backgroundId,
+                this.userId,
+                newScores,
+                this.notes,
+                this.hpCalculationMethod,
+                false,
+                newProgressions,
+                this.skillProficiencies,
+                Math.max(this.experiencePoints, newXp),
+                this.campaignId,
+                this.items,
+                newFeats,
+                this.createdAt,
+                Instant.now()
+        );
+    }
+
+    public PlayerCharacter withArmorClass(int newArmorClass) {
+        return new PlayerCharacter(
+                this.id,
+                this.name,
+                this.level,
+                this.hitPointsCurrent,
+                this.hitPointsMax,
+                this.hitPointsTemp,
+                newArmorClass,
+                this.initiativeBonus,
+                this.speed,
+                this.proficiencyBonus,
+                this.ruleset,
+                this.abilityScoreMethod,
+                this.lineageId,
+                this.backgroundId,
+                this.userId,
+                this.abilityScores,
+                this.notes,
+                this.hpCalculationMethod,
+                this.hasPendingLevelChoices,
+                this.classProgressions,
+                this.skillProficiencies,
+                this.experiencePoints,
+                this.campaignId,
+                this.items,
+                this.feats,
+                this.createdAt,
+                Instant.now()
+        );
+    }
+
+    public PlayerCharacter withItems(List<CharacterItem> newItems) {
+        long attunedCount = newItems.stream().filter(CharacterItem::isAttuned).count();
+        if (attunedCount > MAX_ATTUNED_ITEMS) {
+            throw new CharacterValidationException("Cannot attune more than " + MAX_ATTUNED_ITEMS + " items. Attempted: " + attunedCount);
+        }
+        return new PlayerCharacter(
+                this.id,
+                this.name,
+                this.level,
+                this.hitPointsCurrent,
+                this.hitPointsMax,
+                this.hitPointsTemp,
+                this.armorClass,
+                this.initiativeBonus,
+                this.speed,
+                this.proficiencyBonus,
+                this.ruleset,
+                this.abilityScoreMethod,
+                this.lineageId,
+                this.backgroundId,
+                this.userId,
+                this.abilityScores,
+                this.notes,
+                this.hpCalculationMethod,
+                this.hasPendingLevelChoices,
+                this.classProgressions,
+                this.skillProficiencies,
+                this.experiencePoints,
+                this.campaignId,
+                newItems,
+                this.feats,
+                this.createdAt,
+                Instant.now()
+        );
+    }
+
+    public PlayerCharacter withFeats(List<CharacterFeat> newFeats) {
+        return new PlayerCharacter(
+                this.id,
+                this.name,
+                this.level,
+                this.hitPointsCurrent,
+                this.hitPointsMax,
+                this.hitPointsTemp,
+                this.armorClass,
+                this.initiativeBonus,
+                this.speed,
+                this.proficiencyBonus,
+                this.ruleset,
+                this.abilityScoreMethod,
+                this.lineageId,
+                this.backgroundId,
+                this.userId,
+                this.abilityScores,
+                this.notes,
+                this.hpCalculationMethod,
+                this.hasPendingLevelChoices,
+                this.classProgressions,
+                this.skillProficiencies,
+                this.experiencePoints,
+                this.campaignId,
+                this.items,
+                newFeats,
+                this.createdAt,
+                Instant.now()
+        );
+    }
+
+    public PlayerCharacter withCurrentHp(int currentHp) {
+        validateHitPoints(currentHp, this.hitPointsMax, this.hitPointsTemp);
+        return new PlayerCharacter(
+                this.id,
+                this.name,
+                this.level,
+                currentHp,
+                this.hitPointsMax,
+                this.hitPointsTemp,
+                this.armorClass,
+                this.initiativeBonus,
+                this.speed,
+                this.proficiencyBonus,
+                this.ruleset,
+                this.abilityScoreMethod,
+                this.lineageId,
+                this.backgroundId,
+                this.userId,
+                this.abilityScores,
+                this.notes,
+                this.hpCalculationMethod,
+                this.hasPendingLevelChoices,
+                this.classProgressions,
+                this.skillProficiencies,
+                this.experiencePoints,
+                this.campaignId,
+                this.items,
+                this.feats,
+                this.createdAt,
+                Instant.now()
+        );
+    }
+
+    public PlayerCharacter withTempHp(int tempHp) {
+        validateHitPoints(this.hitPointsCurrent, this.hitPointsMax, tempHp);
+        return new PlayerCharacter(
+                this.id,
+                this.name,
+                this.level,
+                this.hitPointsCurrent,
+                this.hitPointsMax,
+                tempHp,
+                this.armorClass,
+                this.initiativeBonus,
+                this.speed,
+                this.proficiencyBonus,
+                this.ruleset,
+                this.abilityScoreMethod,
+                this.lineageId,
+                this.backgroundId,
+                this.userId,
+                this.abilityScores,
+                this.notes,
+                this.hpCalculationMethod,
+                this.hasPendingLevelChoices,
+                this.classProgressions,
+                this.skillProficiencies,
+                this.experiencePoints,
+                this.campaignId,
+                this.items,
+                this.feats,
                 this.createdAt,
                 Instant.now()
         );
@@ -483,6 +784,22 @@ public class PlayerCharacter {
         return skillProficiencies;
     }
 
+    public int getExperiencePoints() {
+        return experiencePoints;
+    }
+
+    public UUID getCampaignId() {
+        return campaignId;
+    }
+
+    public List<CharacterItem> getItems() {
+        return items;
+    }
+
+    public List<CharacterFeat> getFeats() {
+        return feats;
+    }
+
     public Instant getCreatedAt() {
         return createdAt;
     }
@@ -511,6 +828,7 @@ public class PlayerCharacter {
                 ", level=" + level +
                 ", HP=" + hitPointsCurrent + "/" + hitPointsMax +
                 ", AC=" + armorClass +
+                ", XP=" + experiencePoints +
                 ", ruleset=" + ruleset +
                 '}';
     }

@@ -31,6 +31,14 @@ public class ClassProgression {
         return new ClassProgression(UUID.randomUUID(), null, archetypeId, subclassId, level);
     }
 
+    public ClassProgression withClassLevel(int newLevel) {
+        return new ClassProgression(this.id, this.characterId, this.archetypeId, this.subclassId, newLevel);
+    }
+
+    public ClassProgression withSubclassId(UUID newSubclassId) {
+        return new ClassProgression(this.id, this.characterId, this.archetypeId, newSubclassId, this.classLevel);
+    }
+
     public UUID getId() {
         return id;
     }

@@ -24,9 +24,24 @@ public interface RulesEngine {
 
     int calculateArmorClass(int dexterityModifier);
 
+    int calculateArmorClass(
+            int dexterityModifier,
+            ArmorMechanics armor,
+            ArmorMechanics shield,
+            int extraBonus,
+            boolean hasBarbarianUnarmoredDefense,
+            int constitutionModifier,
+            boolean hasMonkUnarmoredDefense,
+            int wisdomModifier
+    );
+
     int calculateInitiativeBonus(int dexterityModifier);
 
     int calculateProficiencyBonus(int level);
 
     int calculateSpeed(Lineage lineage);
+
+    int getXpForLevel(int level);
+
+    int getLevelForXp(int experiencePoints);
 }

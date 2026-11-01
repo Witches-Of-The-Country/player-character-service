@@ -5,6 +5,7 @@ import com.dungeoneer.playerCharacter.domain.exception.CharacterValidationExcept
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 public class Archetype {
@@ -21,6 +22,7 @@ public class Archetype {
     private final Ruleset ruleset;
     private final String source;
     private final UUID ownerId;
+    private final int subclassLevel;
 
     public Archetype(
             UUID id,
@@ -34,7 +36,8 @@ public class Archetype {
             String spellcastingAbility,
             Ruleset ruleset,
             String source,
-            UUID ownerId
+            UUID ownerId,
+            int subclassLevel
     ) {
         if (id == null) {
             throw new CharacterValidationException("Archetype id cannot be null");
@@ -57,6 +60,9 @@ public class Archetype {
         if (ruleset == null) {
             throw new CharacterValidationException("Ruleset cannot be null");
         }
+        if (subclassLevel < 1 || subclassLevel > 20) {
+            throw new CharacterValidationException("Subclass level must be between 1 and 20. Provided: " + subclassLevel);
+        }
 
         this.id = id;
         this.name = name.trim();
@@ -76,6 +82,60 @@ public class Archetype {
         this.ruleset = ruleset;
         this.source = source != null && !source.trim().isEmpty() ? source.trim() : "SRD";
         this.ownerId = ownerId;
+        this.subclassLevel = subclassLevel;
+    }
+
+    // Overload for backwards compatibility
+    public Archetype(
+            UUID id,
+            String name,
+            HitDiceEnum hitDice,
+            String primaryAbility,
+            List<String> savingThrowProficiencies,
+            List<String> armorProficiencies,
+            List<String> weaponProficiencies,
+            SpellcastingType spellcastingType,
+            String spellcastingAbility,
+            Ruleset ruleset,
+            String source,
+            UUID ownerId
+    ) {
+        this(
+                id,
+                name,
+                hitDice,
+                primaryAbility,
+                savingThrowProficiencies,
+                armorProficiencies,
+                weaponProficiencies,
+                spellcastingType,
+                spellcastingAbility,
+                ruleset,
+                source,
+                ownerId,
+                ruleset == Ruleset.SRD_2024 ? 3 : defaultSubclassLevel2014(name)
+        );
+    }
+
+    private static int defaultSubclassLevel2014(String className) {
+        if (className == null) return 3;
+        String normalized = className.trim().toUpperCase();
+        return switch (normalized) {
+            case "CLERIC", "SORCERER", "WARLOCK" -> 1;
+            case "DRUID", "WIZARD" -> 2;
+            default -> 3;
+        };
+    }
+
+    public boolean isAsiLevel(int classLevel) {
+        String normalized = name.trim().toUpperCase();
+        if ("FIGHTER".equals(normalized) || "GUERREIRO".equals(normalized)) {
+            return Set.of(4, 6, 8, 12, 14, 16, 19).contains(classLevel);
+        }
+        if ("ROGUE".equals(normalized) || "LADINO".equals(normalized)) {
+            return Set.of(4, 8, 10, 12, 16, 19).contains(classLevel);
+        }
+        return Set.of(4, 8, 12, 16, 19).contains(classLevel);
     }
 
     public UUID getId() {
@@ -124,5 +184,9 @@ public class Archetype {
 
     public UUID getOwnerId() {
         return ownerId;
+    }
+
+    public int getSubclassLevel() {
+        return subclassLevel;
     }
 }
