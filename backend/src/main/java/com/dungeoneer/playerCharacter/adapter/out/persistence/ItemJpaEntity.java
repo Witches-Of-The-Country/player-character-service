@@ -178,8 +178,16 @@ public class ItemJpaEntity {
             return "{}";
         }
         try {
-            return OBJECT_MAPPER.writeValueAsString(mechanics);
-        } catch (JsonProcessingException e) {
+            com.fasterxml.jackson.databind.node.ObjectNode node = OBJECT_MAPPER.valueToTree(mechanics);
+            if (mechanics instanceof WeaponMechanics) {
+                node.put("type", "WEAPON");
+            } else if (mechanics instanceof ArmorMechanics) {
+                node.put("type", "ARMOR");
+            } else if (mechanics instanceof ConsumableMechanics) {
+                node.put("type", "CONSUMABLE");
+            }
+            return OBJECT_MAPPER.writeValueAsString(node);
+        } catch (Exception e) {
             return "{}";
         }
     }
@@ -190,10 +198,20 @@ public class ItemJpaEntity {
         }
         try {
             JsonNode node = OBJECT_MAPPER.readTree(json);
-            if (!node.has("type")) {
+            String type = null;
+            if (node.has("type") && !node.get("type").isNull()) {
+                type = node.get("type").asText();
+            } else if (node.has("damageRolls") || node.has("versatileDice") || node.has("properties")) {
+                type = "WEAPON";
+            } else if (node.has("armorCategory") || node.has("baseAc")) {
+                type = "ARMOR";
+            } else if (node.has("effectType")) {
+                type = "CONSUMABLE";
+            }
+
+            if (type == null) {
                 return new EmptyItemMechanics();
             }
-            String type = node.get("type").asText();
             if ("WEAPON".equalsIgnoreCase(type)) {
                 List<DamageRoll> rolls = new ArrayList<>();
                 if (node.has("damageRolls") && node.get("damageRolls").isArray()) {
@@ -206,7 +224,11 @@ public class ItemJpaEntity {
                         } catch (Exception ex) {
                             damageType = DamageType.SLASHING;
                         }
-                        rolls.add(new DamageRoll(formula, damageType));
+                        boolean conditional = rollNode.has("conditional") && rollNode.get("conditional").asBoolean(false);
+                        String conditionNote = rollNode.has("conditionNote") && !rollNode.get("conditionNote").isNull()
+                                ? rollNode.get("conditionNote").asText()
+                                : null;
+                        rolls.add(new DamageRoll(formula, damageType, conditional, conditionNote));
                     }
                 }
                 if (rolls.isEmpty()) {

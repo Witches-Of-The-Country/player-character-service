@@ -87,12 +87,23 @@ public class ReferenceDataService implements GetReferenceDataUseCase {
     }
 
     @Override
-    public CursorPageResponse<FeatDto> getFeats(String cursor, int limit, String q, Ruleset ruleset, UUID ownerId) {
+    public CursorPageResponse<FeatDto> getFeats(String cursor, int limit, String q, Ruleset ruleset, List<String> featTypes, UUID ownerId) {
         CursorData cursorData = decodeCursor(cursor);
         int fetchLimit = limit + 1;
 
+        List<String> validatedFeatTypes = (featTypes != null)
+                ? featTypes.stream()
+                        .filter(java.util.Objects::nonNull)
+                        .map(String::trim)
+                        .map(String::toUpperCase)
+                        .filter(s -> !s.isEmpty())
+                        .limit(10)
+                        .toList()
+                : null;
+
         List<FeatJpaEntity> results = repository.findFeatsWithCursor(
                 ruleset,
+                validatedFeatTypes,
                 q,
                 cursorData.afterName(),
                 cursorData.afterId(),
@@ -206,6 +217,13 @@ public class ReferenceDataService implements GetReferenceDataUseCase {
     @Override
     public List<FeatDto> getProgressionFeats(UUID archetypeId, int level) {
         return repository.findProgressionFeats(archetypeId, level).stream()
+                .map(FeatDto::fromDomain)
+                .toList();
+    }
+
+    @Override
+    public List<FeatDto> getSubclassProgressionFeats(UUID subclassId, int level) {
+        return repository.findSubclassProgressionFeats(subclassId, level).stream()
                 .map(FeatDto::fromDomain)
                 .toList();
     }

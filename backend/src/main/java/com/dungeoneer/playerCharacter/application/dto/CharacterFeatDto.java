@@ -12,6 +12,7 @@ public record CharacterFeatDto(
         UUID featId,
         String name,
         String featType,
+        String source,
         String description,
         int unlockedAtLevel,
         Integer currentCharges,
@@ -19,12 +20,14 @@ public record CharacterFeatDto(
         MechanicalEffects mechanicalEffects
 ) {
     public static CharacterFeatDto fromDomain(CharacterFeat charFeat, Feat feat) {
+        String source = feat != null && feat.getSource() != null ? feat.getSource() : "ORIGIN";
         return new CharacterFeatDto(
                 charFeat.getId(),
                 charFeat.getCharacterId(),
                 charFeat.getFeatId(),
                 feat != null ? feat.getName() : "Talento",
                 feat != null ? feat.getFeatType().name() : "GENERAL",
+                source,
                 feat != null ? feat.getDescription() : "",
                 charFeat.getUnlockedAtLevel(),
                 charFeat.getCurrentCharges(),

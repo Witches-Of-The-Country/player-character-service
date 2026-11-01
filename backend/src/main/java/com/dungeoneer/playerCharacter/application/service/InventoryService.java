@@ -39,6 +39,20 @@ public class InventoryService implements ManageInventoryUseCase, UseConsumableUs
         Item item = referenceDataRepository.findItemById(command.itemId())
                 .orElseThrow(() -> new IllegalArgumentException("Item not found: " + command.itemId()));
 
+        if (Boolean.TRUE.equals(command.purchaseWithCurrency())) {
+            CurrencyPouch costPouch = CurrencyPouch.parseCostString(item.getCost());
+            long totalCostCopper = costPouch.toTotalCopper() * Math.max(1, command.quantity());
+            if (totalCostCopper > 0) {
+                CurrencyPouch currentPouch = character.getCurrencyPouch();
+                if (!currentPouch.canAfford(totalCostCopper)) {
+                    throw new IllegalStateException("Insufficient funds to purchase " + item.getName() + ": required " + totalCostCopper + " cp, but character only has " + currentPouch.toTotalCopper() + " cp");
+                }
+                CurrencyPouch updatedPouch = currentPouch.deductWithConversion(totalCostCopper);
+                character = character.withCurrencyPouch(updatedPouch);
+                characterRepository.save(character);
+            }
+        }
+
         // Check if item already exists in character's inventory
         List<CharacterItem> existingItems = characterRepository.findItemsByCharacterId(characterId);
         Optional<CharacterItem> existing = existingItems.stream()
@@ -63,6 +77,27 @@ public class InventoryService implements ManageInventoryUseCase, UseConsumableUs
 
         PlayerCharacter fresh = getCharacter(characterId, userId);
         return sheetHydrator.hydrate(fresh);
+    }
+
+    @Override
+    public CharacterSheetResult updateCurrency(UUID characterId, UUID userId, UpdateCurrencyRequest request) {
+        PlayerCharacter character = getCharacter(characterId, userId);
+        CurrencyPouch current = character.getCurrencyPouch();
+        int cp = request.cp() != null ? request.cp() : current.cp();
+        int sp = request.sp() != null ? request.sp() : current.sp();
+        int ep = request.ep() != null ? request.ep() : current.ep();
+        int gp = request.gp() != null ? request.gp() : current.gp();
+        int pp = request.pp() != null ? request.pp() : current.pp();
+
+        CurrencyPouch updatedPouch = new CurrencyPouch(cp, sp, ep, gp, pp);
+        if (Boolean.TRUE.equals(request.consolidate())) {
+            updatedPouch = updatedPouch.consolidate();
+        }
+
+        character = character.withCurrencyPouch(updatedPouch);
+        characterRepository.save(character);
+
+        return sheetHydrator.hydrate(character);
     }
 
     @Override

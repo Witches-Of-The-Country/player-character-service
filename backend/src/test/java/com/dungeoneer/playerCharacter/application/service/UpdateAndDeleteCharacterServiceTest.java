@@ -44,7 +44,8 @@ class UpdateAndDeleteCharacterServiceTest {
 
     @BeforeEach
     void setUp() {
-        updateService = new UpdateCharacterService(playerCharacterRepository, referenceDataRepository);
+        CharacterSheetHydrator hydrator = new CharacterSheetHydrator(referenceDataRepository);
+        updateService = new UpdateCharacterService(playerCharacterRepository, hydrator);
         deleteService = new DeleteCharacterService(playerCharacterRepository);
         userId = UUID.randomUUID();
         characterId = UUID.randomUUID();

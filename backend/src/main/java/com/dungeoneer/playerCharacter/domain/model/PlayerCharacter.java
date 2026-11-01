@@ -43,6 +43,8 @@ public class PlayerCharacter {
     private final UUID campaignId;
     private final List<CharacterItem> items;
     private final List<CharacterFeat> feats;
+    private final CurrencyPouch currencyPouch;
+    private final String avatarUrl;
     private final Instant createdAt;
     private final Instant updatedAt;
 
@@ -72,12 +74,15 @@ public class PlayerCharacter {
             UUID campaignId,
             List<CharacterItem> items,
             List<CharacterFeat> feats,
+            CurrencyPouch currencyPouch,
+            String avatarUrl,
             Instant createdAt,
             Instant updatedAt
     ) {
         validateName(name);
         validateLevel(level);
         validateHitPoints(hitPointsCurrent, hitPointsMax, hitPointsTemp);
+        validateAvatarUrl(avatarUrl);
 
         if (ruleset == null) {
             throw new CharacterValidationException("Ruleset cannot be null.");
@@ -131,8 +136,134 @@ public class PlayerCharacter {
         this.feats = feats != null
                 ? Collections.unmodifiableList(new ArrayList<>(feats))
                 : Collections.emptyList();
+        this.currencyPouch = currencyPouch != null ? currencyPouch : CurrencyPouch.empty();
+        this.avatarUrl = avatarUrl != null && !avatarUrl.isBlank() ? avatarUrl.trim() : null;
         this.createdAt = createdAt != null ? createdAt : Instant.now();
         this.updatedAt = updatedAt != null ? updatedAt : Instant.now();
+    }
+
+    public PlayerCharacter(
+            UUID id,
+            String name,
+            int level,
+            int hitPointsCurrent,
+            int hitPointsMax,
+            int hitPointsTemp,
+            int armorClass,
+            int initiativeBonus,
+            int speed,
+            int proficiencyBonus,
+            Ruleset ruleset,
+            AbilityScoreMethod abilityScoreMethod,
+            UUID lineageId,
+            UUID backgroundId,
+            UUID userId,
+            AbilityScores abilityScores,
+            String notes,
+            HpCalculationMethod hpCalculationMethod,
+            boolean hasPendingLevelChoices,
+            List<ClassProgression> classProgressions,
+            List<String> skillProficiencies,
+            int experiencePoints,
+            UUID campaignId,
+            List<CharacterItem> items,
+            List<CharacterFeat> feats,
+            CurrencyPouch currencyPouch,
+            Instant createdAt,
+            Instant updatedAt
+    ) {
+        this(
+                id,
+                name,
+                level,
+                hitPointsCurrent,
+                hitPointsMax,
+                hitPointsTemp,
+                armorClass,
+                initiativeBonus,
+                speed,
+                proficiencyBonus,
+                ruleset,
+                abilityScoreMethod,
+                lineageId,
+                backgroundId,
+                userId,
+                abilityScores,
+                notes,
+                hpCalculationMethod,
+                hasPendingLevelChoices,
+                classProgressions,
+                skillProficiencies,
+                experiencePoints,
+                campaignId,
+                items,
+                feats,
+                currencyPouch,
+                null,
+                createdAt,
+                updatedAt
+        );
+    }
+
+    public PlayerCharacter(
+            UUID id,
+            String name,
+            int level,
+            int hitPointsCurrent,
+            int hitPointsMax,
+            int hitPointsTemp,
+            int armorClass,
+            int initiativeBonus,
+            int speed,
+            int proficiencyBonus,
+            Ruleset ruleset,
+            AbilityScoreMethod abilityScoreMethod,
+            UUID lineageId,
+            UUID backgroundId,
+            UUID userId,
+            AbilityScores abilityScores,
+            String notes,
+            HpCalculationMethod hpCalculationMethod,
+            boolean hasPendingLevelChoices,
+            List<ClassProgression> classProgressions,
+            List<String> skillProficiencies,
+            int experiencePoints,
+            UUID campaignId,
+            List<CharacterItem> items,
+            List<CharacterFeat> feats,
+            Instant createdAt,
+            Instant updatedAt
+    ) {
+        this(
+                id,
+                name,
+                level,
+                hitPointsCurrent,
+                hitPointsMax,
+                hitPointsTemp,
+                armorClass,
+                initiativeBonus,
+                speed,
+                proficiencyBonus,
+                ruleset,
+                abilityScoreMethod,
+                lineageId,
+                backgroundId,
+                userId,
+                abilityScores,
+                notes,
+                hpCalculationMethod,
+                hasPendingLevelChoices,
+                classProgressions,
+                skillProficiencies,
+                experiencePoints,
+                campaignId,
+                items,
+                feats,
+                CurrencyPouch.empty(),
+                createdAt,
+                updatedAt
+        );
     }
 
     // Overload for backwards compatibility with earlier constructors
@@ -411,6 +542,8 @@ public class PlayerCharacter {
                 this.campaignId,
                 this.items,
                 this.feats,
+                this.currencyPouch,
+                this.avatarUrl,
                 this.createdAt,
                 Instant.now()
         );
@@ -449,6 +582,8 @@ public class PlayerCharacter {
                 this.campaignId,
                 this.items,
                 this.feats,
+                this.currencyPouch,
+                this.avatarUrl,
                 this.createdAt,
                 Instant.now()
         );
@@ -462,6 +597,19 @@ public class PlayerCharacter {
             List<CharacterFeat> newFeats,
             int newXp,
             int newArmorClass
+    ) {
+        return withLevelUp(newTotalLevel, newHpMax, newScores, newProgressions, newFeats, newXp, newArmorClass, false);
+    }
+
+    public PlayerCharacter withLevelUp(
+            int newTotalLevel,
+            int newHpMax,
+            AbilityScores newScores,
+            List<ClassProgression> newProgressions,
+            List<CharacterFeat> newFeats,
+            int newXp,
+            int newArmorClass,
+            boolean hasPendingLevelChoices
     ) {
         validateLevel(newTotalLevel);
         int newProficiency = calculateProficiencyBonus(newTotalLevel);
@@ -487,13 +635,15 @@ public class PlayerCharacter {
                 newScores,
                 this.notes,
                 this.hpCalculationMethod,
-                false,
+                hasPendingLevelChoices,
                 newProgressions,
                 this.skillProficiencies,
                 Math.max(this.experiencePoints, newXp),
                 this.campaignId,
                 this.items,
                 newFeats,
+                this.currencyPouch,
+                this.avatarUrl,
                 this.createdAt,
                 Instant.now()
         );
@@ -526,6 +676,8 @@ public class PlayerCharacter {
                 this.campaignId,
                 this.items,
                 this.feats,
+                this.currencyPouch,
+                this.avatarUrl,
                 this.createdAt,
                 Instant.now()
         );
@@ -562,6 +714,8 @@ public class PlayerCharacter {
                 this.campaignId,
                 newItems,
                 this.feats,
+                this.currencyPouch,
+                this.avatarUrl,
                 this.createdAt,
                 Instant.now()
         );
@@ -594,6 +748,8 @@ public class PlayerCharacter {
                 this.campaignId,
                 this.items,
                 newFeats,
+                this.currencyPouch,
+                this.avatarUrl,
                 this.createdAt,
                 Instant.now()
         );
@@ -627,6 +783,8 @@ public class PlayerCharacter {
                 this.campaignId,
                 this.items,
                 this.feats,
+                this.currencyPouch,
+                this.avatarUrl,
                 this.createdAt,
                 Instant.now()
         );
@@ -660,6 +818,8 @@ public class PlayerCharacter {
                 this.campaignId,
                 this.items,
                 this.feats,
+                this.currencyPouch,
+                this.avatarUrl,
                 this.createdAt,
                 Instant.now()
         );
@@ -696,6 +856,22 @@ public class PlayerCharacter {
         }
         if (temp < 0) {
             throw new CharacterValidationException("Temporary hit points cannot be negative. Provided: " + temp);
+        }
+    }
+
+    private static void validateAvatarUrl(String url) {
+        if (url == null || url.isBlank()) {
+            return;
+        }
+        if (url.length() > 700000) {
+            throw new CharacterValidationException("Avatar URL exceeds maximum allowed length of 700,000 characters");
+        }
+        String lower = url.trim().toLowerCase();
+        if (lower.contains("<svg") || lower.contains("image/svg+xml") || lower.contains("javascript:") || lower.contains("<script")) {
+            throw new CharacterValidationException("Invalid avatar format. SVG and script injections are strictly forbidden.");
+        }
+        if (!lower.startsWith("data:image/") && !lower.startsWith("http://") && !lower.startsWith("https://")) {
+            throw new CharacterValidationException("Avatar must be a valid image Data URL or HTTP(S) link");
         }
     }
 
@@ -798,6 +974,83 @@ public class PlayerCharacter {
 
     public List<CharacterFeat> getFeats() {
         return feats;
+    }
+
+    public CurrencyPouch getCurrencyPouch() {
+        return currencyPouch != null ? currencyPouch : CurrencyPouch.empty();
+    }
+
+    public String getAvatarUrl() {
+        return avatarUrl;
+    }
+
+    public PlayerCharacter withAvatarUrl(String newAvatarUrl) {
+        validateAvatarUrl(newAvatarUrl);
+        return new PlayerCharacter(
+                this.id,
+                this.name,
+                this.level,
+                this.hitPointsCurrent,
+                this.hitPointsMax,
+                this.hitPointsTemp,
+                this.armorClass,
+                this.initiativeBonus,
+                this.speed,
+                this.proficiencyBonus,
+                this.ruleset,
+                this.abilityScoreMethod,
+                this.lineageId,
+                this.backgroundId,
+                this.userId,
+                this.abilityScores,
+                this.notes,
+                this.hpCalculationMethod,
+                this.hasPendingLevelChoices,
+                this.classProgressions,
+                this.skillProficiencies,
+                this.experiencePoints,
+                this.campaignId,
+                this.items,
+                this.feats,
+                this.currencyPouch,
+                newAvatarUrl != null && !newAvatarUrl.isBlank() ? newAvatarUrl.trim() : null,
+                this.createdAt,
+                Instant.now()
+        );
+    }
+
+    public PlayerCharacter withCurrencyPouch(CurrencyPouch newPouch) {
+        return new PlayerCharacter(
+                this.id,
+                this.name,
+                this.level,
+                this.hitPointsCurrent,
+                this.hitPointsMax,
+                this.hitPointsTemp,
+                this.armorClass,
+                this.initiativeBonus,
+                this.speed,
+                this.proficiencyBonus,
+                this.ruleset,
+                this.abilityScoreMethod,
+                this.lineageId,
+                this.backgroundId,
+                this.userId,
+                this.abilityScores,
+                this.notes,
+                this.hpCalculationMethod,
+                this.hasPendingLevelChoices,
+                this.classProgressions,
+                this.skillProficiencies,
+                this.experiencePoints,
+                this.campaignId,
+                this.items,
+                this.feats,
+                newPouch != null ? newPouch : CurrencyPouch.empty(),
+                this.avatarUrl,
+                this.createdAt,
+                Instant.now()
+        );
     }
 
     public Instant getCreatedAt() {

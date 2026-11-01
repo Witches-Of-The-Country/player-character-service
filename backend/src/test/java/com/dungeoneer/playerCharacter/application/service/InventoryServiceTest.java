@@ -133,4 +133,53 @@ class InventoryServiceTest {
         verify(characterRepository).deleteCharacterItem(charItemId, characterId);
         verify(characterRepository).save(any(PlayerCharacter.class));
     }
+
+    @Test
+    @DisplayName("Should purchase item with currency and deduct coins")
+    void shouldPurchaseItemWithCurrency() {
+        PlayerCharacter wealthyCharacter = character.withCurrencyPouch(new CurrencyPouch(0, 0, 0, 100, 0)); // 100 gp
+        when(characterRepository.findByIdAndUserId(characterId, userId)).thenReturn(Optional.of(wealthyCharacter));
+        when(referenceDataRepository.findItemById(itemId)).thenReturn(Optional.of(potionItem)); // costs 50 gp
+        when(characterRepository.findItemsByCharacterId(characterId)).thenReturn(List.of());
+        when(sheetHydrator.hydrate(any(PlayerCharacter.class))).thenReturn(mock(CharacterSheetResult.class));
+
+        CharacterSheetResult result = inventoryService.addItem(
+                characterId,
+                userId,
+                new AddCharacterItemCommand(itemId, 1, true)
+        );
+
+        assertThat(result).isNotNull();
+        verify(characterRepository).save(argThat(c -> c.getCurrencyPouch().toTotalCopper() == 5000L)); // 100 gp - 50 gp = 50 gp = 5000 cp
+        verify(characterRepository).saveCharacterItem(any(CharacterItem.class));
+    }
+
+    @Test
+    @DisplayName("Should fail when purchasing item without sufficient funds")
+    void shouldFailWhenPurchasingItemWithoutFunds() {
+        PlayerCharacter poorCharacter = character.withCurrencyPouch(new CurrencyPouch(0, 0, 0, 1, 0)); // 1 gp
+        when(characterRepository.findByIdAndUserId(characterId, userId)).thenReturn(Optional.of(poorCharacter));
+        when(referenceDataRepository.findItemById(itemId)).thenReturn(Optional.of(potionItem)); // costs 50 gp
+
+        assertThatThrownBy(() -> inventoryService.addItem(
+                characterId,
+                userId,
+                new AddCharacterItemCommand(itemId, 1, true)
+        )).isInstanceOf(IllegalStateException.class)
+          .hasMessageContaining("Insufficient funds");
+    }
+
+    @Test
+    @DisplayName("Should update currency pouch and consolidate when requested")
+    void shouldUpdateCurrencyPouch() {
+        when(characterRepository.findByIdAndUserId(characterId, userId)).thenReturn(Optional.of(character));
+        when(sheetHydrator.hydrate(any(PlayerCharacter.class))).thenReturn(mock(CharacterSheetResult.class));
+
+        UpdateCurrencyRequest request = new UpdateCurrencyRequest(150, 20, 0, 5, 0, true);
+        CharacterSheetResult result = inventoryService.updateCurrency(characterId, userId, request);
+
+        assertThat(result).isNotNull();
+        // 150 cp + 20 sp (200 cp) + 5 gp (500 cp) = 850 cp -> consolidated: 8 gp, 5 sp
+        verify(characterRepository).save(argThat(c -> c.getCurrencyPouch().toTotalCopper() == 850L));
+    }
 }

@@ -115,10 +115,11 @@ public class ReferenceDataController {
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit,
             @RequestParam(required = false) String q,
             @RequestParam(required = false) String ruleset,
+            @RequestParam(required = false) List<String> featTypes,
             @RequestHeader(value = "X-User-Id", required = false) UUID userId
     ) {
         Ruleset parsedRuleset = parseRuleset(ruleset);
-        return ResponseEntity.ok(getReferenceDataUseCase.getFeats(cursor, limit, q, parsedRuleset, userId));
+        return ResponseEntity.ok(getReferenceDataUseCase.getFeats(cursor, limit, q, parsedRuleset, featTypes, userId));
     }
 
     @GetMapping("/items")
@@ -215,6 +216,14 @@ public class ReferenceDataController {
             @RequestParam int level
     ) {
         return ResponseEntity.ok(getReferenceDataUseCase.getProgressionFeats(archetypeId, level));
+    }
+
+    @GetMapping("/subclass-progression-feats")
+    public ResponseEntity<List<FeatDto>> getSubclassProgressionFeats(
+            @RequestParam UUID subclassId,
+            @RequestParam int level
+    ) {
+        return ResponseEntity.ok(getReferenceDataUseCase.getSubclassProgressionFeats(subclassId, level));
     }
 
     @PostMapping("/subclasses")

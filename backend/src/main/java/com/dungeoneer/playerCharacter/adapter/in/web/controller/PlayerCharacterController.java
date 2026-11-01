@@ -22,6 +22,7 @@ import com.dungeoneer.playerCharacter.application.dto.RollAbilityScoresResult;
 import com.dungeoneer.playerCharacter.application.dto.RollHitPointsCommand;
 import com.dungeoneer.playerCharacter.application.dto.RollHitPointsResult;
 import com.dungeoneer.playerCharacter.application.dto.UpdateCharacterItemCommand;
+import com.dungeoneer.playerCharacter.application.dto.UpdateCurrencyRequest;
 import com.dungeoneer.playerCharacter.application.dto.UseConsumableResult;
 import com.dungeoneer.playerCharacter.application.port.in.AddCharacterNoteUseCase;
 import com.dungeoneer.playerCharacter.application.port.in.AddExperienceUseCase;
@@ -333,6 +334,16 @@ public class PlayerCharacterController {
             @PathVariable("featId") UUID featId
     ) {
         CharacterSheetResult result = restUseCase.useFeat(id, userId, featId);
+        return ResponseEntity.ok(CharacterSheetResponse.fromResult(result));
+    }
+
+    @PutMapping("/{id}/currency")
+    public ResponseEntity<CharacterSheetResponse> updateCurrency(
+            @RequestHeader("X-User-Id") UUID userId,
+            @PathVariable("id") UUID id,
+            @Valid @RequestBody UpdateCurrencyRequest request
+    ) {
+        CharacterSheetResult result = manageInventoryUseCase.updateCurrency(id, userId, request);
         return ResponseEntity.ok(CharacterSheetResponse.fromResult(result));
     }
 }

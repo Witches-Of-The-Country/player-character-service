@@ -10,6 +10,11 @@ public record AddCharacterItemCommand(
         UUID itemId,
 
         @Min(value = 1, message = "Quantity must be at least 1")
-        int quantity
+        int quantity,
+
+        Boolean purchaseWithCurrency
 ) {
+    public AddCharacterItemCommand(UUID itemId, int quantity) {
+        this(itemId, quantity, false);
+    }
 }

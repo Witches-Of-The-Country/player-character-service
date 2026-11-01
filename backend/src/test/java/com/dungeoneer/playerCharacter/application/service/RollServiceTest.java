@@ -187,4 +187,24 @@ class RollServiceTest {
             assertThat(hp).isBetween(1, 8);
         }
     }
+
+    @Test
+    @DisplayName("Multiclass HP: Allows target level 1 for secondary class and rolls 1 hit die")
+    void shouldRollHitDiceForSecondaryClassLevel1() {
+        Archetype warlock = new Archetype(
+                archetypeId, "Warlock", HitDiceEnum.D8, "CHA",
+                List.of(), List.of(), List.of(), SpellcastingType.PACT, null, Ruleset.SRD_2024, "SRD", null
+        );
+        when(referenceDataRepository.findArchetypeById(archetypeId)).thenReturn(Optional.of(warlock));
+        when(hpRollRepository.findUnusedByUserIdAndArchetypeIdAndTargetLevel(userId, archetypeId, 1))
+                .thenReturn(Optional.empty());
+        when(hpRollRepository.save(any(HpRoll.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        RollHitPointsResult result = service.rollHitPoints(new RollHitPointsCommand(userId, archetypeId, 1, true));
+
+        assertThat(result.isNew()).isTrue();
+        assertThat(result.rolledHpPerLevel()).hasSize(1);
+        assertThat(result.rolledHpPerLevel().getFirst()).isBetween(1, 8);
+        verify(hpRollRepository).save(any(HpRoll.class));
+    }
 }

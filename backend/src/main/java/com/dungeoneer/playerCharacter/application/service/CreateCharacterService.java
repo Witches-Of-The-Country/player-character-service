@@ -17,10 +17,15 @@ import com.dungeoneer.playerCharacter.domain.model.AbilityScoreValidator;
 import com.dungeoneer.playerCharacter.domain.model.AbilityScores;
 import com.dungeoneer.playerCharacter.domain.model.Archetype;
 import com.dungeoneer.playerCharacter.domain.model.Background;
+import com.dungeoneer.playerCharacter.domain.model.CharacterFeat;
 import com.dungeoneer.playerCharacter.domain.model.ClassProgression;
+import com.dungeoneer.playerCharacter.domain.model.CurrencyPouch;
+import com.dungeoneer.playerCharacter.domain.model.Feat;
+import com.dungeoneer.playerCharacter.domain.model.FeatPrerequisite;
 import com.dungeoneer.playerCharacter.domain.model.HpCalculationMethod;
 import com.dungeoneer.playerCharacter.domain.model.HpRoll;
 import com.dungeoneer.playerCharacter.domain.model.Lineage;
+import com.dungeoneer.playerCharacter.domain.model.MechanicalEffects;
 import com.dungeoneer.playerCharacter.domain.model.PlayerCharacter;
 import com.dungeoneer.playerCharacter.domain.model.RulesEngine;
 import com.dungeoneer.playerCharacter.domain.model.Ruleset;
@@ -33,8 +38,11 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -117,8 +125,68 @@ public class CreateCharacterService implements CreateCharacterUseCase {
                 ? command.hpCalculationMethod()
                 : HpCalculationMethod.MAX;
 
+        // Collect Level 1 unlocked feats (archetype level 1 + subclass level 1 if applicable + originFeatId)
+        UUID initialSubclassId = (archetype.getSubclassLevel() == 1) ? command.subclassId() : null;
+        List<Feat> initialFeats = new ArrayList<>();
+        List<Feat> level1ArchetypeFeats = referenceDataRepository.findProgressionFeats(archetype.getId(), 1);
+        if (level1ArchetypeFeats != null) {
+            initialFeats.addAll(level1ArchetypeFeats);
+        }
+        if (initialSubclassId != null) {
+            List<Feat> level1SubclassFeats = referenceDataRepository.findSubclassProgressionFeats(initialSubclassId, 1);
+            if (level1SubclassFeats != null) {
+                initialFeats.addAll(level1SubclassFeats);
+            }
+        }
+        List<Feat> level1LineageFeats = referenceDataRepository.findLineageFeats(lineage.getId(), 1);
+        if (level1LineageFeats != null) {
+            initialFeats.addAll(level1LineageFeats);
+        }
+        if (command.originFeatId() != null) {
+            var featOpt = referenceDataRepository.findFeatById(command.originFeatId());
+            if (featOpt.isPresent()) {
+                Feat f = featOpt.get();
+                validateFeatPrerequisites(f, finalScores, command.level() != null ? command.level() : 1, List.of(archetype.getId()), lineage.getId(), initialFeats);
+                initialFeats.add(f);
+            }
+        }
+
+        int initialHpPerLevelBonus = 0;
+        int initialAcBonus = 0;
+        int initialInitBonus = 0;
+        int initialSpeedBonus = 0;
+        Map<String, Integer> featAbilityBonuses = new LinkedHashMap<>();
+
+        for (Feat feat : initialFeats) {
+            MechanicalEffects effects = feat.getMechanicalEffects();
+            if (effects != null) {
+                initialHpPerLevelBonus += effects.hpPerLevelBonus();
+                initialAcBonus += effects.acBonus();
+                initialInitBonus += effects.initiativeBonus();
+                initialSpeedBonus += effects.speedBonus();
+                if (effects.abilityBonuses() != null) {
+                    for (Map.Entry<String, Integer> entry : effects.abilityBonuses().entrySet()) {
+                        featAbilityBonuses.merge(entry.getKey().toUpperCase(), entry.getValue(), Integer::sum);
+                    }
+                }
+            }
+        }
+
+        if (!featAbilityBonuses.isEmpty()) {
+            finalScores = applyAbilityMap(finalScores, featAbilityBonuses);
+        }
+
+        boolean hasExplicitMulticlassProgressions = command.classProgressions() != null && !command.classProgressions().isEmpty();
+        boolean hasExplicitHpRolls = command.hpRollId() != null || (command.hpRollIds() != null && !command.hpRollIds().isEmpty());
+
+        // New Level > 1 Creation Rule: when created from the wizard without explicit multiclass progressions or pre-rolled HP tokens,
+        // initialize at Level 1 in the primary class and grant the target level's XP floor so levels 2..N are resolved via LevelUpWizard.
+        boolean deferHigherLevelsToLevelUpWizard = command.level() > 1 && !hasExplicitMulticlassProgressions && !hasExplicitHpRolls;
+        int effectiveInitialLevel = deferHigherLevelsToLevelUpWizard ? 1 : command.level();
+        int initialExperiencePoints = deferHigherLevelsToLevelUpWizard ? rulesEngine.getXpForLevel(command.level()) : 0;
+
         List<ClassProgression> progressions;
-        if (command.classProgressions() != null && !command.classProgressions().isEmpty()) {
+        if (hasExplicitMulticlassProgressions) {
             int totalClassLevel = command.classProgressions().stream()
                     .mapToInt(cp -> cp.classLevel() != null ? cp.classLevel() : 0)
                     .sum();
@@ -131,8 +199,8 @@ public class CreateCharacterService implements CreateCharacterUseCase {
         } else {
             progressions = List.of(ClassProgression.createInitial(
                     command.archetypeId(),
-                    command.subclassId(),
-                    command.level()
+                    initialSubclassId != null ? initialSubclassId : command.subclassId(),
+                    effectiveInitialLevel
             ));
         }
 
@@ -154,7 +222,7 @@ public class CreateCharacterService implements CreateCharacterUseCase {
             }
 
             Map<UUID, HpRoll> rollsByArchetype = new HashMap<>();
-            if (hpMethod == HpCalculationMethod.ROLLED && command.level() > 1) {
+            if (hpMethod == HpCalculationMethod.ROLLED && effectiveInitialLevel > 1) {
                 for (UUID rId : rollIdCandidates) {
                     HpRoll r = hpRollRepository.findById(rId)
                             .orElseThrow(() -> new InvalidRollTokenException("HP roll not found with id: " + rId));
@@ -204,10 +272,9 @@ public class CreateCharacterService implements CreateCharacterUseCase {
                     }
                 }
             }
-            hitPointsMax = totalHp;
+            hitPointsMax = totalHp + (initialHpPerLevelBonus * effectiveInitialLevel);
         } else {
-            // Mono-class logic
-            if (command.level() > 1 && hpMethod == HpCalculationMethod.ROLLED) {
+            if (effectiveInitialLevel > 1 && hpMethod == HpCalculationMethod.ROLLED) {
                 UUID rollId = command.hpRollId() != null
                         ? command.hpRollId()
                         : (command.hpRollIds() != null && !command.hpRollIds().isEmpty() ? command.hpRollIds().get(0) : null);
@@ -226,26 +293,26 @@ public class CreateCharacterService implements CreateCharacterUseCase {
                 if (!hpRoll.getArchetypeId().equals(command.archetypeId())) {
                     throw new InvalidRollTokenException("HP roll does not match the selected archetype.");
                 }
-                if (hpRoll.getTargetLevel() != command.level()) {
-                    throw new InvalidRollTokenException("HP roll target level (" + hpRoll.getTargetLevel() + ") does not match character level (" + command.level() + ").");
+                if (hpRoll.getTargetLevel() != effectiveInitialLevel) {
+                    throw new InvalidRollTokenException("HP roll target level (" + hpRoll.getTargetLevel() + ") does not match character level (" + effectiveInitialLevel + ").");
                 }
 
                 usedHpRolls.add(hpRoll);
                 hitPointsMax = rulesEngine.calculateMaxHitPoints(
-                        command.level(),
+                        effectiveInitialLevel,
                         archetype.getHitDice(),
                         finalScores.getConstitutionModifier(),
                         hpMethod,
                         hpRoll.getRolledHpPerLevel()
-                );
+                ) + (initialHpPerLevelBonus * effectiveInitialLevel);
             } else {
                 hitPointsMax = rulesEngine.calculateMaxHitPoints(
-                        command.level(),
+                        effectiveInitialLevel,
                         archetype.getHitDice(),
                         finalScores.getConstitutionModifier(),
                         hpMethod,
                         null
-                );
+                ) + (initialHpPerLevelBonus * effectiveInitialLevel);
             }
         }
 
@@ -256,17 +323,40 @@ public class CreateCharacterService implements CreateCharacterUseCase {
             hpRollRepository.markAsUsed(r.getId());
         }
 
-        int armorClass = rulesEngine.calculateArmorClass(finalScores.getDexterityModifier());
-        int initiativeBonus = rulesEngine.calculateInitiativeBonus(finalScores.getDexterityModifier());
-        int speed = rulesEngine.calculateSpeed(lineage);
-        int proficiencyBonus = rulesEngine.calculateProficiencyBonus(command.level());
+        int armorClass = rulesEngine.calculateArmorClass(finalScores.getDexterityModifier()) + initialAcBonus;
+        int initiativeBonus = rulesEngine.calculateInitiativeBonus(finalScores.getDexterityModifier()) + initialInitBonus;
+        int speed = rulesEngine.calculateSpeed(lineage) + initialSpeedBonus;
+        int proficiencyBonus = rulesEngine.calculateProficiencyBonus(effectiveInitialLevel);
         boolean hasPendingLevelChoices = command.level() > 1;
+
+        UUID characterId = UUID.randomUUID();
+        List<CharacterFeat> initialCharacterFeats = new ArrayList<>();
+        Map<UUID, Feat> featMap = new LinkedHashMap<>();
+        Set<UUID> addedFeatIds = new HashSet<>();
+        for (Feat feat : initialFeats) {
+            if (feat != null && feat.getId() != null && addedFeatIds.add(feat.getId())) {
+                Integer uses = feat.getMechanicalEffects() != null ? feat.getMechanicalEffects().usesPerRest() : null;
+                String sourceName = feat.getFeatType() != null ? feat.getFeatType().name() : "CLASS";
+                String choicesJson = String.format("{\"source\":\"%s\"}", sourceName);
+                CharacterFeat cf = new CharacterFeat(
+                        UUID.randomUUID(),
+                        characterId,
+                        feat.getId(),
+                        1,
+                        uses,
+                        uses,
+                        choicesJson
+                );
+                initialCharacterFeats.add(cf);
+                featMap.put(feat.getId(), feat);
+            }
+        }
 
         Instant now = Instant.now();
         PlayerCharacter character = new PlayerCharacter(
-                UUID.randomUUID(),
+                characterId,
                 command.name(),
-                command.level(),
+                effectiveInitialLevel,
                 hitPointsMax,
                 hitPointsMax,
                 0,
@@ -285,12 +375,114 @@ public class CreateCharacterService implements CreateCharacterUseCase {
                 hasPendingLevelChoices,
                 progressions,
                 command.skillProficiencies() != null ? command.skillProficiencies() : Collections.emptyList(),
+                initialExperiencePoints,
+                null,
+                Collections.emptyList(),
+                initialCharacterFeats,
+                CurrencyPouch.empty(),
+                command.avatarUrl(),
                 now,
                 now
         );
 
         PlayerCharacter saved = playerCharacterRepository.save(character);
 
-        return CharacterSheetHydrator.toSheetResult(saved, archetype, lineage, background);
+        return CharacterSheetHydrator.toSheetResult(saved, archetype, lineage, background, Collections.emptyMap(), featMap);
+    }
+
+    private AbilityScores applyAbilityMap(AbilityScores scores, Map<String, Integer> bonuses) {
+        int str = scores.getStrength();
+        int dex = scores.getDexterity();
+        int con = scores.getConstitution();
+        int intel = scores.getIntelligence();
+        int wis = scores.getWisdom();
+        int cha = scores.getCharisma();
+
+        for (Map.Entry<String, Integer> entry : bonuses.entrySet()) {
+            String key = Srd2014RulesEngine.normalizeAbility(entry.getKey());
+            int delta = entry.getValue() != null ? entry.getValue() : 0;
+            switch (key) {
+                case "STRENGTH" -> str = Math.min(20, str + delta);
+                case "DEXTERITY" -> dex = Math.min(20, dex + delta);
+                case "CONSTITUTION" -> con = Math.min(20, con + delta);
+                case "INTELLIGENCE" -> intel = Math.min(20, intel + delta);
+                case "WISDOM" -> wis = Math.min(20, wis + delta);
+                case "CHARISMA" -> cha = Math.min(20, cha + delta);
+                default -> {
+                }
+            }
+        }
+        return new AbilityScores(str, dex, con, intel, wis, cha);
+    }
+
+    private void validateFeatPrerequisites(
+            Feat feat,
+            AbilityScores scores,
+            int level,
+            List<UUID> archetypeIds,
+            UUID lineageId,
+            List<Feat> currentFeats
+    ) {
+        if (feat.getMechanicalEffects() == null || feat.getMechanicalEffects().prerequisiteRules() == null) {
+            return;
+        }
+        for (FeatPrerequisite rule : feat.getMechanicalEffects().prerequisiteRules()) {
+            if (rule == null || rule.type() == null) continue;
+            switch (rule.type().toUpperCase()) {
+                case "ABILITY_SCORE" -> {
+                    if (rule.targetKey() != null && rule.minValue() != null && scores != null) {
+                        int score = scores.getScore(rule.targetKey());
+                        if (score < rule.minValue()) {
+                            throw new CharacterValidationException(
+                                    "Pré-requisito do talento não atendido: " + (rule.displayLabel() != null ? rule.displayLabel() : (rule.targetKey() + " >= " + rule.minValue()))
+                            );
+                        }
+                    }
+                }
+                case "MIN_LEVEL" -> {
+                    if (rule.minValue() != null && level < rule.minValue()) {
+                        throw new CharacterValidationException(
+                                "Pré-requisito do talento não atendido: " + (rule.displayLabel() != null ? rule.displayLabel() : ("Nível mínimo " + rule.minValue()))
+                        );
+                    }
+                }
+                case "ARCHETYPE" -> {
+                    if (rule.targetKey() != null && archetypeIds != null && !archetypeIds.isEmpty()) {
+                        boolean matches = false;
+                        for (UUID archId : archetypeIds) {
+                            if (archId != null && archId.toString().equalsIgnoreCase(rule.targetKey())) {
+                                matches = true;
+                                break;
+                            }
+                        }
+                        if (!matches) {
+                            throw new CharacterValidationException(
+                                    "Pré-requisito do talento não atendido: " + (rule.displayLabel() != null ? rule.displayLabel() : "Classe necessária")
+                            );
+                        }
+                    }
+                }
+                case "LINEAGE" -> {
+                    if (rule.targetKey() != null && lineageId != null) {
+                        if (!lineageId.toString().equalsIgnoreCase(rule.targetKey())) {
+                            throw new CharacterValidationException(
+                                    "Pré-requisito do talento não atendido: " + (rule.displayLabel() != null ? rule.displayLabel() : "Linhagem necessária")
+                            );
+                        }
+                    }
+                }
+                case "FEAT" -> {
+                    if (rule.targetKey() != null) {
+                        boolean hasFeat = currentFeats.stream()
+                                .anyMatch(f -> f.getId() != null && f.getId().toString().equalsIgnoreCase(rule.targetKey()));
+                        if (!hasFeat) {
+                            throw new CharacterValidationException(
+                                    "Pré-requisito do talento não atendido: " + (rule.displayLabel() != null ? rule.displayLabel() : "Talento pré-requisito necessário")
+                            );
+                        }
+                    }
+                }
+            }
+        }
     }
 }

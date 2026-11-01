@@ -3,6 +3,7 @@ package com.dungeoneer.playerCharacter.adapter.out.persistence;
 import com.dungeoneer.playerCharacter.domain.model.Archetype;
 import com.dungeoneer.playerCharacter.domain.model.HitDiceEnum;
 import com.dungeoneer.playerCharacter.domain.model.Ruleset;
+import com.dungeoneer.playerCharacter.domain.model.SpellPreparationType;
 import com.dungeoneer.playerCharacter.domain.model.SpellcastingType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -65,6 +66,10 @@ public class ArchetypeJpaEntity {
     @Column(name = "owner_id")
     private UUID ownerId;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "spell_preparation_type", length = 20, nullable = false)
+    private SpellPreparationType spellPreparationType = SpellPreparationType.NONE;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -77,6 +82,7 @@ public class ArchetypeJpaEntity {
     }
 
     public Archetype toDomain() {
+        int subLevel = this.ruleset == Ruleset.SRD_2024 ? 3 : (name != null && List.of("Cleric", "Sorcerer", "Warlock").contains(name) ? 1 : (name != null && List.of("Druid", "Wizard").contains(name) ? 2 : 3));
         return new Archetype(
                 this.id,
                 this.name,
@@ -89,7 +95,9 @@ public class ArchetypeJpaEntity {
                 this.spellcastingAbility,
                 this.ruleset,
                 this.source,
-                this.ownerId
+                this.ownerId,
+                subLevel,
+                this.spellPreparationType != null ? this.spellPreparationType : SpellPreparationType.NONE
         );
     }
 
@@ -107,6 +115,7 @@ public class ArchetypeJpaEntity {
         entity.setRuleset(domain.getRuleset());
         entity.setSource(domain.getSource());
         entity.setOwnerId(domain.getOwnerId());
+        entity.setSpellPreparationType(domain.getSpellPreparationType());
         return entity;
     }
 
@@ -204,6 +213,14 @@ public class ArchetypeJpaEntity {
 
     public void setOwnerId(UUID ownerId) {
         this.ownerId = ownerId;
+    }
+
+    public SpellPreparationType getSpellPreparationType() {
+        return spellPreparationType;
+    }
+
+    public void setSpellPreparationType(SpellPreparationType spellPreparationType) {
+        this.spellPreparationType = spellPreparationType != null ? spellPreparationType : SpellPreparationType.NONE;
     }
 
     public Instant getCreatedAt() {

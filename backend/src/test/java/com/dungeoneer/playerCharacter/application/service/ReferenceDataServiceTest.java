@@ -123,4 +123,41 @@ class ReferenceDataServiceTest {
         assertThat(result.get(0).originFeatName()).isEqualTo("Magic Initiate (Wizard)");
         verify(repository).findBackgroundsByRuleset(Ruleset.SRD_2024);
     }
+
+    @Test
+    @DisplayName("should filter feats by featTypes list when provided")
+    void shouldFilterFeatsByFeatTypes() {
+        com.dungeoneer.playerCharacter.domain.model.Feat domainFeat = new com.dungeoneer.playerCharacter.domain.model.Feat(
+                UUID.randomUUID(),
+                Ruleset.SRD_2024,
+                "alerta",
+                "Alert",
+                "Alerta",
+                null,
+                "Ganha iniciativa",
+                "SRD",
+                null,
+                com.dungeoneer.playerCharacter.domain.model.FeatType.ORIGIN,
+                com.dungeoneer.playerCharacter.domain.model.MechanicalEffects.empty()
+        );
+        com.dungeoneer.playerCharacter.adapter.out.persistence.FeatJpaEntity featEntity =
+                com.dungeoneer.playerCharacter.adapter.out.persistence.FeatJpaEntity.fromDomain(domainFeat);
+
+        when(repository.findFeatsWithCursor(
+                org.mockito.ArgumentMatchers.eq(Ruleset.SRD_2024),
+                org.mockito.ArgumentMatchers.eq(List.of("ORIGIN", "GENERAL")),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.eq(21),
+                org.mockito.ArgumentMatchers.isNull()
+        )).thenReturn(List.of(featEntity));
+
+        var response = service.getFeats(null, 20, null, Ruleset.SRD_2024, List.of("origin", "GENERAL "), null);
+
+        assertThat(response).isNotNull();
+        assertThat(response.items()).hasSize(1);
+        assertThat(response.items().get(0).name()).isEqualTo("Alerta");
+        assertThat(response.items().get(0).featType()).isEqualTo(com.dungeoneer.playerCharacter.domain.model.FeatType.ORIGIN);
+    }
 }

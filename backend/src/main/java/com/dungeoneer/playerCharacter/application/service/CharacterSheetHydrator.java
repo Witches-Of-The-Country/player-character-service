@@ -4,6 +4,7 @@ import com.dungeoneer.playerCharacter.application.dto.CharacterActionDto;
 import com.dungeoneer.playerCharacter.application.dto.CharacterFeatDto;
 import com.dungeoneer.playerCharacter.application.dto.CharacterItemDto;
 import com.dungeoneer.playerCharacter.application.dto.CharacterSheetResult;
+import com.dungeoneer.playerCharacter.application.dto.CurrencyPouchDto;
 import com.dungeoneer.playerCharacter.application.port.out.ReferenceDataRepository;
 import com.dungeoneer.playerCharacter.domain.model.AbilityScores;
 import com.dungeoneer.playerCharacter.domain.model.Archetype;
@@ -213,6 +214,8 @@ public class CharacterSheetHydrator {
                 inventory,
                 feats,
                 actions,
+                CurrencyPouchDto.fromDomain(character.getCurrencyPouch()),
+                character.getAvatarUrl(),
                 character.getCreatedAt(),
                 character.getUpdatedAt()
         );

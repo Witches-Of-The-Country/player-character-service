@@ -8,7 +8,9 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -60,6 +62,10 @@ public class SpellJpaEntity {
 
     @Column(name = "owner_id")
     private UUID ownerId;
+
+    @Column(name = "mechanical_properties", columnDefinition = "jsonb", nullable = false)
+    @JdbcTypeCode(SqlTypes.JSON)
+    private String mechanicalProperties = "{}";
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -182,6 +188,14 @@ public class SpellJpaEntity {
 
     public void setOwnerId(UUID ownerId) {
         this.ownerId = ownerId;
+    }
+
+    public String getMechanicalProperties() {
+        return mechanicalProperties;
+    }
+
+    public void setMechanicalProperties(String mechanicalProperties) {
+        this.mechanicalProperties = mechanicalProperties != null ? mechanicalProperties : "{}";
     }
 
     public Instant getCreatedAt() {

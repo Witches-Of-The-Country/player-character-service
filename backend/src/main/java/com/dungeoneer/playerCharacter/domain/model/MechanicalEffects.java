@@ -18,10 +18,46 @@ public record MechanicalEffects(
         String actionType,
         String diceFormula,
         Integer usesPerRest,
-        RestType restType
+        RestType restType,
+        AbilityBonusChoice abilityBonusChoice,
+        boolean conditional,
+        String conditionDescription,
+        List<FeatPrerequisite> prerequisiteRules
 ) {
 
     private static final Pattern DICE_PATTERN = Pattern.compile("^\\d{1,2}d(4|6|8|10|12|20|100)([+-]\\d{1,3})?$");
+
+    public MechanicalEffects(
+            Map<String, Integer> abilityBonuses,
+            int acBonus,
+            int initiativeBonus,
+            int speedBonus,
+            int hpPerLevelBonus,
+            List<String> grantedProficiencies,
+            String actionName,
+            String actionType,
+            String diceFormula,
+            Integer usesPerRest,
+            RestType restType
+    ) {
+        this(
+                abilityBonuses,
+                acBonus,
+                initiativeBonus,
+                speedBonus,
+                hpPerLevelBonus,
+                grantedProficiencies,
+                actionName,
+                actionType,
+                diceFormula,
+                usesPerRest,
+                restType,
+                null,
+                false,
+                null,
+                Collections.emptyList()
+        );
+    }
 
     public MechanicalEffects {
         if (diceFormula != null && !diceFormula.trim().isEmpty()) {
@@ -38,6 +74,7 @@ public record MechanicalEffects(
         }
         abilityBonuses = abilityBonuses != null ? Collections.unmodifiableMap(abilityBonuses) : Collections.emptyMap();
         grantedProficiencies = grantedProficiencies != null ? Collections.unmodifiableList(grantedProficiencies) : Collections.emptyList();
+        prerequisiteRules = prerequisiteRules != null ? Collections.unmodifiableList(prerequisiteRules) : Collections.emptyList();
         restType = restType != null ? restType : RestType.NONE;
     }
 
@@ -53,7 +90,11 @@ public record MechanicalEffects(
                 null,
                 null,
                 null,
-                RestType.NONE
+                RestType.NONE,
+                null,
+                false,
+                null,
+                Collections.emptyList()
         );
     }
 }

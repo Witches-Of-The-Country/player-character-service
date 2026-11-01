@@ -70,7 +70,18 @@ public class CharacterFeatJpaEntity {
         this.unlockedAtLevel = unlockedAtLevel;
         this.currentCharges = currentCharges;
         this.maxCharges = maxCharges;
-        this.choices = choices != null ? choices : "{}";
+        this.choices = sanitizeChoicesJson(choices);
+    }
+
+    private static String sanitizeChoicesJson(String input) {
+        if (input == null || input.isBlank()) {
+            return "{}";
+        }
+        String trimmed = input.trim();
+        if ((trimmed.startsWith("{") && trimmed.endsWith("}")) || (trimmed.startsWith("[") && trimmed.endsWith("]"))) {
+            return trimmed;
+        }
+        return "{\"source\":\"" + trimmed.replace("\"", "\\\"") + "\"}";
     }
 
     public static CharacterFeatJpaEntity fromDomain(CharacterFeat feat, PlayerCharacterJpaEntity character) {
@@ -142,7 +153,7 @@ public class CharacterFeatJpaEntity {
     }
 
     public void setChoices(String choices) {
-        this.choices = choices;
+        this.choices = sanitizeChoicesJson(choices);
     }
 
     public Instant getCreatedAt() {

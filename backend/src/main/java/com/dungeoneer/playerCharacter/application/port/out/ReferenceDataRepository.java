@@ -65,7 +65,11 @@ public interface ReferenceDataRepository {
         return findFeatsWithCursor(ruleset, q, afterName, afterId, limit, null);
     }
 
-    List<FeatJpaEntity> findFeatsWithCursor(Ruleset ruleset, String q, String afterName, UUID afterId, int limit, UUID ownerId);
+    default List<FeatJpaEntity> findFeatsWithCursor(Ruleset ruleset, String q, String afterName, UUID afterId, int limit, UUID ownerId) {
+        return findFeatsWithCursor(ruleset, null, q, afterName, afterId, limit, ownerId);
+    }
+
+    List<FeatJpaEntity> findFeatsWithCursor(Ruleset ruleset, List<String> featTypes, String q, String afterName, UUID afterId, int limit, UUID ownerId);
 
     default List<Item> findItemsWithCursor(Ruleset ruleset, String category, String rarity, String q, String afterName, UUID afterId, int limit) {
         return findItemsWithCursor(ruleset, category, rarity, q, afterName, afterId, limit, null);
@@ -96,4 +100,21 @@ public interface ReferenceDataRepository {
     Lineage saveLineage(Lineage lineage);
 
     Subclass saveSubclass(Subclass subclass);
+
+    default void saveArchetypeFeatLink(UUID archetypeId, UUID featId, int unlockLevel) {
+    }
+
+    default void saveSubclassFeatLink(UUID subclassId, UUID featId, int unlockLevel) {
+    }
+
+    default void saveLineageFeatLink(UUID lineageId, UUID featId, int unlockLevel) {
+    }
+
+    default List<Feat> findLineageFeats(UUID lineageId, int unlockLevel) {
+        return List.of();
+    }
+
+    default List<Feat> findAllFeatsForLineage(UUID lineageId) {
+        return List.of();
+    }
 }

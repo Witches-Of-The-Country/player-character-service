@@ -13,6 +13,12 @@ public record UpdateCharacterRequest(
         @Min(value = 0, message = "Temporary hit points cannot be negative")
         Integer hitPointsTemp,
 
-        String notes
+        String notes,
+
+        @Size(max = 700000, message = "Avatar URL cannot exceed 700,000 characters")
+        String avatarUrl
 ) {
+    public UpdateCharacterRequest(String name, Integer hitPointsCurrent, Integer hitPointsTemp, String notes) {
+        this(name, hitPointsCurrent, hitPointsTemp, notes, null);
+    }
 }

@@ -4,6 +4,7 @@ import com.dungeoneer.playerCharacter.domain.model.AbilityScoreMethod;
 import com.dungeoneer.playerCharacter.domain.model.CharacterFeat;
 import com.dungeoneer.playerCharacter.domain.model.CharacterItem;
 import com.dungeoneer.playerCharacter.domain.model.ClassProgression;
+import com.dungeoneer.playerCharacter.domain.model.CurrencyPouch;
 import com.dungeoneer.playerCharacter.domain.model.HpCalculationMethod;
 import com.dungeoneer.playerCharacter.domain.model.PlayerCharacter;
 import com.dungeoneer.playerCharacter.domain.model.Ruleset;
@@ -110,6 +111,24 @@ public class PlayerCharacterJpaEntity {
     @JdbcTypeCode(SqlTypes.ARRAY)
     private String[] skillProficiencies = new String[0];
 
+    @Column(name = "copper_pieces", nullable = false)
+    private int copperPieces = 0;
+
+    @Column(name = "silver_pieces", nullable = false)
+    private int silverPieces = 0;
+
+    @Column(name = "electrum_pieces", nullable = false)
+    private int electrumPieces = 0;
+
+    @Column(name = "gold_pieces", nullable = false)
+    private int goldPieces = 0;
+
+    @Column(name = "platinum_pieces", nullable = false)
+    private int platinumPieces = 0;
+
+    @Column(name = "avatar_url")
+    private String avatarUrl;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -199,11 +218,20 @@ public class PlayerCharacterJpaEntity {
         entity.setHasPendingLevelChoices(character.isHasPendingLevelChoices());
         entity.setExperiencePoints(character.getExperiencePoints());
         entity.setCampaignId(character.getCampaignId());
+        entity.setAvatarUrl(character.getAvatarUrl());
         entity.setCreatedAt(character.getCreatedAt());
         entity.setUpdatedAt(character.getUpdatedAt());
 
         if (character.getSkillProficiencies() != null) {
             entity.setSkillProficiencies(character.getSkillProficiencies().toArray(new String[0]));
+        }
+
+        if (character.getCurrencyPouch() != null) {
+            entity.setCopperPieces(character.getCurrencyPouch().cp());
+            entity.setSilverPieces(character.getCurrencyPouch().sp());
+            entity.setElectrumPieces(character.getCurrencyPouch().ep());
+            entity.setGoldPieces(character.getCurrencyPouch().gp());
+            entity.setPlatinumPieces(character.getCurrencyPouch().pp());
         }
 
         if (character.getAbilityScores() != null) {
@@ -247,6 +275,14 @@ public class PlayerCharacterJpaEntity {
                 ? characterFeats.stream().map(CharacterFeatJpaEntity::toDomain).toList()
                 : List.of();
 
+        CurrencyPouch pouch = new CurrencyPouch(
+                this.copperPieces,
+                this.silverPieces,
+                this.electrumPieces,
+                this.goldPieces,
+                this.platinumPieces
+        );
+
         return new PlayerCharacter(
                 this.id,
                 this.name,
@@ -273,6 +309,8 @@ public class PlayerCharacterJpaEntity {
                 this.campaignId,
                 domainItems,
                 domainFeats,
+                pouch,
+                this.avatarUrl,
                 this.createdAt,
                 this.updatedAt
         );
@@ -476,6 +514,54 @@ public class PlayerCharacterJpaEntity {
 
     public void setSkillProficiencies(String[] skillProficiencies) {
         this.skillProficiencies = skillProficiencies != null ? skillProficiencies : new String[0];
+    }
+
+    public int getCopperPieces() {
+        return copperPieces;
+    }
+
+    public void setCopperPieces(int copperPieces) {
+        this.copperPieces = copperPieces;
+    }
+
+    public int getSilverPieces() {
+        return silverPieces;
+    }
+
+    public void setSilverPieces(int silverPieces) {
+        this.silverPieces = silverPieces;
+    }
+
+    public int getElectrumPieces() {
+        return electrumPieces;
+    }
+
+    public void setElectrumPieces(int electrumPieces) {
+        this.electrumPieces = electrumPieces;
+    }
+
+    public int getGoldPieces() {
+        return goldPieces;
+    }
+
+    public void setGoldPieces(int goldPieces) {
+        this.goldPieces = goldPieces;
+    }
+
+    public int getPlatinumPieces() {
+        return platinumPieces;
+    }
+
+    public void setPlatinumPieces(int platinumPieces) {
+        this.platinumPieces = platinumPieces;
+    }
+
+    public String getAvatarUrl() {
+        return avatarUrl;
+    }
+
+    public void setAvatarUrl(String avatarUrl) {
+        this.avatarUrl = avatarUrl;
     }
 
     public Instant getCreatedAt() {

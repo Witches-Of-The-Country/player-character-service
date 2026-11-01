@@ -312,4 +312,55 @@ class PlayerCharacterTest {
                 character.updateSheet("Aramil", 20, -5, "notes")
         );
     }
+
+    @Test
+    @DisplayName("Spec 006: withItems, withFeats, and withLevelUp must retain currencyPouch and avatarUrl")
+    void shouldRetainCurrencyPouchAndAvatarUrlAcrossMutations() {
+        UUID lineageId = UUID.randomUUID();
+        UUID backgroundId = UUID.randomUUID();
+        AbilityScores scores = createValidAbilityScores();
+
+        PlayerCharacter character = PlayerCharacter.createNew(
+                "Gimli",
+                1,
+                12,
+                Ruleset.SRD_2024,
+                AbilityScoreMethod.STANDARD_ARRAY,
+                lineageId,
+                backgroundId,
+                UUID.randomUUID(),
+                scores
+        );
+
+        CurrencyPouch pouch = new CurrencyPouch(10, 20, 5, 50, 2);
+        String avatar = "https://example.com/avatar.png";
+
+        PlayerCharacter characterWithPouchAndAvatar = character.withCurrencyPouch(pouch).withAvatarUrl(avatar);
+        assertEquals(50, characterWithPouchAndAvatar.getCurrencyPouch().gp());
+        assertEquals(avatar, characterWithPouchAndAvatar.getAvatarUrl());
+
+        // withItems
+        PlayerCharacter withItems = characterWithPouchAndAvatar.withItems(java.util.List.of());
+        assertEquals(50, withItems.getCurrencyPouch().gp());
+        assertEquals(avatar, withItems.getAvatarUrl());
+
+        // withFeats
+        PlayerCharacter withFeats = withItems.withFeats(java.util.List.of());
+        assertEquals(50, withFeats.getCurrencyPouch().gp());
+        assertEquals(avatar, withFeats.getAvatarUrl());
+
+        // withLevelUp
+        PlayerCharacter leveledUp = withFeats.withLevelUp(
+                2,
+                20,
+                scores,
+                java.util.List.of(ClassProgression.createInitial(UUID.randomUUID(), null, 2)),
+                java.util.List.of(),
+                300,
+                15,
+                false
+        );
+        assertEquals(50, leveledUp.getCurrencyPouch().gp());
+        assertEquals(avatar, leveledUp.getAvatarUrl());
+    }
 }

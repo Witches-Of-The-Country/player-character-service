@@ -27,10 +27,14 @@ public interface GetReferenceDataUseCase {
     CursorPageResponse<SpellDto> getSpells(String cursor, int limit, String q, Ruleset ruleset, Integer level, String school, UUID ownerId);
 
     default CursorPageResponse<FeatDto> getFeats(String cursor, int limit, String q, Ruleset ruleset) {
-        return getFeats(cursor, limit, q, ruleset, null);
+        return getFeats(cursor, limit, q, ruleset, null, null);
     }
 
-    CursorPageResponse<FeatDto> getFeats(String cursor, int limit, String q, Ruleset ruleset, UUID ownerId);
+    default CursorPageResponse<FeatDto> getFeats(String cursor, int limit, String q, Ruleset ruleset, UUID ownerId) {
+        return getFeats(cursor, limit, q, ruleset, null, ownerId);
+    }
+
+    CursorPageResponse<FeatDto> getFeats(String cursor, int limit, String q, Ruleset ruleset, List<String> featTypes, UUID ownerId);
 
     default CursorPageResponse<ItemDto> getItems(String cursor, int limit, String q, Ruleset ruleset, String category, String rarity) {
         return getItems(cursor, limit, q, ruleset, category, rarity, null);
@@ -53,4 +57,8 @@ public interface GetReferenceDataUseCase {
     List<com.dungeoneer.playerCharacter.application.dto.SubclassDto> getSubclasses(UUID archetypeId, Ruleset ruleset);
 
     List<FeatDto> getProgressionFeats(UUID archetypeId, int level);
+
+    default List<FeatDto> getSubclassProgressionFeats(UUID subclassId, int level) {
+        return List.of();
+    }
 }

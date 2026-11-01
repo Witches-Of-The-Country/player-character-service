@@ -24,6 +24,7 @@ import com.dungeoneer.playerCharacter.domain.model.Lineage;
 import com.dungeoneer.playerCharacter.domain.model.MechanicalEffects;
 import com.dungeoneer.playerCharacter.domain.model.Ruleset;
 import com.dungeoneer.playerCharacter.domain.model.Spell;
+import com.dungeoneer.playerCharacter.domain.model.SpellPreparationType;
 import com.dungeoneer.playerCharacter.domain.model.SpellcastingType;
 import com.dungeoneer.playerCharacter.domain.model.Subclass;
 import org.springframework.stereotype.Service;
@@ -75,7 +76,8 @@ public class HomebrewService implements CreateHomebrewUseCase {
                 request.duration(),
                 request.description(),
                 "HOMEBREW",
-                ownerId
+                ownerId,
+                request.mechanicalProperties()
         );
 
         Spell saved = repository.saveSpell(spell);
@@ -142,7 +144,7 @@ public class HomebrewService implements CreateHomebrewUseCase {
                 request.description(),
                 "HOMEBREW",
                 ownerId,
-                request.mechanicalProperties()
+                request.resolveMechanicalProperties()
         );
 
         Item saved = repository.saveItem(item);
@@ -174,6 +176,18 @@ public class HomebrewService implements CreateHomebrewUseCase {
 
         UUID id = UUID.randomUUID();
 
+        int subclassLevel = (request.subclassLevel() != null && request.subclassLevel() >= 1 && request.subclassLevel() <= 20)
+                ? request.subclassLevel()
+                : 3;
+
+        SpellPreparationType prepType = SpellPreparationType.NONE;
+        if (request.spellPreparationType() != null && !request.spellPreparationType().isBlank()) {
+            try {
+                prepType = SpellPreparationType.valueOf(request.spellPreparationType().trim().toUpperCase());
+            } catch (Exception ignored) {
+            }
+        }
+
         Archetype archetype = new Archetype(
                 id,
                 request.name(),
@@ -187,10 +201,41 @@ public class HomebrewService implements CreateHomebrewUseCase {
                 Ruleset.HOMEBREW,
                 "HOMEBREW",
                 ownerId,
-                3
+                subclassLevel,
+                prepType
         );
 
         Archetype saved = repository.saveArchetype(archetype);
+
+        if (request.progressionFeats() != null) {
+            for (var entry : request.progressionFeats()) {
+                int unlockLevel = Math.max(1, Math.min(20, entry.unlockLevel()));
+                UUID targetFeatId = entry.featId();
+                if (targetFeatId == null && entry.name() != null && !entry.name().isBlank()) {
+                    UUID newFeatId = UUID.randomUUID();
+                    String slug = toSlug(entry.name());
+                    Feat inlineFeat = new Feat(
+                            newFeatId,
+                            Ruleset.HOMEBREW,
+                            slug,
+                            slug,
+                            entry.name().trim(),
+                            null,
+                            entry.description() != null && !entry.description().isBlank() ? entry.description().trim() : entry.name().trim(),
+                            "HOMEBREW",
+                            ownerId,
+                            FeatType.CLASS,
+                            entry.mechanicalEffects() != null ? entry.mechanicalEffects() : MechanicalEffects.empty()
+                    );
+                    Feat savedFeat = repository.saveFeat(inlineFeat);
+                    targetFeatId = savedFeat.getId();
+                }
+                if (targetFeatId != null) {
+                    repository.saveArchetypeFeatLink(saved.getId(), targetFeatId, unlockLevel);
+                }
+            }
+        }
+
         return ArchetypeDto.fromDomain(saved);
     }
 
@@ -220,6 +265,36 @@ public class HomebrewService implements CreateHomebrewUseCase {
         );
 
         Lineage saved = repository.saveLineage(lineage);
+
+        if (request.inlineFeats() != null) {
+            for (var entry : request.inlineFeats()) {
+                int unlockLevel = Math.max(1, Math.min(20, entry.unlockLevel()));
+                UUID targetFeatId = entry.featId();
+                if (targetFeatId == null && entry.name() != null && !entry.name().isBlank()) {
+                    UUID newFeatId = UUID.randomUUID();
+                    String featSlug = toSlug(entry.name());
+                    Feat inlineFeat = new Feat(
+                            newFeatId,
+                            Ruleset.HOMEBREW,
+                            featSlug,
+                            featSlug,
+                            entry.name().trim(),
+                            null,
+                            entry.description() != null && !entry.description().isBlank() ? entry.description().trim() : entry.name().trim(),
+                            "HOMEBREW",
+                            ownerId,
+                            FeatType.LINEAGE,
+                            entry.mechanicalEffects() != null ? entry.mechanicalEffects() : MechanicalEffects.empty()
+                    );
+                    Feat savedFeat = repository.saveFeat(inlineFeat);
+                    targetFeatId = savedFeat.getId();
+                }
+                if (targetFeatId != null) {
+                    repository.saveLineageFeatLink(saved.getId(), targetFeatId, unlockLevel);
+                }
+            }
+        }
+
         return LineageDto.fromDomain(saved);
     }
 
@@ -255,6 +330,36 @@ public class HomebrewService implements CreateHomebrewUseCase {
         );
 
         Subclass saved = repository.saveSubclass(subclass);
+
+        if (request.progressionFeats() != null) {
+            for (var entry : request.progressionFeats()) {
+                int unlockLevel = Math.max(1, Math.min(20, entry.unlockLevel()));
+                UUID targetFeatId = entry.featId();
+                if (targetFeatId == null && entry.name() != null && !entry.name().isBlank()) {
+                    UUID newFeatId = UUID.randomUUID();
+                    String featSlug = toSlug(entry.name());
+                    Feat inlineFeat = new Feat(
+                            newFeatId,
+                            Ruleset.HOMEBREW,
+                            featSlug,
+                            featSlug,
+                            entry.name().trim(),
+                            null,
+                            entry.description() != null && !entry.description().isBlank() ? entry.description().trim() : entry.name().trim(),
+                            "HOMEBREW",
+                            ownerId,
+                            FeatType.SUBCLASS,
+                            entry.mechanicalEffects() != null ? entry.mechanicalEffects() : MechanicalEffects.empty()
+                    );
+                    Feat savedFeat = repository.saveFeat(inlineFeat);
+                    targetFeatId = savedFeat.getId();
+                }
+                if (targetFeatId != null) {
+                    repository.saveSubclassFeatLink(saved.getId(), targetFeatId, unlockLevel);
+                }
+            }
+        }
+
         return SubclassDto.fromDomain(saved);
     }
 

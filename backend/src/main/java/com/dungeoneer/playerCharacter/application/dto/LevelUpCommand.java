@@ -17,12 +17,20 @@ public record LevelUpCommand(
 
         UUID hpRollId,
 
-        int hpIncrease,
+        Integer hpIncrease,
 
-        boolean milestone,
+        Boolean milestone,
 
         Map<String, Integer> abilityScoreIncreases,
 
         UUID selectedFeatId
 ) {
+        public LevelUpCommand {
+                if (hpIncrease == null) {
+                        hpIncrease = 0;
+                }
+                if (milestone == null) {
+                        milestone = false;
+                }
+        }
 }

@@ -29,6 +29,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(ReferenceDataController.class)
@@ -94,7 +95,7 @@ class ReferenceDataControllerTest {
                 UUID.randomUUID(), "SRD_2024", "alert-2024", "Alert", "Alerta", "Nível 1", "Iniciativa", "SRD"
         );
         CursorPageResponse<FeatDto> page = new CursorPageResponse<>(List.of(feat), null, false, 1);
-        when(getReferenceDataUseCase.getFeats(any(), eq(20), any(), any(), any())).thenReturn(page);
+        when(getReferenceDataUseCase.getFeats(any(), eq(20), any(), any(), any(), any())).thenReturn(page);
 
         mockMvc.perform(get("/api/reference/feats")
                         .contentType(MediaType.APPLICATION_JSON))
@@ -127,5 +128,52 @@ class ReferenceDataControllerTest {
                         .param("limit", "150")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("POST /api/reference/items with mechanicalProperties returns 201 Created")
+    void shouldCreateHomebrewItemWithMechanicalProperties() throws Exception {
+        UUID userId = UUID.randomUUID();
+        UUID itemId = UUID.randomUUID();
+        ItemDto createdItem = new ItemDto(
+                itemId, "HOMEBREW", "espada-flamejante", "Flame Blade", "Espada Flamejante",
+                "WEAPON", "Espada Longa", "RARE", true, "1500 po", "1.5 kg", "Espada em chamas", "HOMEBREW"
+        );
+
+        when(createHomebrewUseCase.createItem(eq(userId), any())).thenReturn(createdItem);
+
+        String jsonPayload = """
+                {
+                    "name": "Espada Flamejante",
+                    "nameEn": "Flame Blade",
+                    "itemCategory": "WEAPON",
+                    "itemType": "Espada Longa",
+                    "rarity": "RARE",
+                    "attunement": true,
+                    "cost": "1500 po",
+                    "weight": "1.5 kg",
+                    "description": "Espada em chamas",
+                    "mechanicalProperties": {
+                        "type": "WEAPON",
+                        "damageRolls": [
+                            {"diceFormula": "1d8", "damageType": "SLASHING"}
+                        ],
+                        "versatileDice": "1d10",
+                        "magicBonus": 1,
+                        "properties": ["VERSATILE"]
+                    }
+                }
+                """;
+
+        mockMvc.perform(post("/api/reference/items")
+                        .header("X-User-Id", userId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonPayload))
+                .andExpect(status().isCreated())
+                .andExpect(header().string("Location", org.hamcrest.Matchers.containsString("/api/reference/items/" + itemId)))
+                .andExpect(jsonPath("$.name").value("Espada Flamejante"))
+                .andExpect(jsonPath("$.itemCategory").value("WEAPON"));
+
+        verify(createHomebrewUseCase).createItem(eq(userId), any());
     }
 }

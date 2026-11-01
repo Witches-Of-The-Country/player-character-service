@@ -92,6 +92,19 @@ public class AbilityScores {
         return calculateModifier(this.charisma);
     }
 
+    public int getScore(String abilityName) {
+        if (abilityName == null) return 10;
+        return switch (abilityName.trim().toUpperCase()) {
+            case "STRENGTH", "STR", "FOR", "FORCA", "FORÇA" -> strength;
+            case "DEXTERITY", "DEX", "DES", "DESTREZA" -> dexterity;
+            case "CONSTITUTION", "CON", "CONSTITUICAO", "CONSTITUIÇÃO" -> constitution;
+            case "INTELLIGENCE", "INT", "INTELIGENCIA", "INTELIGÊNCIA" -> intelligence;
+            case "WISDOM", "WIS", "SAB", "SABEDORIA" -> wisdom;
+            case "CHARISMA", "CHA", "CAR", "CARISMA" -> charisma;
+            default -> 10;
+        };
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

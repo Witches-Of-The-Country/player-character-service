@@ -23,6 +23,7 @@ public class Archetype {
     private final String source;
     private final UUID ownerId;
     private final int subclassLevel;
+    private final SpellPreparationType spellPreparationType;
 
     public Archetype(
             UUID id,
@@ -37,7 +38,8 @@ public class Archetype {
             Ruleset ruleset,
             String source,
             UUID ownerId,
-            int subclassLevel
+            int subclassLevel,
+            SpellPreparationType spellPreparationType
     ) {
         if (id == null) {
             throw new CharacterValidationException("Archetype id cannot be null");
@@ -83,6 +85,40 @@ public class Archetype {
         this.source = source != null && !source.trim().isEmpty() ? source.trim() : "SRD";
         this.ownerId = ownerId;
         this.subclassLevel = subclassLevel;
+        this.spellPreparationType = spellPreparationType != null ? spellPreparationType : SpellPreparationType.NONE;
+    }
+
+    public Archetype(
+            UUID id,
+            String name,
+            HitDiceEnum hitDice,
+            String primaryAbility,
+            List<String> savingThrowProficiencies,
+            List<String> armorProficiencies,
+            List<String> weaponProficiencies,
+            SpellcastingType spellcastingType,
+            String spellcastingAbility,
+            Ruleset ruleset,
+            String source,
+            UUID ownerId,
+            int subclassLevel
+    ) {
+        this(
+                id,
+                name,
+                hitDice,
+                primaryAbility,
+                savingThrowProficiencies,
+                armorProficiencies,
+                weaponProficiencies,
+                spellcastingType,
+                spellcastingAbility,
+                ruleset,
+                source,
+                ownerId,
+                subclassLevel,
+                SpellPreparationType.NONE
+        );
     }
 
     // Overload for backwards compatibility
@@ -188,5 +224,9 @@ public class Archetype {
 
     public int getSubclassLevel() {
         return subclassLevel;
+    }
+
+    public SpellPreparationType getSpellPreparationType() {
+        return spellPreparationType;
     }
 }
