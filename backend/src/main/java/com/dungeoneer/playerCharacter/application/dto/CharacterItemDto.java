@@ -18,8 +18,30 @@ public record CharacterItemDto(
         int quantity,
         boolean equipped,
         boolean attuned,
-        Object mechanicalProperties
+        Object mechanicalProperties,
+        String description,
+        String cost,
+        String slug,
+        String ruleset
 ) {
+    public CharacterItemDto(
+            UUID id,
+            UUID characterId,
+            UUID itemId,
+            String name,
+            String itemCategory,
+            String itemType,
+            String rarity,
+            boolean requiresAttunement,
+            String weight,
+            int quantity,
+            boolean equipped,
+            boolean attuned,
+            Object mechanicalProperties
+    ) {
+        this(id, characterId, itemId, name, itemCategory, itemType, rarity, requiresAttunement, weight, quantity, equipped, attuned, mechanicalProperties, null, null, null, null);
+    }
+
     public static CharacterItemDto fromDomain(CharacterItem charItem, Item item) {
         return new CharacterItemDto(
                 charItem.getId(),
@@ -34,7 +56,11 @@ public record CharacterItemDto(
                 charItem.getQuantity(),
                 charItem.isEquipped(),
                 charItem.isAttuned(),
-                item != null ? item.getMechanicalProperties() : null
+                item != null ? item.getMechanicalProperties() : null,
+                item != null ? item.getDescription() : "",
+                item != null ? item.getCost() : "",
+                item != null ? item.getSlug() : "",
+                item != null && item.getRuleset() != null ? item.getRuleset().name() : ""
         );
     }
 }

@@ -129,6 +129,7 @@ public final class PlayerCharacterWebMapper {
                 result.actions(),
                 result.currency(),
                 result.avatarUrl(),
+                result.classes(),
                 result.createdAt(),
                 result.updatedAt()
         );

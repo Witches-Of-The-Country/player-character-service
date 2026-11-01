@@ -1,6 +1,7 @@
 package com.dungeoneer.playerCharacter.application.service;
 
 import com.dungeoneer.playerCharacter.application.dto.CharacterActionDto;
+import com.dungeoneer.playerCharacter.application.dto.CharacterClassSummaryDto;
 import com.dungeoneer.playerCharacter.application.dto.CharacterFeatDto;
 import com.dungeoneer.playerCharacter.application.dto.CharacterItemDto;
 import com.dungeoneer.playerCharacter.application.dto.CharacterSheetResult;
@@ -21,6 +22,7 @@ import com.dungeoneer.playerCharacter.domain.model.MechanicalEffects;
 import com.dungeoneer.playerCharacter.domain.model.PlayerCharacter;
 import com.dungeoneer.playerCharacter.domain.model.RulesEngine;
 import com.dungeoneer.playerCharacter.domain.model.Ruleset;
+import com.dungeoneer.playerCharacter.domain.model.Subclass;
 import com.dungeoneer.playerCharacter.domain.model.Srd2014RulesEngine;
 import com.dungeoneer.playerCharacter.domain.model.Srd2024RulesEngine;
 import com.dungeoneer.playerCharacter.domain.model.WeaponMechanics;
@@ -66,7 +68,21 @@ public class CharacterSheetHydrator {
             referenceDataRepository.findFeatById(cf.getFeatId()).ifPresent(f -> featMap.put(cf.getFeatId(), f));
         }
 
-        return toSheetResult(character, archetype, lineage, background, itemMap, featMap);
+        List<CharacterClassSummaryDto> classes = new ArrayList<>();
+        for (com.dungeoneer.playerCharacter.domain.model.ClassProgression cp : character.getClassProgressions()) {
+            String cName = referenceDataRepository.findArchetypeById(cp.getArchetypeId())
+                    .map(Archetype::getName)
+                    .orElse("Unknown");
+            String scName = null;
+            if (cp.getSubclassId() != null) {
+                scName = referenceDataRepository.findSubclassById(cp.getSubclassId())
+                        .map(Subclass::getName)
+                        .orElse(null);
+            }
+            classes.add(new CharacterClassSummaryDto(cName, scName, cp.getClassLevel()));
+        }
+
+        return toSheetResult(character, archetype, lineage, background, itemMap, featMap, classes);
     }
 
     private static final Map<String, String> SKILL_TO_ABILITY = new LinkedHashMap<>();
@@ -110,6 +126,18 @@ public class CharacterSheetHydrator {
             Background background,
             Map<UUID, Item> itemMap,
             Map<UUID, Feat> featMap
+    ) {
+        return toSheetResult(character, archetype, lineage, background, itemMap, featMap, Collections.emptyList());
+    }
+
+    public static CharacterSheetResult toSheetResult(
+            PlayerCharacter character,
+            Archetype archetype,
+            Lineage lineage,
+            Background background,
+            Map<UUID, Item> itemMap,
+            Map<UUID, Feat> featMap,
+            List<CharacterClassSummaryDto> classes
     ) {
         Map<String, Integer> savingThrows = calculateSavingThrows(character, archetype);
         Map<String, Integer> skills = calculateSkills(character, background);
@@ -157,12 +185,24 @@ public class CharacterSheetHydrator {
                 if (feat.getMechanicalEffects() != null) {
                     passiveAcBonus += feat.getMechanicalEffects().acBonus();
                     if (feat.getMechanicalEffects().actionName() != null && !feat.getMechanicalEffects().actionName().isBlank()) {
+                        String formula = feat.getMechanicalEffects().diceFormula();
+                        boolean isHealing = feat.getName().toLowerCase().contains("fôlego")
+                                || feat.getName().toLowerCase().contains("wind")
+                                || feat.getDescription().toLowerCase().contains("recupera")
+                                || feat.getDescription().toLowerCase().contains("cura")
+                                || feat.getDescription().toLowerCase().contains("pv");
+
+                        List<DamageRoll> damageRolls = List.of();
+                        if (formula != null && !formula.isBlank() && !isHealing) {
+                            damageRolls = List.of(new DamageRoll(formula, com.dungeoneer.playerCharacter.domain.model.DamageType.FORCE));
+                        }
+
                         actions.add(new CharacterActionDto(
                                 feat.getMechanicalEffects().actionName(),
                                 feat.getMechanicalEffects().actionType() != null ? feat.getMechanicalEffects().actionType() : "ACTION",
                                 "FEAT",
                                 null,
-                                feat.getMechanicalEffects().diceFormula() != null ? List.of(new DamageRoll(feat.getMechanicalEffects().diceFormula(), com.dungeoneer.playerCharacter.domain.model.DamageType.FORCE)) : List.of(),
+                                damageRolls,
                                 null,
                                 feat.getDescription(),
                                 charFeat.getCurrentCharges(),
@@ -216,6 +256,7 @@ public class CharacterSheetHydrator {
                 actions,
                 CurrencyPouchDto.fromDomain(character.getCurrencyPouch()),
                 character.getAvatarUrl(),
+                classes,
                 character.getCreatedAt(),
                 character.getUpdatedAt()
         );
