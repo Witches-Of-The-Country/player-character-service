@@ -6,21 +6,26 @@ import com.dungeoneer.playerCharacter.application.dto.CreateHomebrewFeatRequest;
 import com.dungeoneer.playerCharacter.application.dto.CreateHomebrewItemRequest;
 import com.dungeoneer.playerCharacter.application.dto.CreateHomebrewLineageRequest;
 import com.dungeoneer.playerCharacter.application.dto.CreateHomebrewSpellRequest;
+import com.dungeoneer.playerCharacter.application.dto.CreateHomebrewSubclassRequest;
 import com.dungeoneer.playerCharacter.application.dto.FeatDto;
 import com.dungeoneer.playerCharacter.application.dto.ItemDto;
 import com.dungeoneer.playerCharacter.application.dto.LineageDto;
 import com.dungeoneer.playerCharacter.application.dto.SpellDto;
+import com.dungeoneer.playerCharacter.application.dto.SubclassDto;
 import com.dungeoneer.playerCharacter.application.port.in.CreateHomebrewUseCase;
 import com.dungeoneer.playerCharacter.application.port.out.ReferenceDataRepository;
 import com.dungeoneer.playerCharacter.domain.exception.CharacterValidationException;
 import com.dungeoneer.playerCharacter.domain.model.Archetype;
 import com.dungeoneer.playerCharacter.domain.model.Feat;
+import com.dungeoneer.playerCharacter.domain.model.FeatType;
 import com.dungeoneer.playerCharacter.domain.model.HitDiceEnum;
 import com.dungeoneer.playerCharacter.domain.model.Item;
 import com.dungeoneer.playerCharacter.domain.model.Lineage;
+import com.dungeoneer.playerCharacter.domain.model.MechanicalEffects;
 import com.dungeoneer.playerCharacter.domain.model.Ruleset;
 import com.dungeoneer.playerCharacter.domain.model.Spell;
 import com.dungeoneer.playerCharacter.domain.model.SpellcastingType;
+import com.dungeoneer.playerCharacter.domain.model.Subclass;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -99,7 +104,9 @@ public class HomebrewService implements CreateHomebrewUseCase {
                 request.prerequisites(),
                 request.description(),
                 "HOMEBREW",
-                ownerId
+                ownerId,
+                request.featType() != null ? request.featType() : FeatType.GENERAL,
+                request.mechanicalEffects() != null ? request.mechanicalEffects() : MechanicalEffects.empty()
         );
 
         Feat saved = repository.saveFeat(feat);
@@ -134,7 +141,8 @@ public class HomebrewService implements CreateHomebrewUseCase {
                 request.weight(),
                 request.description(),
                 "HOMEBREW",
-                ownerId
+                ownerId,
+                request.mechanicalProperties()
         );
 
         Item saved = repository.saveItem(item);
@@ -165,19 +173,21 @@ public class HomebrewService implements CreateHomebrewUseCase {
         }
 
         UUID id = UUID.randomUUID();
+
         Archetype archetype = new Archetype(
                 id,
                 request.name(),
                 hitDice,
                 request.primaryAbility(),
-                request.savingThrowProficiencies() != null ? request.savingThrowProficiencies() : Collections.emptyList(),
+                request.savingThrowProficiencies(),
                 request.armorProficiencies() != null ? request.armorProficiencies() : Collections.emptyList(),
                 request.weaponProficiencies() != null ? request.weaponProficiencies() : Collections.emptyList(),
                 spellcastingType,
                 request.spellcastingAbility(),
                 Ruleset.HOMEBREW,
                 "HOMEBREW",
-                ownerId
+                ownerId,
+                3
         );
 
         Archetype saved = repository.saveArchetype(archetype);
@@ -194,12 +204,14 @@ public class HomebrewService implements CreateHomebrewUseCase {
         }
 
         UUID id = UUID.randomUUID();
+        String size = (request.size() != null && !request.size().isBlank()) ? request.size().toUpperCase() : "MEDIUM";
+
         Lineage lineage = new Lineage(
                 id,
                 request.name(),
                 request.description(),
                 request.speed() > 0 ? request.speed() : 30,
-                request.size() != null ? request.size().toUpperCase() : "MEDIUM",
+                size,
                 request.abilityBonuses() != null ? request.abilityBonuses() : Collections.emptyMap(),
                 request.traitsSummary() != null ? request.traitsSummary() : Collections.emptyList(),
                 Ruleset.HOMEBREW,
@@ -211,13 +223,46 @@ public class HomebrewService implements CreateHomebrewUseCase {
         return LineageDto.fromDomain(saved);
     }
 
-    private String toSlug(String input) {
-        if (input == null) {
-            return UUID.randomUUID().toString();
+    @Override
+    public SubclassDto createSubclass(UUID ownerId, CreateHomebrewSubclassRequest request) {
+        if (ownerId == null) {
+            throw new CharacterValidationException("Owner id is required for homebrew creation");
         }
-        String nowhitespace = WHITESPACE.matcher(input.trim().toLowerCase(Locale.ROOT)).replaceAll("-");
+        if (request == null) {
+            throw new CharacterValidationException("Subclass payload cannot be null");
+        }
+        if (request.archetypeId() == null) {
+            throw new CharacterValidationException("Archetype id is required");
+        }
+
+        Archetype archetype = repository.findArchetypeById(request.archetypeId())
+                .orElseThrow(() -> new CharacterValidationException("Archetype not found: " + request.archetypeId()));
+
+        UUID id = UUID.randomUUID();
+        String slug = toSlug(request.name());
+        String nameEn = (request.nameEn() != null && !request.nameEn().isBlank()) ? request.nameEn() : slug;
+
+        Subclass subclass = new Subclass(
+                id,
+                archetype.getId(),
+                Ruleset.HOMEBREW,
+                slug,
+                nameEn,
+                request.name(),
+                request.description(),
+                "HOMEBREW",
+                ownerId
+        );
+
+        Subclass saved = repository.saveSubclass(subclass);
+        return SubclassDto.fromDomain(saved);
+    }
+
+    private String toSlug(String input) {
+        if (input == null) return UUID.randomUUID().toString();
+        String nowhitespace = WHITESPACE.matcher(input).replaceAll("-");
         String normalized = Normalizer.normalize(nowhitespace, Normalizer.Form.NFD);
         String slug = NONLATIN.matcher(normalized).replaceAll("");
-        return slug.isBlank() ? UUID.randomUUID().toString() : slug;
+        return slug.toLowerCase(Locale.ENGLISH) + "-" + UUID.randomUUID().toString().substring(0, 8);
     }
 }

@@ -119,6 +119,11 @@ public final class PlayerCharacterWebMapper {
                 result.classProgressions(),
                 result.savingThrows(),
                 result.skills(),
+                result.experiencePoints(),
+                result.campaignId(),
+                result.inventory(),
+                result.feats(),
+                result.actions(),
                 result.createdAt(),
                 result.updatedAt()
         );

@@ -1,6 +1,7 @@
 package com.dungeoneer.playerCharacter.application.dto;
 
 import com.dungeoneer.playerCharacter.domain.model.Item;
+import com.dungeoneer.playerCharacter.domain.model.ItemMechanics;
 
 import java.util.UUID;
 
@@ -17,8 +18,27 @@ public record ItemDto(
         String cost,
         String weight,
         String description,
-        String source
+        String source,
+        ItemMechanics mechanicalProperties
 ) {
+    public ItemDto(
+            UUID id,
+            String ruleset,
+            String slug,
+            String nameEn,
+            String name,
+            String itemCategory,
+            String itemType,
+            String rarity,
+            boolean attunement,
+            String cost,
+            String weight,
+            String description,
+            String source
+    ) {
+        this(id, ruleset, slug, nameEn, name, itemCategory, itemType, rarity, attunement, cost, weight, description, source, new com.dungeoneer.playerCharacter.domain.model.EmptyItemMechanics());
+    }
+
     public static ItemDto fromDomain(Item item) {
         return new ItemDto(
                 item.getId(),
@@ -33,7 +53,8 @@ public record ItemDto(
                 item.getCost(),
                 item.getWeight(),
                 item.getDescription(),
-                item.getSource()
+                item.getSource(),
+                item.getMechanicalProperties()
         );
     }
 }

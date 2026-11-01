@@ -1,6 +1,8 @@
 package com.dungeoneer.playerCharacter.adapter.out.persistence;
 
 import com.dungeoneer.playerCharacter.domain.model.AbilityScoreMethod;
+import com.dungeoneer.playerCharacter.domain.model.CharacterFeat;
+import com.dungeoneer.playerCharacter.domain.model.CharacterItem;
 import com.dungeoneer.playerCharacter.domain.model.ClassProgression;
 import com.dungeoneer.playerCharacter.domain.model.HpCalculationMethod;
 import com.dungeoneer.playerCharacter.domain.model.PlayerCharacter;
@@ -86,11 +88,23 @@ public class PlayerCharacterJpaEntity {
     @Column(name = "has_pending_level_choices", nullable = false)
     private boolean hasPendingLevelChoices;
 
+    @Column(name = "experience_points", nullable = false)
+    private int experiencePoints = 0;
+
+    @Column(name = "campaign_id")
+    private UUID campaignId;
+
     @OneToOne(mappedBy = "character", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private AbilityScoresJpaEntity abilityScores;
 
     @OneToMany(mappedBy = "character", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<ClassProgressionJpaEntity> classProgressions = new ArrayList<>();
+
+    @OneToMany(mappedBy = "character", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<CharacterItemJpaEntity> characterItems = new ArrayList<>();
+
+    @OneToMany(mappedBy = "character", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<CharacterFeatJpaEntity> characterFeats = new ArrayList<>();
 
     @Column(name = "skill_proficiencies", nullable = false, columnDefinition = "varchar[]")
     @JdbcTypeCode(SqlTypes.ARRAY)
@@ -124,8 +138,12 @@ public class PlayerCharacterJpaEntity {
             String notes,
             HpCalculationMethod hpCalculationMethod,
             boolean hasPendingLevelChoices,
+            int experiencePoints,
+            UUID campaignId,
             AbilityScoresJpaEntity abilityScores,
             List<ClassProgressionJpaEntity> classProgressions,
+            List<CharacterItemJpaEntity> characterItems,
+            List<CharacterFeatJpaEntity> characterFeats,
             String[] skillProficiencies,
             Instant createdAt,
             Instant updatedAt
@@ -146,119 +164,87 @@ public class PlayerCharacterJpaEntity {
         this.backgroundId = backgroundId;
         this.userId = userId;
         this.notes = notes != null ? notes : "";
-        this.hpCalculationMethod = hpCalculationMethod != null ? hpCalculationMethod : HpCalculationMethod.MAX;
+        this.hpCalculationMethod = hpCalculationMethod;
         this.hasPendingLevelChoices = hasPendingLevelChoices;
+        this.experiencePoints = experiencePoints;
+        this.campaignId = campaignId;
         this.abilityScores = abilityScores;
         this.classProgressions = classProgressions != null ? classProgressions : new ArrayList<>();
+        this.characterItems = characterItems != null ? characterItems : new ArrayList<>();
+        this.characterFeats = characterFeats != null ? characterFeats : new ArrayList<>();
         this.skillProficiencies = skillProficiencies != null ? skillProficiencies : new String[0];
-        this.createdAt = createdAt != null ? createdAt : Instant.now();
-        this.updatedAt = updatedAt != null ? updatedAt : Instant.now();
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
     }
 
-    public PlayerCharacterJpaEntity(
-            UUID id,
-            String name,
-            int level,
-            int hitPointsCurrent,
-            int hitPointsMax,
-            int hitPointsTemp,
-            int armorClass,
-            int initiativeBonus,
-            int speed,
-            int proficiencyBonus,
-            Ruleset ruleset,
-            AbilityScoreMethod abilityScoreMethod,
-            UUID lineageId,
-            UUID backgroundId,
-            UUID userId,
-            String notes,
-            HpCalculationMethod hpCalculationMethod,
-            boolean hasPendingLevelChoices,
-            AbilityScoresJpaEntity abilityScores,
-            List<ClassProgressionJpaEntity> classProgressions,
-            Instant createdAt,
-            Instant updatedAt
-    ) {
-        this(
-                id,
-                name,
-                level,
-                hitPointsCurrent,
-                hitPointsMax,
-                hitPointsTemp,
-                armorClass,
-                initiativeBonus,
-                speed,
-                proficiencyBonus,
-                ruleset,
-                abilityScoreMethod,
-                lineageId,
-                backgroundId,
-                userId,
-                notes,
-                hpCalculationMethod,
-                hasPendingLevelChoices,
-                abilityScores,
-                classProgressions,
-                new String[0],
-                createdAt,
-                updatedAt
-        );
-    }
+    public static PlayerCharacterJpaEntity fromDomain(PlayerCharacter character) {
+        PlayerCharacterJpaEntity entity = new PlayerCharacterJpaEntity();
+        entity.setId(character.getId());
+        entity.setName(character.getName());
+        entity.setLevel(character.getLevel());
+        entity.setHitPointsCurrent(character.getHitPointsCurrent());
+        entity.setHitPointsMax(character.getHitPointsMax());
+        entity.setHitPointsTemp(character.getHitPointsTemp());
+        entity.setArmorClass(character.getArmorClass());
+        entity.setInitiativeBonus(character.getInitiativeBonus());
+        entity.setSpeed(character.getSpeed());
+        entity.setProficiencyBonus(character.getProficiencyBonus());
+        entity.setRuleset(character.getRuleset());
+        entity.setAbilityScoreMethod(character.getAbilityScoreMethod());
+        entity.setLineageId(character.getLineageId());
+        entity.setBackgroundId(character.getBackgroundId());
+        entity.setUserId(character.getUserId());
+        entity.setNotes(character.getNotes());
+        entity.setHpCalculationMethod(character.getHpCalculationMethod());
+        entity.setHasPendingLevelChoices(character.isHasPendingLevelChoices());
+        entity.setExperiencePoints(character.getExperiencePoints());
+        entity.setCampaignId(character.getCampaignId());
+        entity.setCreatedAt(character.getCreatedAt());
+        entity.setUpdatedAt(character.getUpdatedAt());
 
-    public static PlayerCharacterJpaEntity fromDomain(PlayerCharacter domain) {
-        String[] skills = (domain.getSkillProficiencies() != null)
-                ? domain.getSkillProficiencies().toArray(new String[0])
-                : new String[0];
-
-        PlayerCharacterJpaEntity entity = new PlayerCharacterJpaEntity(
-                domain.getId(),
-                domain.getName(),
-                domain.getLevel(),
-                domain.getHitPointsCurrent(),
-                domain.getHitPointsMax(),
-                domain.getHitPointsTemp(),
-                domain.getArmorClass(),
-                domain.getInitiativeBonus(),
-                domain.getSpeed(),
-                domain.getProficiencyBonus(),
-                domain.getRuleset(),
-                domain.getAbilityScoreMethod(),
-                domain.getLineageId(),
-                domain.getBackgroundId(),
-                domain.getUserId() != null ? domain.getUserId() : UUID.fromString("00000000-0000-0000-0000-000000000000"),
-                domain.getNotes(),
-                domain.getHpCalculationMethod(),
-                domain.isHasPendingLevelChoices(),
-                null,
-                new ArrayList<>(),
-                skills,
-                domain.getCreatedAt(),
-                domain.getUpdatedAt()
-        );
-
-        if (domain.getAbilityScores() != null) {
-            AbilityScoresJpaEntity abilityScoresJpa = AbilityScoresJpaEntity.fromDomain(domain.getAbilityScores(), entity);
-            entity.setAbilityScores(abilityScoresJpa);
+        if (character.getSkillProficiencies() != null) {
+            entity.setSkillProficiencies(character.getSkillProficiencies().toArray(new String[0]));
         }
 
-        if (domain.getClassProgressions() != null) {
-            List<ClassProgressionJpaEntity> progressEntities = domain.getClassProgressions().stream()
+        if (character.getAbilityScores() != null) {
+            entity.setAbilityScores(AbilityScoresJpaEntity.fromDomain(character.getAbilityScores(), entity));
+        }
+
+        if (character.getClassProgressions() != null) {
+            List<ClassProgressionJpaEntity> progressions = character.getClassProgressions().stream()
                     .map(cp -> ClassProgressionJpaEntity.fromDomain(cp, entity))
                     .toList();
-            entity.setClassProgressions(new ArrayList<>(progressEntities));
+            entity.setClassProgressions(new ArrayList<>(progressions));
+        }
+
+        if (character.getItems() != null) {
+            List<CharacterItemJpaEntity> itemEntities = character.getItems().stream()
+                    .map(item -> CharacterItemJpaEntity.fromDomain(item, entity))
+                    .toList();
+            entity.setCharacterItems(new ArrayList<>(itemEntities));
+        }
+
+        if (character.getFeats() != null) {
+            List<CharacterFeatJpaEntity> featEntities = character.getFeats().stream()
+                    .map(feat -> CharacterFeatJpaEntity.fromDomain(feat, entity))
+                    .toList();
+            entity.setCharacterFeats(new ArrayList<>(featEntities));
         }
 
         return entity;
     }
 
     public PlayerCharacter toDomain() {
-        List<ClassProgression> domainProgressions = (this.classProgressions != null)
-                ? this.classProgressions.stream().map(ClassProgressionJpaEntity::toDomain).toList()
+        List<ClassProgression> progressions = classProgressions != null
+                ? classProgressions.stream().map(ClassProgressionJpaEntity::toDomain).toList()
                 : List.of();
 
-        List<String> domainSkills = (this.skillProficiencies != null)
-                ? Arrays.asList(this.skillProficiencies)
+        List<CharacterItem> domainItems = characterItems != null
+                ? characterItems.stream().map(CharacterItemJpaEntity::toDomain).toList()
+                : List.of();
+
+        List<CharacterFeat> domainFeats = characterFeats != null
+                ? characterFeats.stream().map(CharacterFeatJpaEntity::toDomain).toList()
                 : List.of();
 
         return new PlayerCharacter(
@@ -281,8 +267,12 @@ public class PlayerCharacterJpaEntity {
                 this.notes,
                 this.hpCalculationMethod,
                 this.hasPendingLevelChoices,
-                domainProgressions,
-                domainSkills,
+                progressions,
+                this.skillProficiencies != null ? Arrays.asList(this.skillProficiencies) : List.of(),
+                this.experiencePoints,
+                this.campaignId,
+                domainItems,
+                domainFeats,
                 this.createdAt,
                 this.updatedAt
         );
@@ -432,6 +422,22 @@ public class PlayerCharacterJpaEntity {
         this.hasPendingLevelChoices = hasPendingLevelChoices;
     }
 
+    public int getExperiencePoints() {
+        return experiencePoints;
+    }
+
+    public void setExperiencePoints(int experiencePoints) {
+        this.experiencePoints = experiencePoints;
+    }
+
+    public UUID getCampaignId() {
+        return campaignId;
+    }
+
+    public void setCampaignId(UUID campaignId) {
+        this.campaignId = campaignId;
+    }
+
     public AbilityScoresJpaEntity getAbilityScores() {
         return abilityScores;
     }
@@ -446,6 +452,22 @@ public class PlayerCharacterJpaEntity {
 
     public void setClassProgressions(List<ClassProgressionJpaEntity> classProgressions) {
         this.classProgressions = classProgressions;
+    }
+
+    public List<CharacterItemJpaEntity> getCharacterItems() {
+        return characterItems;
+    }
+
+    public void setCharacterItems(List<CharacterItemJpaEntity> characterItems) {
+        this.characterItems = characterItems;
+    }
+
+    public List<CharacterFeatJpaEntity> getCharacterFeats() {
+        return characterFeats;
+    }
+
+    public void setCharacterFeats(List<CharacterFeatJpaEntity> characterFeats) {
+        this.characterFeats = characterFeats;
     }
 
     public String[] getSkillProficiencies() {

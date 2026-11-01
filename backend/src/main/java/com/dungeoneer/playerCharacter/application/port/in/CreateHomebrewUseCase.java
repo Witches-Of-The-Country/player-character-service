@@ -6,10 +6,12 @@ import com.dungeoneer.playerCharacter.application.dto.CreateHomebrewFeatRequest;
 import com.dungeoneer.playerCharacter.application.dto.CreateHomebrewItemRequest;
 import com.dungeoneer.playerCharacter.application.dto.CreateHomebrewLineageRequest;
 import com.dungeoneer.playerCharacter.application.dto.CreateHomebrewSpellRequest;
+import com.dungeoneer.playerCharacter.application.dto.CreateHomebrewSubclassRequest;
 import com.dungeoneer.playerCharacter.application.dto.FeatDto;
 import com.dungeoneer.playerCharacter.application.dto.ItemDto;
 import com.dungeoneer.playerCharacter.application.dto.LineageDto;
 import com.dungeoneer.playerCharacter.application.dto.SpellDto;
+import com.dungeoneer.playerCharacter.application.dto.SubclassDto;
 
 import java.util.UUID;
 
@@ -24,4 +26,6 @@ public interface CreateHomebrewUseCase {
     ArchetypeDto createArchetype(UUID ownerId, CreateHomebrewArchetypeRequest request);
 
     LineageDto createLineage(UUID ownerId, CreateHomebrewLineageRequest request);
+
+    SubclassDto createSubclass(UUID ownerId, CreateHomebrewSubclassRequest request);
 }

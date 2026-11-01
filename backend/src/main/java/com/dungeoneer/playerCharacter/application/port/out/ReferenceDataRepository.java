@@ -9,6 +9,7 @@ import com.dungeoneer.playerCharacter.domain.model.Item;
 import com.dungeoneer.playerCharacter.domain.model.Lineage;
 import com.dungeoneer.playerCharacter.domain.model.Ruleset;
 import com.dungeoneer.playerCharacter.domain.model.Spell;
+import com.dungeoneer.playerCharacter.domain.model.Subclass;
 
 import java.util.List;
 import java.util.Optional;
@@ -27,6 +28,32 @@ public interface ReferenceDataRepository {
     Optional<Lineage> findLineageById(UUID id);
 
     Optional<Background> findBackgroundById(UUID id);
+
+    Optional<Item> findItemById(UUID id);
+
+    Optional<Feat> findFeatById(UUID id);
+
+    Optional<Subclass> findSubclassById(UUID id);
+
+    default List<Subclass> findSubclassesByArchetypeId(UUID archetypeId) {
+        return findSubclassesByArchetypeId(archetypeId, null, null);
+    }
+
+    List<Subclass> findSubclassesByArchetypeId(UUID archetypeId, Ruleset ruleset, UUID ownerId);
+
+    List<Feat> findArchetypeFeats(UUID archetypeId, int unlockLevel);
+
+    List<Feat> findSubclassFeats(UUID subclassId, int unlockLevel);
+
+    default List<Feat> findProgressionFeats(UUID archetypeId, int unlockLevel) {
+        return findArchetypeFeats(archetypeId, unlockLevel);
+    }
+
+    default List<Feat> findSubclassProgressionFeats(UUID subclassId, int unlockLevel) {
+        return findSubclassFeats(subclassId, unlockLevel);
+    }
+
+    List<Feat> findAllFeatsForArchetype(UUID archetypeId);
 
     default List<SpellJpaEntity> findSpellsWithCursor(Ruleset ruleset, Integer level, String school, String q, String afterName, UUID afterId, int limit) {
         return findSpellsWithCursor(ruleset, level, school, q, afterName, afterId, limit, null);
@@ -67,4 +94,6 @@ public interface ReferenceDataRepository {
     Archetype saveArchetype(Archetype archetype);
 
     Lineage saveLineage(Lineage lineage);
+
+    Subclass saveSubclass(Subclass subclass);
 }

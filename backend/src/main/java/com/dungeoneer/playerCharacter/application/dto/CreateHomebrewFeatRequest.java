@@ -1,5 +1,7 @@
 package com.dungeoneer.playerCharacter.application.dto;
 
+import com.dungeoneer.playerCharacter.domain.model.FeatType;
+import com.dungeoneer.playerCharacter.domain.model.MechanicalEffects;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
@@ -16,6 +18,18 @@ public record CreateHomebrewFeatRequest(
 
         @NotBlank(message = "Description cannot be blank")
         @Size(max = 4000, message = "Description cannot exceed 4000 characters")
-        String description
+        String description,
+
+        FeatType featType,
+
+        MechanicalEffects mechanicalEffects
 ) {
+    public CreateHomebrewFeatRequest(
+            String name,
+            String nameEn,
+            String prerequisites,
+            String description
+    ) {
+        this(name, nameEn, prerequisites, description, FeatType.GENERAL, MechanicalEffects.empty());
+    }
 }

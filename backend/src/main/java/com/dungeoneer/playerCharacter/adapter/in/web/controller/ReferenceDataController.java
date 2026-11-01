@@ -1,6 +1,8 @@
 package com.dungeoneer.playerCharacter.adapter.in.web.controller;
 
 import com.dungeoneer.playerCharacter.application.dto.ArchetypeDto;
+import com.dungeoneer.playerCharacter.application.dto.SubclassDto;
+import com.dungeoneer.playerCharacter.application.dto.CreateHomebrewSubclassRequest;
 import com.dungeoneer.playerCharacter.application.dto.BackgroundDto;
 import com.dungeoneer.playerCharacter.application.dto.CreateHomebrewArchetypeRequest;
 import com.dungeoneer.playerCharacter.application.dto.CreateHomebrewFeatRequest;
@@ -191,6 +193,36 @@ public class ReferenceDataController {
             @Valid @RequestBody CreateHomebrewLineageRequest request
     ) {
         LineageDto created = createHomebrewUseCase.createLineage(userId, request);
+        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+                .path("/{id}")
+                .buildAndExpand(created.id())
+                .toUri();
+        return ResponseEntity.created(location).body(created);
+    }
+
+    @GetMapping("/subclasses")
+    public ResponseEntity<List<SubclassDto>> getSubclasses(
+            @RequestParam UUID archetypeId,
+            @RequestParam(required = false) String ruleset
+    ) {
+        Ruleset parsedRuleset = parseRuleset(ruleset);
+        return ResponseEntity.ok(getReferenceDataUseCase.getSubclasses(archetypeId, parsedRuleset));
+    }
+
+    @GetMapping("/progression-feats")
+    public ResponseEntity<List<FeatDto>> getProgressionFeats(
+            @RequestParam UUID archetypeId,
+            @RequestParam int level
+    ) {
+        return ResponseEntity.ok(getReferenceDataUseCase.getProgressionFeats(archetypeId, level));
+    }
+
+    @PostMapping("/subclasses")
+    public ResponseEntity<SubclassDto> createSubclass(
+            @RequestHeader(value = "X-User-Id", required = true) UUID userId,
+            @Valid @RequestBody CreateHomebrewSubclassRequest request
+    ) {
+        SubclassDto created = createHomebrewUseCase.createSubclass(userId, request);
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
                 .buildAndExpand(created.id())

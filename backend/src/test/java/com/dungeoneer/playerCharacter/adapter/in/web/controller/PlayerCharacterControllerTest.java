@@ -97,6 +97,16 @@ class PlayerCharacterControllerTest {
     private ListCharacterNotesUseCase listCharacterNotesUseCase;
     @MockitoBean
     private UpdateCharacterNoteUseCase updateCharacterNoteUseCase;
+    @MockitoBean
+    private com.dungeoneer.playerCharacter.application.port.in.AddExperienceUseCase addExperienceUseCase;
+    @MockitoBean
+    private com.dungeoneer.playerCharacter.application.port.in.LevelUpUseCase levelUpUseCase;
+    @MockitoBean
+    private com.dungeoneer.playerCharacter.application.port.in.ManageInventoryUseCase manageInventoryUseCase;
+    @MockitoBean
+    private com.dungeoneer.playerCharacter.application.port.in.UseConsumableUseCase useConsumableUseCase;
+    @MockitoBean
+    private com.dungeoneer.playerCharacter.application.port.in.RestUseCase restUseCase;
 
     private CharacterSheetResult createMockSheet(UUID characterId, UUID userId, String name) {
         return new CharacterSheetResult(

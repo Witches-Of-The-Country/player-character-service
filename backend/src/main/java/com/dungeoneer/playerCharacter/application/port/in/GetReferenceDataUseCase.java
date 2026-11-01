@@ -49,4 +49,8 @@ public interface GetReferenceDataUseCase {
     }
 
     CursorPageResponse<LineageDto> getLineagesPaginated(String cursor, int limit, String q, Ruleset ruleset, UUID ownerId);
+
+    List<com.dungeoneer.playerCharacter.application.dto.SubclassDto> getSubclasses(UUID archetypeId, Ruleset ruleset);
+
+    List<FeatDto> getProgressionFeats(UUID archetypeId, int level);
 }

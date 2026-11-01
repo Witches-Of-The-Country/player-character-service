@@ -196,6 +196,20 @@ public class ReferenceDataService implements GetReferenceDataUseCase {
         return new CursorPageResponse<>(dtos, nextCursor, hasMore, pageItems.size());
     }
 
+    @Override
+    public List<com.dungeoneer.playerCharacter.application.dto.SubclassDto> getSubclasses(UUID archetypeId, Ruleset ruleset) {
+        return repository.findSubclassesByArchetypeId(archetypeId, ruleset, null).stream()
+                .map(com.dungeoneer.playerCharacter.application.dto.SubclassDto::fromDomain)
+                .toList();
+    }
+
+    @Override
+    public List<FeatDto> getProgressionFeats(UUID archetypeId, int level) {
+        return repository.findProgressionFeats(archetypeId, level).stream()
+                .map(FeatDto::fromDomain)
+                .toList();
+    }
+
     private String encodeCursor(String name, UUID id) {
         String raw = name + ":" + id;
         return Base64.getUrlEncoder().withoutPadding().encodeToString(raw.getBytes(StandardCharsets.UTF_8));

@@ -2,6 +2,8 @@ package com.dungeoneer.playerCharacter.application.dto;
 
 import com.dungeoneer.playerCharacter.adapter.out.persistence.FeatJpaEntity;
 import com.dungeoneer.playerCharacter.domain.model.Feat;
+import com.dungeoneer.playerCharacter.domain.model.FeatType;
+import com.dungeoneer.playerCharacter.domain.model.MechanicalEffects;
 
 import java.util.UUID;
 
@@ -13,19 +15,25 @@ public record FeatDto(
         String name,
         String prerequisites,
         String description,
-        String source
+        String source,
+        FeatType featType,
+        MechanicalEffects mechanicalEffects
 ) {
+    public FeatDto(
+            UUID id,
+            String ruleset,
+            String slug,
+            String nameEn,
+            String name,
+            String prerequisites,
+            String description,
+            String source
+    ) {
+        this(id, ruleset, slug, nameEn, name, prerequisites, description, source, FeatType.GENERAL, MechanicalEffects.empty());
+    }
+
     public static FeatDto fromEntity(FeatJpaEntity entity) {
-        return new FeatDto(
-                entity.getId(),
-                entity.getRuleset() != null ? entity.getRuleset().name() : null,
-                entity.getSlug(),
-                entity.getNameEn(),
-                entity.getName(),
-                entity.getPrerequisites(),
-                entity.getDescription(),
-                entity.getSource()
-        );
+        return fromDomain(entity.toDomain());
     }
 
     public static FeatDto fromDomain(Feat feat) {
@@ -37,7 +45,9 @@ public record FeatDto(
                 feat.getName(),
                 feat.getPrerequisites(),
                 feat.getDescription(),
-                feat.getSource()
+                feat.getSource(),
+                feat.getFeatType(),
+                feat.getMechanicalEffects()
         );
     }
 }

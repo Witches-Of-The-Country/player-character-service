@@ -1,7 +1,11 @@
 package com.dungeoneer.playerCharacter.application.dto;
 
+import com.dungeoneer.playerCharacter.domain.model.DamageRoll;
+import com.dungeoneer.playerCharacter.domain.model.ItemMechanics;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+
+import java.util.List;
 
 public record CreateHomebrewItemRequest(
         @NotBlank(message = "Item name cannot be blank")
@@ -32,8 +36,24 @@ public record CreateHomebrewItemRequest(
 
         @NotBlank(message = "Description cannot be blank")
         @Size(max = 4000, message = "Description cannot exceed 4000 characters")
-        String description
+        String description,
+
+        ItemMechanics mechanicalProperties
 ) {
+    public CreateHomebrewItemRequest(
+            String name,
+            String nameEn,
+            String itemCategory,
+            String itemType,
+            String rarity,
+            Boolean attunement,
+            String cost,
+            String weight,
+            String description
+    ) {
+        this(name, nameEn, itemCategory, itemType, rarity, attunement, cost, weight, description, new com.dungeoneer.playerCharacter.domain.model.EmptyItemMechanics());
+    }
+
     public boolean isAttunement() {
         return Boolean.TRUE.equals(attunement);
     }
