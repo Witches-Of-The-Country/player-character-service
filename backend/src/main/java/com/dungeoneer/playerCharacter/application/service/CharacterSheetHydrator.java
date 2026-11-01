@@ -183,10 +183,30 @@ public class CharacterSheetHydrator {
                         hasMonkUnarmored = true;
                     }
                 }
+                Integer currentCharges = charFeat.getCurrentCharges();
+                Integer maxCharges = charFeat.getMaxCharges();
+
+                if (maxCharges == null && feat.getMechanicalEffects() != null) {
+                    if (feat.getMechanicalEffects().usesPerRest() != null) {
+                        maxCharges = feat.getMechanicalEffects().usesPerRest();
+                    }
+                }
+
+                if (normalized.contains("FÔLEGO") || normalized.contains("FOLEGO") || normalized.contains("SECOND WIND")) {
+                    if (maxCharges == null || maxCharges == 0) {
+                        maxCharges = (character.getRuleset() == Ruleset.SRD_2024) ? 2 : 1;
+                    }
+                }
+
+                if (currentCharges == null && maxCharges != null) {
+                    currentCharges = maxCharges;
+                }
+
                 if (normalized.contains("ATAQUE DESCUIDADO") || normalized.contains("RECKLESS ATTACK")) {
                     int strMod = character.getAbilityScores() != null ? character.getAbilityScores().getStrengthModifier() : 0;
                     int attackBonus = strMod + character.getProficiencyBonus();
                     actions.add(new CharacterActionDto(
+                            charFeat.getId(),
                             feat.getName(),
                             "SPECIAL",
                             "FEAT",
@@ -194,8 +214,8 @@ public class CharacterSheetHydrator {
                             List.of(new DamageRoll("2d20kh1", DamageType.FORCE)),
                             null,
                             feat.getDescription(),
-                            charFeat.getCurrentCharges(),
-                            charFeat.getMaxCharges()
+                            currentCharges,
+                            maxCharges
                     ));
                     continue;
                 }
@@ -236,6 +256,7 @@ public class CharacterSheetHydrator {
                         }
 
                         actions.add(new CharacterActionDto(
+                                charFeat.getId(),
                                 feat.getMechanicalEffects().actionName(),
                                 feat.getMechanicalEffects().actionType() != null ? feat.getMechanicalEffects().actionType() : "ACTION",
                                 "FEAT",
@@ -243,8 +264,8 @@ public class CharacterSheetHydrator {
                                 damageRolls,
                                 null,
                                 feat.getDescription(),
-                                charFeat.getCurrentCharges(),
-                                charFeat.getMaxCharges()
+                                currentCharges,
+                                maxCharges
                         ));
                     }
                 }
@@ -308,6 +329,7 @@ public class CharacterSheetHydrator {
         int attackBonus = attackMod + character.getProficiencyBonus() + wep.magicBonus();
 
         return new CharacterActionDto(
+                item.getId(),
                 item.getName(),
                 "ACTION",
                 "WEAPON",
