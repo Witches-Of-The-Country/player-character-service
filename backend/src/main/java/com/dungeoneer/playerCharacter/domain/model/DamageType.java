@@ -13,5 +13,6 @@ public enum DamageType {
     PSYCHIC,
     NECROTIC,
     RADIANT,
-    FORCE
+    FORCE,
+    HEALING
 }

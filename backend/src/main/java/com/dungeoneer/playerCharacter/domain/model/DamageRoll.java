@@ -11,7 +11,7 @@ public record DamageRoll(
         String conditionNote
 ) {
 
-    private static final Pattern DICE_PATTERN = Pattern.compile("^\\d{1,2}d(4|6|8|10|12|20|100)([+-]\\d{1,3})?$");
+    private static final Pattern DICE_PATTERN = Pattern.compile("^\\d{1,2}d(4|6|8|10|12|20|100)(kh\\d|kl\\d)?([+-]\\d{1,3})?$");
 
     public DamageRoll(String diceFormula, DamageType damageType) {
         this(diceFormula, damageType, false, null);

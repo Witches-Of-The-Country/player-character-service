@@ -15,6 +15,7 @@ import com.dungeoneer.playerCharacter.domain.model.Background;
 import com.dungeoneer.playerCharacter.domain.model.CharacterFeat;
 import com.dungeoneer.playerCharacter.domain.model.CharacterItem;
 import com.dungeoneer.playerCharacter.domain.model.DamageRoll;
+import com.dungeoneer.playerCharacter.domain.model.DamageType;
 import com.dungeoneer.playerCharacter.domain.model.Feat;
 import com.dungeoneer.playerCharacter.domain.model.Item;
 import com.dungeoneer.playerCharacter.domain.model.Lineage;
@@ -182,19 +183,56 @@ public class CharacterSheetHydrator {
                         hasMonkUnarmored = true;
                     }
                 }
+                if (normalized.contains("ATAQUE DESCUIDADO") || normalized.contains("RECKLESS ATTACK")) {
+                    int strMod = character.getAbilityScores() != null ? character.getAbilityScores().getStrengthModifier() : 0;
+                    int attackBonus = strMod + character.getProficiencyBonus();
+                    actions.add(new CharacterActionDto(
+                            feat.getName(),
+                            "SPECIAL",
+                            "FEAT",
+                            attackBonus,
+                            List.of(new DamageRoll("2d20kh1", DamageType.FORCE)),
+                            null,
+                            feat.getDescription(),
+                            charFeat.getCurrentCharges(),
+                            charFeat.getMaxCharges()
+                    ));
+                    continue;
+                }
                 if (feat.getMechanicalEffects() != null) {
                     passiveAcBonus += feat.getMechanicalEffects().acBonus();
                     if (feat.getMechanicalEffects().actionName() != null && !feat.getMechanicalEffects().actionName().isBlank()) {
                         String formula = feat.getMechanicalEffects().diceFormula();
-                        boolean isHealing = feat.getName().toLowerCase().contains("fôlego")
-                                || feat.getName().toLowerCase().contains("wind")
-                                || feat.getDescription().toLowerCase().contains("recupera")
-                                || feat.getDescription().toLowerCase().contains("cura")
-                                || feat.getDescription().toLowerCase().contains("pv");
+                        boolean isHealing = normalized.contains("FÔLEGO")
+                                || normalized.contains("FOLEGO")
+                                || normalized.contains("WIND")
+                                || normalized.contains("CURA")
+                                || (feat.getDescription() != null && (
+                                        feat.getDescription().toLowerCase().contains("recupera")
+                                        || feat.getDescription().toLowerCase().contains("cura")
+                                        || feat.getDescription().toLowerCase().contains("pv")));
+
+                        if (normalized.contains("FÔLEGO") || normalized.contains("FOLEGO") || normalized.contains("SECOND WIND")) {
+                            int fighterLevel = 1;
+                            if (classes != null && !classes.isEmpty()) {
+                                for (CharacterClassSummaryDto cls : classes) {
+                                    String cName = cls.className() != null ? cls.className().toUpperCase() : "";
+                                    if (cName.contains("FIGHTER") || cName.contains("GUERREIRO")) {
+                                        fighterLevel = cls.classLevel();
+                                        break;
+                                    }
+                                }
+                            } else if (archetype != null && (archetype.getName().toUpperCase().contains("FIGHTER") || archetype.getName().toUpperCase().contains("GUERREIRO"))) {
+                                fighterLevel = character.getLevel();
+                            }
+                            formula = "1d10+" + fighterLevel;
+                            isHealing = true;
+                        }
 
                         List<DamageRoll> damageRolls = List.of();
-                        if (formula != null && !formula.isBlank() && !isHealing) {
-                            damageRolls = List.of(new DamageRoll(formula, com.dungeoneer.playerCharacter.domain.model.DamageType.FORCE));
+                        if (formula != null && !formula.isBlank()) {
+                            DamageType dt = isHealing ? DamageType.HEALING : DamageType.FORCE;
+                            damageRolls = List.of(new DamageRoll(formula, dt));
                         }
 
                         actions.add(new CharacterActionDto(
