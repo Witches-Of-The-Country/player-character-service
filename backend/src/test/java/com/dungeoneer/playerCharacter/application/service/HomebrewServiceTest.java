@@ -378,4 +378,88 @@ class HomebrewServiceTest {
         verify(repository).saveFeat(any(Feat.class));
         verify(repository).saveLineageFeatLink(eq(result.id()), any(UUID.class), eq(1));
     }
+
+    @Test
+    @DisplayName("Spec 006: updateSpell should successfully update HOMEBREW spell")
+    void shouldUpdateHomebrewSpellSuccessfully() {
+        UUID spellId = UUID.randomUUID();
+        Spell existing = new Spell(
+                spellId, Ruleset.HOMEBREW, "raio-antigo", "Old Ray", "Raio Antigo",
+                1, "Evocação", "1 ação", "18m", "V, S", "Instantânea", "Desc", "HOMEBREW", ownerId, null
+        );
+        when(repository.findSpellById(spellId)).thenReturn(Optional.of(existing));
+        when(repository.saveSpell(any(Spell.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        CreateHomebrewSpellRequest updateRequest = new CreateHomebrewSpellRequest(
+                "Raio Novo", "New Ray", 2, "Evocação", "1 ação bônus", "30m", "V, S", "Concentração", "Nova Desc"
+        );
+
+        SpellDto updated = homebrewService.updateSpell(spellId, ownerId, updateRequest);
+
+        assertThat(updated).isNotNull();
+        assertThat(updated.name()).isEqualTo("Raio Novo");
+        assertThat(updated.level()).isEqualTo(2);
+        verify(repository).saveSpell(any(Spell.class));
+    }
+
+    @Test
+    @DisplayName("Spec 006: updateSpell should throw CharacterValidationException when attempting to update official SRD spell")
+    void shouldRejectUpdatingOfficialSrdSpell() {
+        UUID spellId = UUID.randomUUID();
+        Spell srdSpell = new Spell(
+                spellId, Ruleset.SRD_2024, "fireball", "Fireball", "Bola de Fogo",
+                3, "Evocação", "1 ação", "45m", "V, S, M", "Instantânea", "Explosão de fogo", "SRD", null, null
+        );
+        when(repository.findSpellById(spellId)).thenReturn(Optional.of(srdSpell));
+
+        CreateHomebrewSpellRequest updateRequest = new CreateHomebrewSpellRequest(
+                "Bola de Fogo Modificada", "Fireball Modified", 3, "Evocação", "1 ação", "45m", "V", "Instantânea", "Desc"
+        );
+
+        assertThatThrownBy(() -> homebrewService.updateSpell(spellId, ownerId, updateRequest))
+                .isInstanceOf(CharacterValidationException.class)
+                .hasMessageContaining("Official SRD spells cannot be modified");
+    }
+
+    @Test
+    @DisplayName("Spec 006: updateItem should successfully update HOMEBREW item")
+    void shouldUpdateHomebrewItemSuccessfully() {
+        UUID itemId = UUID.randomUUID();
+        Item existing = new Item(
+                itemId, Ruleset.HOMEBREW, "adaga-sombria", "Shadow Dagger", "Adaga Sombria",
+                "WEAPON", "Adaga", "UNCOMMON", false, "200 po", "0.5 kg", "Desc", "HOMEBREW", ownerId, null
+        );
+        when(repository.findItemById(itemId)).thenReturn(Optional.of(existing));
+        when(repository.saveItem(any(Item.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        CreateHomebrewItemRequest updateRequest = new CreateHomebrewItemRequest(
+                "Adaga das Sombras", "Shadow Dagger", "WEAPON", "Adaga", "RARE", true, "500 po", "0.5 kg", "Nova Desc", null
+        );
+
+        ItemDto updated = homebrewService.updateItem(itemId, ownerId, updateRequest);
+
+        assertThat(updated).isNotNull();
+        assertThat(updated.name()).isEqualTo("Adaga das Sombras");
+        assertThat(updated.rarity()).isEqualTo("RARE");
+        verify(repository).saveItem(any(Item.class));
+    }
+
+    @Test
+    @DisplayName("Spec 006: updateItem should reject official SRD item modification")
+    void shouldRejectUpdatingOfficialSrdItem() {
+        UUID itemId = UUID.randomUUID();
+        Item srdItem = new Item(
+                itemId, Ruleset.SRD_2024, "longsword", "Longsword", "Espada Longa",
+                "WEAPON", "Espada", "COMMON", false, "15 po", "1.5 kg", "Desc", "SRD", null, null
+        );
+        when(repository.findItemById(itemId)).thenReturn(Optional.of(srdItem));
+
+        CreateHomebrewItemRequest updateRequest = new CreateHomebrewItemRequest(
+                "Espada Super Longa", "Super Longsword", "WEAPON", "Espada", "COMMON", false, "15 po", "1.5 kg", "Desc", null
+        );
+
+        assertThatThrownBy(() -> homebrewService.updateItem(itemId, ownerId, updateRequest))
+                .isInstanceOf(CharacterValidationException.class)
+                .hasMessageContaining("Official SRD items cannot be modified");
+    }
 }

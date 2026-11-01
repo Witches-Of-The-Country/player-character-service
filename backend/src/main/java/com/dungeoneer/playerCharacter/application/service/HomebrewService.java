@@ -363,6 +363,254 @@ public class HomebrewService implements CreateHomebrewUseCase {
         return SubclassDto.fromDomain(saved);
     }
 
+    @Override
+    public SpellDto updateSpell(UUID spellId, UUID ownerId, CreateHomebrewSpellRequest request) {
+        if (spellId == null) {
+            throw new CharacterValidationException("Spell id is required for update");
+        }
+        if (request == null) {
+            throw new CharacterValidationException("Spell update payload cannot be null");
+        }
+
+        Spell existing = repository.findSpellById(spellId)
+                .orElseThrow(() -> new CharacterValidationException("Spell not found: " + spellId));
+
+        if (existing.getRuleset() != Ruleset.HOMEBREW) {
+            throw new CharacterValidationException("Official SRD spells cannot be modified");
+        }
+
+        String nameEn = (request.nameEn() != null && !request.nameEn().isBlank()) ? request.nameEn() : existing.getNameEn();
+
+        Spell updated = new Spell(
+                existing.getId(),
+                Ruleset.HOMEBREW,
+                existing.getSlug(),
+                nameEn,
+                request.name(),
+                request.level(),
+                request.school(),
+                request.castingTime(),
+                request.rangeArea(),
+                request.components(),
+                request.duration(),
+                request.description(),
+                "HOMEBREW",
+                existing.getOwnerId() != null ? existing.getOwnerId() : ownerId,
+                request.mechanicalProperties()
+        );
+
+        Spell saved = repository.saveSpell(updated);
+        return SpellDto.fromDomain(saved);
+    }
+
+    @Override
+    public FeatDto updateFeat(UUID featId, UUID ownerId, CreateHomebrewFeatRequest request) {
+        if (featId == null) {
+            throw new CharacterValidationException("Feat id is required for update");
+        }
+        if (request == null) {
+            throw new CharacterValidationException("Feat update payload cannot be null");
+        }
+
+        Feat existing = repository.findFeatById(featId)
+                .orElseThrow(() -> new CharacterValidationException("Feat not found: " + featId));
+
+        if (existing.getRuleset() != Ruleset.HOMEBREW) {
+            throw new CharacterValidationException("Official SRD feats cannot be modified");
+        }
+
+        String nameEn = (request.nameEn() != null && !request.nameEn().isBlank()) ? request.nameEn() : existing.getNameEn();
+
+        Feat updated = new Feat(
+                existing.getId(),
+                Ruleset.HOMEBREW,
+                existing.getSlug(),
+                nameEn,
+                request.name(),
+                request.prerequisites(),
+                request.description(),
+                "HOMEBREW",
+                existing.getOwnerId() != null ? existing.getOwnerId() : ownerId,
+                request.featType() != null ? request.featType() : FeatType.GENERAL,
+                request.mechanicalEffects() != null ? request.mechanicalEffects() : MechanicalEffects.empty()
+        );
+
+        Feat saved = repository.saveFeat(updated);
+        return FeatDto.fromDomain(saved);
+    }
+
+    @Override
+    public ItemDto updateItem(UUID itemId, UUID ownerId, CreateHomebrewItemRequest request) {
+        if (itemId == null) {
+            throw new CharacterValidationException("Item id is required for update");
+        }
+        if (request == null) {
+            throw new CharacterValidationException("Item update payload cannot be null");
+        }
+
+        Item existing = repository.findItemById(itemId)
+                .orElseThrow(() -> new CharacterValidationException("Item not found: " + itemId));
+
+        if (existing.getRuleset() != Ruleset.HOMEBREW) {
+            throw new CharacterValidationException("Official SRD items cannot be modified");
+        }
+
+        String nameEn = (request.nameEn() != null && !request.nameEn().isBlank()) ? request.nameEn() : existing.getNameEn();
+        String rarity = (request.rarity() != null && !request.rarity().isBlank()) ? request.rarity().toUpperCase() : existing.getRarity();
+
+        Item updated = new Item(
+                existing.getId(),
+                Ruleset.HOMEBREW,
+                existing.getSlug(),
+                nameEn,
+                request.name(),
+                request.itemCategory().toUpperCase(),
+                request.itemType(),
+                rarity,
+                request.isAttunement(),
+                request.cost(),
+                request.weight(),
+                request.description(),
+                "HOMEBREW",
+                existing.getOwnerId() != null ? existing.getOwnerId() : ownerId,
+                request.resolveMechanicalProperties()
+        );
+
+        Item saved = repository.saveItem(updated);
+        return ItemDto.fromDomain(saved);
+    }
+
+    @Override
+    public ArchetypeDto updateArchetype(UUID archetypeId, UUID ownerId, CreateHomebrewArchetypeRequest request) {
+        if (archetypeId == null) {
+            throw new CharacterValidationException("Archetype id is required for update");
+        }
+        if (request == null) {
+            throw new CharacterValidationException("Archetype update payload cannot be null");
+        }
+
+        Archetype existing = repository.findArchetypeById(archetypeId)
+                .orElseThrow(() -> new CharacterValidationException("Archetype not found: " + archetypeId));
+
+        if (existing.getRuleset() != Ruleset.HOMEBREW) {
+            throw new CharacterValidationException("Official SRD archetypes cannot be modified");
+        }
+
+        HitDiceEnum hitDice;
+        try {
+            hitDice = HitDiceEnum.valueOf(request.hitDice().trim().toUpperCase());
+        } catch (Exception e) {
+            hitDice = existing.getHitDice();
+        }
+
+        SpellcastingType spellcastingType;
+        try {
+            spellcastingType = SpellcastingType.valueOf(request.spellcastingType().trim().toUpperCase());
+        } catch (Exception e) {
+            spellcastingType = existing.getSpellcastingType();
+        }
+
+        int subclassLevel = (request.subclassLevel() != null && request.subclassLevel() >= 1 && request.subclassLevel() <= 20)
+                ? request.subclassLevel()
+                : existing.getSubclassLevel();
+
+        SpellPreparationType prepType = existing.getSpellPreparationType();
+        if (request.spellPreparationType() != null && !request.spellPreparationType().isBlank()) {
+            try {
+                prepType = SpellPreparationType.valueOf(request.spellPreparationType().trim().toUpperCase());
+            } catch (Exception ignored) {
+            }
+        }
+
+        Archetype updated = new Archetype(
+                existing.getId(),
+                request.name(),
+                hitDice,
+                request.primaryAbility(),
+                request.savingThrowProficiencies() != null ? request.savingThrowProficiencies() : existing.getSavingThrowProficiencies(),
+                request.armorProficiencies() != null ? request.armorProficiencies() : existing.getArmorProficiencies(),
+                request.weaponProficiencies() != null ? request.weaponProficiencies() : existing.getWeaponProficiencies(),
+                spellcastingType,
+                request.spellcastingAbility(),
+                Ruleset.HOMEBREW,
+                "HOMEBREW",
+                existing.getOwnerId() != null ? existing.getOwnerId() : ownerId,
+                subclassLevel,
+                prepType
+        );
+
+        Archetype saved = repository.saveArchetype(updated);
+        return ArchetypeDto.fromDomain(saved);
+    }
+
+    @Override
+    public LineageDto updateLineage(UUID lineageId, UUID ownerId, CreateHomebrewLineageRequest request) {
+        if (lineageId == null) {
+            throw new CharacterValidationException("Lineage id is required for update");
+        }
+        if (request == null) {
+            throw new CharacterValidationException("Lineage update payload cannot be null");
+        }
+
+        Lineage existing = repository.findLineageById(lineageId)
+                .orElseThrow(() -> new CharacterValidationException("Lineage not found: " + lineageId));
+
+        if (existing.getRuleset() != Ruleset.HOMEBREW) {
+            throw new CharacterValidationException("Official SRD lineages cannot be modified");
+        }
+
+        Lineage updated = new Lineage(
+                existing.getId(),
+                request.name(),
+                request.description(),
+                request.speed(),
+                request.size(),
+                request.abilityBonuses(),
+                request.traitsSummary(),
+                Ruleset.HOMEBREW,
+                "HOMEBREW",
+                existing.getOwnerId() != null ? existing.getOwnerId() : ownerId
+        );
+
+        Lineage saved = repository.saveLineage(updated);
+        return LineageDto.fromDomain(saved);
+    }
+
+    @Override
+    public SubclassDto updateSubclass(UUID subclassId, UUID ownerId, CreateHomebrewSubclassRequest request) {
+        if (subclassId == null) {
+            throw new CharacterValidationException("Subclass id is required for update");
+        }
+        if (request == null) {
+            throw new CharacterValidationException("Subclass update payload cannot be null");
+        }
+
+        Subclass existing = repository.findSubclassById(subclassId)
+                .orElseThrow(() -> new CharacterValidationException("Subclass not found: " + subclassId));
+
+        if (existing.getRuleset() != Ruleset.HOMEBREW) {
+            throw new CharacterValidationException("Official SRD subclasses cannot be modified");
+        }
+
+        UUID archetypeId = request.archetypeId() != null ? request.archetypeId() : existing.getArchetypeId();
+        String nameEn = (request.nameEn() != null && !request.nameEn().isBlank()) ? request.nameEn() : existing.getNameEn();
+
+        Subclass updated = new Subclass(
+                existing.getId(),
+                archetypeId,
+                Ruleset.HOMEBREW,
+                existing.getSlug(),
+                nameEn,
+                request.name(),
+                request.description(),
+                "HOMEBREW",
+                existing.getOwnerId() != null ? existing.getOwnerId() : ownerId
+        );
+
+        Subclass saved = repository.saveSubclass(updated);
+        return SubclassDto.fromDomain(saved);
+    }
+
     private String toSlug(String input) {
         if (input == null) return UUID.randomUUID().toString();
         String nowhitespace = WHITESPACE.matcher(input).replaceAll("-");

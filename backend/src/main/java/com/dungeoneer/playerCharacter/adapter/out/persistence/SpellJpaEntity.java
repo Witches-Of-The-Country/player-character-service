@@ -205,4 +205,24 @@ public class SpellJpaEntity {
     public Instant getUpdatedAt() {
         return updatedAt;
     }
+
+    public com.dungeoneer.playerCharacter.domain.model.Spell toDomain() {
+        return new com.dungeoneer.playerCharacter.domain.model.Spell(
+                this.id,
+                this.ruleset,
+                this.slug,
+                this.nameEn,
+                this.name,
+                this.level,
+                this.school,
+                this.castingTime,
+                this.rangeArea,
+                this.components,
+                this.duration,
+                this.description,
+                this.source,
+                this.ownerId,
+                this.mechanicalProperties
+        );
+    }
 }

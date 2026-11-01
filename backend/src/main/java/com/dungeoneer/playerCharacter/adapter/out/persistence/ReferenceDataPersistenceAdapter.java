@@ -94,6 +94,11 @@ public class ReferenceDataPersistenceAdapter implements ReferenceDataRepository 
     }
 
     @Override
+    public Optional<Spell> findSpellById(UUID id) {
+        return spellRepository.findById(id).map(SpellJpaEntity::toDomain);
+    }
+
+    @Override
     public Optional<Item> findItemById(UUID id) {
         return itemRepository.findById(id).map(ItemJpaEntity::toDomain);
     }

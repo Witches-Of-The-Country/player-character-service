@@ -28,4 +28,16 @@ public interface CreateHomebrewUseCase {
     LineageDto createLineage(UUID ownerId, CreateHomebrewLineageRequest request);
 
     SubclassDto createSubclass(UUID ownerId, CreateHomebrewSubclassRequest request);
+
+    SpellDto updateSpell(UUID spellId, UUID ownerId, CreateHomebrewSpellRequest request);
+
+    FeatDto updateFeat(UUID featId, UUID ownerId, CreateHomebrewFeatRequest request);
+
+    ItemDto updateItem(UUID itemId, UUID ownerId, CreateHomebrewItemRequest request);
+
+    ArchetypeDto updateArchetype(UUID archetypeId, UUID ownerId, CreateHomebrewArchetypeRequest request);
+
+    LineageDto updateLineage(UUID lineageId, UUID ownerId, CreateHomebrewLineageRequest request);
+
+    SubclassDto updateSubclass(UUID subclassId, UUID ownerId, CreateHomebrewSubclassRequest request);
 }

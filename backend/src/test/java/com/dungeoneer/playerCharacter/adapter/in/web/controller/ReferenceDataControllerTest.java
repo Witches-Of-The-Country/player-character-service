@@ -10,6 +10,7 @@ import com.dungeoneer.playerCharacter.application.dto.ItemDto;
 import com.dungeoneer.playerCharacter.application.dto.LineageDto;
 import com.dungeoneer.playerCharacter.application.dto.SpellDto;
 import com.dungeoneer.playerCharacter.application.port.in.GetReferenceDataUseCase;
+import com.dungeoneer.playerCharacter.domain.exception.CharacterValidationException;
 import com.dungeoneer.playerCharacter.domain.model.Ruleset;
 import com.dungeoneer.playerCharacter.domain.model.SpellcastingType;
 import org.junit.jupiter.api.DisplayName;
@@ -175,5 +176,68 @@ class ReferenceDataControllerTest {
                 .andExpect(jsonPath("$.itemCategory").value("WEAPON"));
 
         verify(createHomebrewUseCase).createItem(eq(userId), any());
+    }
+
+    @Test
+    @DisplayName("PUT /api/reference/items/{id} returns 200 OK on valid update")
+    void shouldUpdateHomebrewItem() throws Exception {
+        UUID userId = UUID.randomUUID();
+        UUID itemId = UUID.randomUUID();
+        ItemDto updatedItem = new ItemDto(
+                itemId, "HOMEBREW", "espada-flamejante", "Flame Blade", "Espada Flamejante +1",
+                "WEAPON", "Espada Longa", "VERY_RARE", true, "5000 po", "1.5 kg", "Espada em chamas azuis", "HOMEBREW"
+        );
+
+        when(createHomebrewUseCase.updateItem(eq(itemId), eq(userId), any())).thenReturn(updatedItem);
+
+        String jsonPayload = """
+                {
+                    "name": "Espada Flamejante +1",
+                    "nameEn": "Flame Blade",
+                    "itemCategory": "WEAPON",
+                    "itemType": "Espada Longa",
+                    "rarity": "VERY_RARE",
+                    "attunement": true,
+                    "cost": "5000 po",
+                    "weight": "1.5 kg",
+                    "description": "Espada em chamas azuis"
+                }
+                """;
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/reference/items/" + itemId)
+                        .header("X-User-Id", userId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonPayload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Espada Flamejante +1"))
+                .andExpect(jsonPath("$.rarity").value("VERY_RARE"));
+
+        verify(createHomebrewUseCase).updateItem(eq(itemId), eq(userId), any());
+    }
+
+    @Test
+    @DisplayName("PUT /api/reference/items/{id} returns 422 Unprocessable Entity when update violates ruleset immutability")
+    void shouldReturnBadRequestWhenUpdatingOfficialItem() throws Exception {
+        UUID userId = UUID.randomUUID();
+        UUID itemId = UUID.randomUUID();
+
+        when(createHomebrewUseCase.updateItem(eq(itemId), eq(userId), any()))
+                .thenThrow(new CharacterValidationException("Official SRD items cannot be modified"));
+
+        String jsonPayload = """
+                {
+                    "name": "Espada Modificada",
+                    "itemCategory": "WEAPON",
+                    "itemType": "Espada Longa",
+                    "description": "Tentativa de modificar item oficial"
+                }
+                """;
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/reference/items/" + itemId)
+                        .header("X-User-Id", userId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonPayload))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.detail").value("Official SRD items cannot be modified"));
     }
 }

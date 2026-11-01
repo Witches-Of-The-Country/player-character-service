@@ -29,6 +29,8 @@ public interface ReferenceDataRepository {
 
     Optional<Background> findBackgroundById(UUID id);
 
+    Optional<Spell> findSpellById(UUID id);
+
     Optional<Item> findItemById(UUID id);
 
     Optional<Feat> findFeatById(UUID id);
