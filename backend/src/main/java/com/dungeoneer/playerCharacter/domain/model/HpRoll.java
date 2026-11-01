@@ -26,12 +26,11 @@ public class HpRoll {
         if (archetypeId == null) {
             throw new CharacterValidationException("ArchetypeId cannot be null for HP roll.");
         }
-        if (targetLevel < 2 || targetLevel > 20) {
-            throw new CharacterValidationException("Target level for HP roll must be between 2 and 20. Provided: " + targetLevel);
+        if (targetLevel < 1 || targetLevel > 20) {
+            throw new CharacterValidationException("Target level for HP roll must be between 1 and 20. Provided: " + targetLevel);
         }
-        int expectedRolls = targetLevel - 1;
-        if (rolledHpPerLevel == null || rolledHpPerLevel.size() != expectedRolls) {
-            throw new CharacterValidationException("Rolled HP per level must contain exactly " + expectedRolls + " rolls.");
+        if (rolledHpPerLevel == null || (rolledHpPerLevel.size() != targetLevel - 1 && rolledHpPerLevel.size() != targetLevel)) {
+            throw new CharacterValidationException("Rolled HP per level must contain " + (targetLevel - 1) + " or " + targetLevel + " rolls.");
         }
         this.id = id != null ? id : UUID.randomUUID();
         this.userId = userId;

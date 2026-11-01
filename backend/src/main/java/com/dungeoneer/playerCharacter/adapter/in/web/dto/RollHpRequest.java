@@ -11,8 +11,13 @@ public record RollHpRequest(
         UUID archetypeId,
 
         @NotNull(message = "Level is required")
-        @Min(value = 2, message = "Rolled hit points start from level 2")
+        @Min(value = 1, message = "Level must be between 1 and 20")
         @Max(value = 20, message = "Level cannot exceed 20")
-        Integer level
+        Integer level,
+
+        Boolean isSecondaryClass
 ) {
+    public RollHpRequest(UUID archetypeId, Integer level) {
+        this(archetypeId, level, false);
+    }
 }

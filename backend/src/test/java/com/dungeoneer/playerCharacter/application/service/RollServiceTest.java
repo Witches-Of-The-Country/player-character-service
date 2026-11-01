@@ -165,4 +165,26 @@ class RollServiceTest {
                 () -> service.rollHitPoints(new RollHitPointsCommand(userId, archetypeId, 2))
         );
     }
+
+    @Test
+    @DisplayName("Multiclass HP: Rolls all N hit dice for secondary class (level 2 -> 2 dice, level 1 -> 1 die)")
+    void shouldRollAllHitDiceForSecondaryClass() {
+        Archetype rogue = new Archetype(
+                archetypeId, "Rogue", HitDiceEnum.D8, "DEX",
+                List.of(), List.of(), List.of(), SpellcastingType.NONE, null, Ruleset.SRD_2024, "SRD", null
+        );
+        when(referenceDataRepository.findArchetypeById(archetypeId)).thenReturn(Optional.of(rogue));
+        when(hpRollRepository.findUnusedByUserIdAndArchetypeIdAndTargetLevel(userId, archetypeId, 2))
+                .thenReturn(Optional.empty());
+        when(hpRollRepository.save(any(HpRoll.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        RollHitPointsResult result = service.rollHitPoints(new RollHitPointsCommand(userId, archetypeId, 2, true));
+
+        assertThat(result.isNew()).isTrue();
+        // Secondary class at level 2 rolls exactly 2 dice (not 2 - 1 = 1)
+        assertThat(result.rolledHpPerLevel()).hasSize(2);
+        for (int hp : result.rolledHpPerLevel()) {
+            assertThat(hp).isBetween(1, 8);
+        }
+    }
 }

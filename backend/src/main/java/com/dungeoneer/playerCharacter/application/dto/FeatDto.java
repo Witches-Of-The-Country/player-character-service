@@ -1,6 +1,7 @@
 package com.dungeoneer.playerCharacter.application.dto;
 
 import com.dungeoneer.playerCharacter.adapter.out.persistence.FeatJpaEntity;
+import com.dungeoneer.playerCharacter.domain.model.Feat;
 
 import java.util.UUID;
 
@@ -24,6 +25,19 @@ public record FeatDto(
                 entity.getPrerequisites(),
                 entity.getDescription(),
                 entity.getSource()
+        );
+    }
+
+    public static FeatDto fromDomain(Feat feat) {
+        return new FeatDto(
+                feat.getId(),
+                feat.getRuleset() != null ? feat.getRuleset().name() : null,
+                feat.getSlug(),
+                feat.getNameEn(),
+                feat.getName(),
+                feat.getPrerequisites(),
+                feat.getDescription(),
+                feat.getSource()
         );
     }
 }

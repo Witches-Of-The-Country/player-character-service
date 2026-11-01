@@ -53,6 +53,8 @@ public record CreateCharacterRequest(
 
         UUID hpRollId,
 
+        List<UUID> hpRollIds,
+
         String notes,
 
         List<@Valid ClassProgressionRequest> classProgressions,
@@ -89,9 +91,49 @@ public record CreateCharacterRequest(
                         abilityRollId,
                         hpCalculationMethod,
                         hpRollId,
+                        Collections.emptyList(),
                         notes,
                         Collections.emptyList(),
                         Collections.emptyList()
+                );
+        }
+
+        public CreateCharacterRequest(
+                String name,
+                Integer level,
+                Ruleset ruleset,
+                UUID lineageId,
+                UUID backgroundId,
+                UUID archetypeId,
+                UUID subclassId,
+                AbilityScoreMethod abilityScoreMethod,
+                Map<String, Integer> abilityScores,
+                Map<String, Integer> abilityScoreBonuses,
+                UUID abilityRollId,
+                HpCalculationMethod hpCalculationMethod,
+                UUID hpRollId,
+                String notes,
+                List<@Valid ClassProgressionRequest> classProgressions,
+                List<String> skillProficiencies
+        ) {
+                this(
+                        name,
+                        level,
+                        ruleset,
+                        lineageId,
+                        backgroundId,
+                        archetypeId,
+                        subclassId,
+                        abilityScoreMethod,
+                        abilityScores,
+                        abilityScoreBonuses,
+                        abilityRollId,
+                        hpCalculationMethod,
+                        hpRollId,
+                        Collections.emptyList(),
+                        notes,
+                        classProgressions,
+                        skillProficiencies
                 );
         }
 }

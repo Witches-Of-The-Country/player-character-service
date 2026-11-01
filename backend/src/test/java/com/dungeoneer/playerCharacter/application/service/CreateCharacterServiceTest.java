@@ -264,6 +264,12 @@ class CreateCharacterServiceTest {
     @DisplayName("TP-02: Creates multiclass character with multiple class progressions and skill proficiencies")
     void shouldCreateMulticlassCharacterSuccessfully() {
         UUID secondaryArchetypeId = UUID.randomUUID();
+        Archetype rogue = new Archetype(
+                secondaryArchetypeId, "Rogue", HitDiceEnum.D8, "DEX",
+                List.of(), List.of(), List.of(), SpellcastingType.NONE, null, Ruleset.SRD_2024, "SRD", null
+        );
+        when(referenceDataRepository.findArchetypeById(secondaryArchetypeId)).thenReturn(Optional.of(rogue));
+
         List<ClassProgressionCommand> multiclassProgressions = List.of(
                 new ClassProgressionCommand(archetypeId, null, 3),
                 new ClassProgressionCommand(secondaryArchetypeId, null, 2)

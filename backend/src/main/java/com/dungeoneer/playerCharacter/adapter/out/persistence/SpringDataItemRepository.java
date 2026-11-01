@@ -1,6 +1,5 @@
 package com.dungeoneer.playerCharacter.adapter.out.persistence;
 
-import com.dungeoneer.playerCharacter.domain.model.Ruleset;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -13,6 +12,7 @@ public interface SpringDataItemRepository extends JpaRepository<ItemJpaEntity, U
     @Query(value = """
         SELECT * FROM player_character.items i
         WHERE (CAST(:ruleset AS VARCHAR) IS NULL OR i.ruleset = CAST(:ruleset AS VARCHAR))
+          AND (i.owner_id IS NULL OR (CAST(:ownerId AS UUID) IS NOT NULL AND i.owner_id = CAST(:ownerId AS UUID)))
           AND (CAST(:itemCategory AS VARCHAR) IS NULL OR i.item_category = CAST(:itemCategory AS VARCHAR))
           AND (CAST(:rarity AS VARCHAR) IS NULL OR i.rarity = CAST(:rarity AS VARCHAR))
           AND (CAST(:q AS VARCHAR) IS NULL OR CAST(:q AS VARCHAR) = '' OR to_tsvector('portuguese', coalesce(i.name, '') || ' ' || coalesce(i.name_en, '') || ' ' || coalesce(i.description, '')) @@ plainto_tsquery('portuguese', CAST(:q AS VARCHAR)))
@@ -27,6 +27,7 @@ public interface SpringDataItemRepository extends JpaRepository<ItemJpaEntity, U
             @Param("q") String q,
             @Param("afterName") String afterName,
             @Param("afterId") UUID afterId,
-            @Param("limit") int limit
+            @Param("limit") int limit,
+            @Param("ownerId") UUID ownerId
     );
 }

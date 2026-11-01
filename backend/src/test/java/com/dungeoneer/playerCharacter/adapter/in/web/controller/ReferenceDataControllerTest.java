@@ -41,6 +41,9 @@ class ReferenceDataControllerTest {
     @MockitoBean
     private GetReferenceDataUseCase getReferenceDataUseCase;
 
+    @MockitoBean
+    private com.dungeoneer.playerCharacter.application.port.in.CreateHomebrewUseCase createHomebrewUseCase;
+
     @Test
     @DisplayName("GET /api/reference/classes returns 200 OK and list of archetypes")
     void shouldReturnClassesWithoutFilter() throws Exception {
@@ -71,7 +74,7 @@ class ReferenceDataControllerTest {
                 1, "Evocação", "1 ação", "36 metros", "V, S", "Instantânea", "Dardos de energia", "SRD"
         );
         CursorPageResponse<SpellDto> page = new CursorPageResponse<>(List.of(spell), "cursor-token", true, 1);
-        when(getReferenceDataUseCase.getSpells(any(), eq(10), any(), any(), any(), any())).thenReturn(page);
+        when(getReferenceDataUseCase.getSpells(any(), eq(10), any(), any(), any(), any(), any())).thenReturn(page);
 
         mockMvc.perform(get("/api/reference/spells")
                         .param("limit", "10")
@@ -91,7 +94,7 @@ class ReferenceDataControllerTest {
                 UUID.randomUUID(), "SRD_2024", "alert-2024", "Alert", "Alerta", "Nível 1", "Iniciativa", "SRD"
         );
         CursorPageResponse<FeatDto> page = new CursorPageResponse<>(List.of(feat), null, false, 1);
-        when(getReferenceDataUseCase.getFeats(any(), eq(20), any(), any())).thenReturn(page);
+        when(getReferenceDataUseCase.getFeats(any(), eq(20), any(), any(), any())).thenReturn(page);
 
         mockMvc.perform(get("/api/reference/feats")
                         .contentType(MediaType.APPLICATION_JSON))
@@ -108,7 +111,7 @@ class ReferenceDataControllerTest {
                 "WEAPON", "Arma Marcial", "NONE", false, "15 po", "1,5 kg", "Espada versátil", "SRD"
         );
         CursorPageResponse<ItemDto> page = new CursorPageResponse<>(List.of(item), null, false, 1);
-        when(getReferenceDataUseCase.getItems(any(), eq(20), any(), any(), any(), any())).thenReturn(page);
+        when(getReferenceDataUseCase.getItems(any(), eq(20), any(), any(), any(), any(), any())).thenReturn(page);
 
         mockMvc.perform(get("/api/reference/items")
                         .contentType(MediaType.APPLICATION_JSON))

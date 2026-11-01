@@ -15,6 +15,7 @@ public interface SpringDataLineageRepository extends JpaRepository<LineageJpaEnt
     @Query(value = """
         SELECT * FROM player_character.lineages l
         WHERE (CAST(:ruleset AS VARCHAR) IS NULL OR l.ruleset = CAST(:ruleset AS VARCHAR))
+          AND (l.owner_id IS NULL OR (CAST(:ownerId AS UUID) IS NOT NULL AND l.owner_id = CAST(:ownerId AS UUID)))
           AND (CAST(:q AS VARCHAR) IS NULL OR CAST(:q AS VARCHAR) = '' OR to_tsvector('portuguese', coalesce(l.name, '') || ' ' || coalesce(l.description, '')) @@ plainto_tsquery('portuguese', CAST(:q AS VARCHAR)))
           AND (CAST(:afterName AS VARCHAR) IS NULL OR l.name > CAST(:afterName AS VARCHAR) OR (l.name = CAST(:afterName AS VARCHAR) AND l.id > CAST(:afterId AS UUID)))
         ORDER BY l.name ASC, l.id ASC
@@ -25,6 +26,7 @@ public interface SpringDataLineageRepository extends JpaRepository<LineageJpaEnt
             @Param("q") String q,
             @Param("afterName") String afterName,
             @Param("afterId") UUID afterId,
-            @Param("limit") int limit
+            @Param("limit") int limit,
+            @Param("ownerId") UUID ownerId
     );
 }

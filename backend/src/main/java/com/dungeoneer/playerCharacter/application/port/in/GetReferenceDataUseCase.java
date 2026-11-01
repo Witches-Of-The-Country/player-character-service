@@ -10,6 +10,7 @@ import com.dungeoneer.playerCharacter.application.dto.SpellDto;
 import com.dungeoneer.playerCharacter.domain.model.Ruleset;
 
 import java.util.List;
+import java.util.UUID;
 
 public interface GetReferenceDataUseCase {
 
@@ -19,13 +20,33 @@ public interface GetReferenceDataUseCase {
 
     List<BackgroundDto> getBackgrounds(Ruleset ruleset);
 
-    CursorPageResponse<SpellDto> getSpells(String cursor, int limit, String q, Ruleset ruleset, Integer level, String school);
+    default CursorPageResponse<SpellDto> getSpells(String cursor, int limit, String q, Ruleset ruleset, Integer level, String school) {
+        return getSpells(cursor, limit, q, ruleset, level, school, null);
+    }
 
-    CursorPageResponse<FeatDto> getFeats(String cursor, int limit, String q, Ruleset ruleset);
+    CursorPageResponse<SpellDto> getSpells(String cursor, int limit, String q, Ruleset ruleset, Integer level, String school, UUID ownerId);
 
-    CursorPageResponse<ItemDto> getItems(String cursor, int limit, String q, Ruleset ruleset, String category, String rarity);
+    default CursorPageResponse<FeatDto> getFeats(String cursor, int limit, String q, Ruleset ruleset) {
+        return getFeats(cursor, limit, q, ruleset, null);
+    }
 
-    CursorPageResponse<ArchetypeDto> getClassesPaginated(String cursor, int limit, String q, Ruleset ruleset);
+    CursorPageResponse<FeatDto> getFeats(String cursor, int limit, String q, Ruleset ruleset, UUID ownerId);
 
-    CursorPageResponse<LineageDto> getLineagesPaginated(String cursor, int limit, String q, Ruleset ruleset);
+    default CursorPageResponse<ItemDto> getItems(String cursor, int limit, String q, Ruleset ruleset, String category, String rarity) {
+        return getItems(cursor, limit, q, ruleset, category, rarity, null);
+    }
+
+    CursorPageResponse<ItemDto> getItems(String cursor, int limit, String q, Ruleset ruleset, String category, String rarity, UUID ownerId);
+
+    default CursorPageResponse<ArchetypeDto> getClassesPaginated(String cursor, int limit, String q, Ruleset ruleset) {
+        return getClassesPaginated(cursor, limit, q, ruleset, null);
+    }
+
+    CursorPageResponse<ArchetypeDto> getClassesPaginated(String cursor, int limit, String q, Ruleset ruleset, UUID ownerId);
+
+    default CursorPageResponse<LineageDto> getLineagesPaginated(String cursor, int limit, String q, Ruleset ruleset) {
+        return getLineagesPaginated(cursor, limit, q, ruleset, null);
+    }
+
+    CursorPageResponse<LineageDto> getLineagesPaginated(String cursor, int limit, String q, Ruleset ruleset, UUID ownerId);
 }

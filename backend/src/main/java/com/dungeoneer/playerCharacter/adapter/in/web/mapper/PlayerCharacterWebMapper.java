@@ -52,6 +52,10 @@ public final class PlayerCharacterWebMapper {
                 ? request.skillProficiencies()
                 : List.of();
 
+        List<UUID> hpRollIds = request.hpRollIds() != null
+                ? request.hpRollIds()
+                : (request.hpRollId() != null ? List.of(request.hpRollId()) : List.of());
+
         return new CreateCharacterCommand(
                 userId,
                 request.name(),
@@ -72,6 +76,7 @@ public final class PlayerCharacterWebMapper {
                 request.abilityRollId(),
                 request.hpCalculationMethod() != null ? request.hpCalculationMethod() : HpCalculationMethod.MAX,
                 request.hpRollId(),
+                hpRollIds,
                 request.notes(),
                 classProgressions,
                 skillProficiencies

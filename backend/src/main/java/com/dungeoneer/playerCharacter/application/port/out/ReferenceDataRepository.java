@@ -4,9 +4,11 @@ import com.dungeoneer.playerCharacter.adapter.out.persistence.FeatJpaEntity;
 import com.dungeoneer.playerCharacter.adapter.out.persistence.SpellJpaEntity;
 import com.dungeoneer.playerCharacter.domain.model.Archetype;
 import com.dungeoneer.playerCharacter.domain.model.Background;
+import com.dungeoneer.playerCharacter.domain.model.Feat;
 import com.dungeoneer.playerCharacter.domain.model.Item;
 import com.dungeoneer.playerCharacter.domain.model.Lineage;
 import com.dungeoneer.playerCharacter.domain.model.Ruleset;
+import com.dungeoneer.playerCharacter.domain.model.Spell;
 
 import java.util.List;
 import java.util.Optional;
@@ -26,13 +28,43 @@ public interface ReferenceDataRepository {
 
     Optional<Background> findBackgroundById(UUID id);
 
-    List<SpellJpaEntity> findSpellsWithCursor(Ruleset ruleset, Integer level, String school, String q, String afterName, UUID afterId, int limit);
+    default List<SpellJpaEntity> findSpellsWithCursor(Ruleset ruleset, Integer level, String school, String q, String afterName, UUID afterId, int limit) {
+        return findSpellsWithCursor(ruleset, level, school, q, afterName, afterId, limit, null);
+    }
 
-    List<FeatJpaEntity> findFeatsWithCursor(Ruleset ruleset, String q, String afterName, UUID afterId, int limit);
+    List<SpellJpaEntity> findSpellsWithCursor(Ruleset ruleset, Integer level, String school, String q, String afterName, UUID afterId, int limit, UUID ownerId);
 
-    List<Item> findItemsWithCursor(Ruleset ruleset, String category, String rarity, String q, String afterName, UUID afterId, int limit);
+    default List<FeatJpaEntity> findFeatsWithCursor(Ruleset ruleset, String q, String afterName, UUID afterId, int limit) {
+        return findFeatsWithCursor(ruleset, q, afterName, afterId, limit, null);
+    }
 
-    List<Archetype> findArchetypesWithCursor(Ruleset ruleset, String q, String afterName, UUID afterId, int limit);
+    List<FeatJpaEntity> findFeatsWithCursor(Ruleset ruleset, String q, String afterName, UUID afterId, int limit, UUID ownerId);
 
-    List<Lineage> findLineagesWithCursor(Ruleset ruleset, String q, String afterName, UUID afterId, int limit);
+    default List<Item> findItemsWithCursor(Ruleset ruleset, String category, String rarity, String q, String afterName, UUID afterId, int limit) {
+        return findItemsWithCursor(ruleset, category, rarity, q, afterName, afterId, limit, null);
+    }
+
+    List<Item> findItemsWithCursor(Ruleset ruleset, String category, String rarity, String q, String afterName, UUID afterId, int limit, UUID ownerId);
+
+    default List<Archetype> findArchetypesWithCursor(Ruleset ruleset, String q, String afterName, UUID afterId, int limit) {
+        return findArchetypesWithCursor(ruleset, q, afterName, afterId, limit, null);
+    }
+
+    List<Archetype> findArchetypesWithCursor(Ruleset ruleset, String q, String afterName, UUID afterId, int limit, UUID ownerId);
+
+    default List<Lineage> findLineagesWithCursor(Ruleset ruleset, String q, String afterName, UUID afterId, int limit) {
+        return findLineagesWithCursor(ruleset, q, afterName, afterId, limit, null);
+    }
+
+    List<Lineage> findLineagesWithCursor(Ruleset ruleset, String q, String afterName, UUID afterId, int limit, UUID ownerId);
+
+    Spell saveSpell(Spell spell);
+
+    Feat saveFeat(Feat feat);
+
+    Item saveItem(Item item);
+
+    Archetype saveArchetype(Archetype archetype);
+
+    Lineage saveLineage(Lineage lineage);
 }

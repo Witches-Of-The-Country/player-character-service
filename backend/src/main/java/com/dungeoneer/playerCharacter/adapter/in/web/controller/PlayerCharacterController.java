@@ -101,7 +101,12 @@ public class PlayerCharacterController {
             @RequestHeader("X-User-Id") UUID userId,
             @Valid @RequestBody RollHpRequest request
     ) {
-        RollHitPointsCommand command = new RollHitPointsCommand(userId, request.archetypeId(), request.level());
+        RollHitPointsCommand command = new RollHitPointsCommand(
+                userId,
+                request.archetypeId(),
+                request.level(),
+                Boolean.TRUE.equals(request.isSecondaryClass())
+        );
         RollHitPointsResult result = rollHitPointsUseCase.rollHitPoints(command);
         HpRollResponse response = PlayerCharacterWebMapper.toResponse(result);
 

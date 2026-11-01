@@ -2,25 +2,38 @@ package com.dungeoneer.playerCharacter.adapter.in.web.controller;
 
 import com.dungeoneer.playerCharacter.application.dto.ArchetypeDto;
 import com.dungeoneer.playerCharacter.application.dto.BackgroundDto;
+import com.dungeoneer.playerCharacter.application.dto.CreateHomebrewArchetypeRequest;
+import com.dungeoneer.playerCharacter.application.dto.CreateHomebrewFeatRequest;
+import com.dungeoneer.playerCharacter.application.dto.CreateHomebrewItemRequest;
+import com.dungeoneer.playerCharacter.application.dto.CreateHomebrewLineageRequest;
+import com.dungeoneer.playerCharacter.application.dto.CreateHomebrewSpellRequest;
 import com.dungeoneer.playerCharacter.application.dto.CursorPageResponse;
 import com.dungeoneer.playerCharacter.application.dto.FeatDto;
 import com.dungeoneer.playerCharacter.application.dto.ItemDto;
 import com.dungeoneer.playerCharacter.application.dto.LineageDto;
 import com.dungeoneer.playerCharacter.application.dto.SpellDto;
+import com.dungeoneer.playerCharacter.application.port.in.CreateHomebrewUseCase;
 import com.dungeoneer.playerCharacter.application.port.in.GetReferenceDataUseCase;
 import com.dungeoneer.playerCharacter.domain.exception.CharacterValidationException;
 import com.dungeoneer.playerCharacter.domain.model.Ruleset;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import java.net.URI;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/reference")
@@ -28,9 +41,14 @@ import java.util.List;
 public class ReferenceDataController {
 
     private final GetReferenceDataUseCase getReferenceDataUseCase;
+    private final CreateHomebrewUseCase createHomebrewUseCase;
 
-    public ReferenceDataController(GetReferenceDataUseCase getReferenceDataUseCase) {
+    public ReferenceDataController(
+            GetReferenceDataUseCase getReferenceDataUseCase,
+            CreateHomebrewUseCase createHomebrewUseCase
+    ) {
         this.getReferenceDataUseCase = getReferenceDataUseCase;
+        this.createHomebrewUseCase = createHomebrewUseCase;
     }
 
     @GetMapping("/classes")
@@ -44,10 +62,11 @@ public class ReferenceDataController {
             @RequestParam(required = false) String cursor,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit,
             @RequestParam(required = false) String q,
-            @RequestParam(required = false) String ruleset
+            @RequestParam(required = false) String ruleset,
+            @RequestHeader(value = "X-User-Id", required = false) UUID userId
     ) {
         Ruleset parsedRuleset = parseRuleset(ruleset);
-        return ResponseEntity.ok(getReferenceDataUseCase.getClassesPaginated(cursor, limit, q, parsedRuleset));
+        return ResponseEntity.ok(getReferenceDataUseCase.getClassesPaginated(cursor, limit, q, parsedRuleset, userId));
     }
 
     @GetMapping("/lineages")
@@ -61,10 +80,11 @@ public class ReferenceDataController {
             @RequestParam(required = false) String cursor,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit,
             @RequestParam(required = false) String q,
-            @RequestParam(required = false) String ruleset
+            @RequestParam(required = false) String ruleset,
+            @RequestHeader(value = "X-User-Id", required = false) UUID userId
     ) {
         Ruleset parsedRuleset = parseRuleset(ruleset);
-        return ResponseEntity.ok(getReferenceDataUseCase.getLineagesPaginated(cursor, limit, q, parsedRuleset));
+        return ResponseEntity.ok(getReferenceDataUseCase.getLineagesPaginated(cursor, limit, q, parsedRuleset, userId));
     }
 
     @GetMapping("/backgrounds")
@@ -80,10 +100,11 @@ public class ReferenceDataController {
             @RequestParam(required = false) String q,
             @RequestParam(required = false) String ruleset,
             @RequestParam(required = false) Integer level,
-            @RequestParam(required = false) String school
+            @RequestParam(required = false) String school,
+            @RequestHeader(value = "X-User-Id", required = false) UUID userId
     ) {
         Ruleset parsedRuleset = parseRuleset(ruleset);
-        return ResponseEntity.ok(getReferenceDataUseCase.getSpells(cursor, limit, q, parsedRuleset, level, school));
+        return ResponseEntity.ok(getReferenceDataUseCase.getSpells(cursor, limit, q, parsedRuleset, level, school, userId));
     }
 
     @GetMapping("/feats")
@@ -91,10 +112,11 @@ public class ReferenceDataController {
             @RequestParam(required = false) String cursor,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit,
             @RequestParam(required = false) String q,
-            @RequestParam(required = false) String ruleset
+            @RequestParam(required = false) String ruleset,
+            @RequestHeader(value = "X-User-Id", required = false) UUID userId
     ) {
         Ruleset parsedRuleset = parseRuleset(ruleset);
-        return ResponseEntity.ok(getReferenceDataUseCase.getFeats(cursor, limit, q, parsedRuleset));
+        return ResponseEntity.ok(getReferenceDataUseCase.getFeats(cursor, limit, q, parsedRuleset, userId));
     }
 
     @GetMapping("/items")
@@ -104,10 +126,76 @@ public class ReferenceDataController {
             @RequestParam(required = false) String q,
             @RequestParam(required = false) String ruleset,
             @RequestParam(required = false) String category,
-            @RequestParam(required = false) String rarity
+            @RequestParam(required = false) String rarity,
+            @RequestHeader(value = "X-User-Id", required = false) UUID userId
     ) {
         Ruleset parsedRuleset = parseRuleset(ruleset);
-        return ResponseEntity.ok(getReferenceDataUseCase.getItems(cursor, limit, q, parsedRuleset, category, rarity));
+        return ResponseEntity.ok(getReferenceDataUseCase.getItems(cursor, limit, q, parsedRuleset, category, rarity, userId));
+    }
+
+    @PostMapping("/spells")
+    public ResponseEntity<SpellDto> createSpell(
+            @RequestHeader(value = "X-User-Id", required = true) UUID userId,
+            @Valid @RequestBody CreateHomebrewSpellRequest request
+    ) {
+        SpellDto created = createHomebrewUseCase.createSpell(userId, request);
+        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+                .path("/{id}")
+                .buildAndExpand(created.id())
+                .toUri();
+        return ResponseEntity.created(location).body(created);
+    }
+
+    @PostMapping("/feats")
+    public ResponseEntity<FeatDto> createFeat(
+            @RequestHeader(value = "X-User-Id", required = true) UUID userId,
+            @Valid @RequestBody CreateHomebrewFeatRequest request
+    ) {
+        FeatDto created = createHomebrewUseCase.createFeat(userId, request);
+        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+                .path("/{id}")
+                .buildAndExpand(created.id())
+                .toUri();
+        return ResponseEntity.created(location).body(created);
+    }
+
+    @PostMapping("/items")
+    public ResponseEntity<ItemDto> createItem(
+            @RequestHeader(value = "X-User-Id", required = true) UUID userId,
+            @Valid @RequestBody CreateHomebrewItemRequest request
+    ) {
+        ItemDto created = createHomebrewUseCase.createItem(userId, request);
+        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+                .path("/{id}")
+                .buildAndExpand(created.id())
+                .toUri();
+        return ResponseEntity.created(location).body(created);
+    }
+
+    @PostMapping("/classes")
+    public ResponseEntity<ArchetypeDto> createArchetype(
+            @RequestHeader(value = "X-User-Id", required = true) UUID userId,
+            @Valid @RequestBody CreateHomebrewArchetypeRequest request
+    ) {
+        ArchetypeDto created = createHomebrewUseCase.createArchetype(userId, request);
+        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+                .path("/{id}")
+                .buildAndExpand(created.id())
+                .toUri();
+        return ResponseEntity.created(location).body(created);
+    }
+
+    @PostMapping("/lineages")
+    public ResponseEntity<LineageDto> createLineage(
+            @RequestHeader(value = "X-User-Id", required = true) UUID userId,
+            @Valid @RequestBody CreateHomebrewLineageRequest request
+    ) {
+        LineageDto created = createHomebrewUseCase.createLineage(userId, request);
+        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+                .path("/{id}")
+                .buildAndExpand(created.id())
+                .toUri();
+        return ResponseEntity.created(location).body(created);
     }
 
     private Ruleset parseRuleset(String ruleset) {
