@@ -11,5 +11,6 @@ import java.util.UUID;
 public interface SpringDataCharacterItemRepository extends JpaRepository<CharacterItemJpaEntity, UUID> {
     List<CharacterItemJpaEntity> findByCharacterId(UUID characterId);
     Optional<CharacterItemJpaEntity> findByIdAndCharacterId(UUID id, UUID characterId);
+    List<CharacterItemJpaEntity> findByCharacterIdAndItemId(UUID characterId, UUID itemId);
     void deleteByCharacterId(UUID characterId);
 }

@@ -322,11 +322,36 @@ public class CharacterSheetHydrator {
     }
 
     private static CharacterActionDto buildWeaponAction(PlayerCharacter character, Item item, WeaponMechanics wep) {
-        boolean isFinesse = wep.properties().contains(WeaponProperty.FINESSE);
-        int strMod = character.getAbilityScores().getStrengthModifier();
-        int dexMod = character.getAbilityScores().getDexterityModifier();
-        int attackMod = isFinesse ? Math.max(strMod, dexMod) : strMod;
+        boolean isAmmunition = wep.properties() != null && wep.properties().contains(WeaponProperty.AMMUNITION);
+        boolean isFinesse = wep.properties() != null && wep.properties().contains(WeaponProperty.FINESSE);
+        int strMod = character.getAbilityScores() != null ? character.getAbilityScores().getStrengthModifier() : 0;
+        int dexMod = character.getAbilityScores() != null ? character.getAbilityScores().getDexterityModifier() : 0;
+        int attackMod = isAmmunition ? dexMod : (isFinesse ? Math.max(strMod, dexMod) : strMod);
         int attackBonus = attackMod + character.getProficiencyBonus() + wep.magicBonus();
+        int damageBonus = attackMod + wep.magicBonus();
+        String bonusSuffix = damageBonus > 0 ? "+" + damageBonus : (damageBonus < 0 ? String.valueOf(damageBonus) : "");
+
+        List<DamageRoll> adjustedRolls = new ArrayList<>();
+        if (wep.damageRolls() != null && !wep.damageRolls().isEmpty()) {
+            boolean isFirst = true;
+            for (DamageRoll roll : wep.damageRolls()) {
+                if (isFirst) {
+                    String baseFormula = roll.diceFormula();
+                    String pureDice = baseFormula.replaceAll("([+-]\\d+)$", "").trim();
+                    String fullFormula = pureDice + bonusSuffix;
+                    adjustedRolls.add(new DamageRoll(fullFormula, roll.damageType(), roll.conditional(), roll.conditionNote()));
+                    isFirst = false;
+                } else {
+                    adjustedRolls.add(roll);
+                }
+            }
+        }
+
+        String adjustedVersatile = wep.versatileDice();
+        if (adjustedVersatile != null && !adjustedVersatile.isBlank()) {
+            String pureVersatile = adjustedVersatile.replaceAll("([+-]\\d+)$", "").trim();
+            adjustedVersatile = pureVersatile + bonusSuffix;
+        }
 
         return new CharacterActionDto(
                 item.getId(),
@@ -334,8 +359,8 @@ public class CharacterSheetHydrator {
                 "ACTION",
                 "WEAPON",
                 attackBonus,
-                wep.damageRolls(),
-                wep.versatileDice(),
+                adjustedRolls,
+                adjustedVersatile,
                 item.getDescription(),
                 null,
                 null

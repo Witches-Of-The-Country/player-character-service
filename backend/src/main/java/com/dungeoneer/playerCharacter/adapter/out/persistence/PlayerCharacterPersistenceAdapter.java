@@ -98,8 +98,23 @@ public class PlayerCharacterPersistenceAdapter implements PlayerCharacterReposit
 
     @Override
     public void deleteCharacterItem(UUID itemId, UUID characterId) {
-        characterItemRepository.findByIdAndCharacterId(itemId, characterId)
-                .ifPresent(characterItemRepository::delete);
+        Optional<CharacterItemJpaEntity> byId = characterItemRepository.findByIdAndCharacterId(itemId, characterId);
+        if (byId.isEmpty()) {
+            List<CharacterItemJpaEntity> byItem = characterItemRepository.findByCharacterIdAndItemId(characterId, itemId);
+            if (!byItem.isEmpty()) {
+                byId = Optional.of(byItem.get(0));
+            }
+        }
+        byId.ifPresent(ci -> {
+            UUID actualId = ci.getId();
+            characterItemRepository.delete(ci);
+            characterItemRepository.flush();
+            repository.findById(characterId).ifPresent(pc -> {
+                if (pc.getCharacterItems() != null) {
+                    pc.getCharacterItems().removeIf(item -> item.getId().equals(actualId));
+                }
+            });
+        });
     }
 
     @Override

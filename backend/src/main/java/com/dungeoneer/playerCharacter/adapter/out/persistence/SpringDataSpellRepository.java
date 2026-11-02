@@ -12,7 +12,7 @@ public interface SpringDataSpellRepository extends JpaRepository<SpellJpaEntity,
     @Query(value = """
         SELECT * FROM player_character.spells s
         WHERE (CAST(:ruleset AS VARCHAR) IS NULL OR s.ruleset = CAST(:ruleset AS VARCHAR))
-          AND (s.owner_id IS NULL OR (CAST(:ownerId AS UUID) IS NOT NULL AND s.owner_id = CAST(:ownerId AS UUID)))
+          AND (s.owner_id IS NULL OR CAST(:ownerId AS UUID) IS NULL OR s.owner_id = CAST(:ownerId AS UUID))
           AND (CAST(:level AS INTEGER) IS NULL OR s.level = CAST(:level AS INTEGER))
           AND (CAST(:school AS VARCHAR) IS NULL OR LOWER(s.school) = LOWER(CAST(:school AS VARCHAR)))
           AND (CAST(:q AS VARCHAR) IS NULL OR CAST(:q AS VARCHAR) = '' OR to_tsvector('portuguese', coalesce(s.name, '') || ' ' || coalesce(s.name_en, '') || ' ' || coalesce(s.description, '')) @@ plainto_tsquery('portuguese', CAST(:q AS VARCHAR)))
