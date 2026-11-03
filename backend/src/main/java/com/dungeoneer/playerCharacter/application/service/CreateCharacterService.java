@@ -439,7 +439,7 @@ public class CreateCharacterService implements CreateCharacterUseCase {
                         }
                     }
                 }
-                case "MIN_LEVEL" -> {
+                case "MIN_LEVEL", "LEVEL" -> {
                     if (rule.minValue() != null && level < rule.minValue()) {
                         throw new CharacterValidationException(
                                 "Pré-requisito do talento não atendido: " + (rule.displayLabel() != null ? rule.displayLabel() : ("Nível mínimo " + rule.minValue()))

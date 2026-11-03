@@ -6,7 +6,8 @@ import com.dungeoneer.playerCharacter.domain.model.MechanicalEffects;
 import com.dungeoneer.playerCharacter.domain.model.RestType;
 import com.dungeoneer.playerCharacter.domain.model.Ruleset;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -31,7 +32,10 @@ import java.util.UUID;
 @Table(name = "feats", schema = "player_character")
 public class FeatJpaEntity {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+            .configure(DeserializationFeature.READ_UNKNOWN_ENUM_VALUES_AS_NULL, true)
+            .configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS, true);
 
     @Id
     @Column(name = "id", nullable = false, updatable = false)
@@ -157,37 +161,7 @@ public class FeatJpaEntity {
             return MechanicalEffects.empty();
         }
         try {
-            JsonNode node = OBJECT_MAPPER.readTree(json);
-            Map<String, Integer> bonuses = new HashMap<>();
-            if (node.has("abilityBonuses") && node.get("abilityBonuses").isObject()) {
-                Iterator<Map.Entry<String, JsonNode>> fields = node.get("abilityBonuses").fields();
-                while (fields.hasNext()) {
-                    Map.Entry<String, JsonNode> field = fields.next();
-                    bonuses.put(field.getKey(), field.getValue().asInt(0));
-                }
-            }
-            int ac = node.has("acBonus") ? node.get("acBonus").asInt(0) : 0;
-            int init = node.has("initiativeBonus") ? node.get("initiativeBonus").asInt(0) : 0;
-            int speed = node.has("speedBonus") ? node.get("speedBonus").asInt(0) : 0;
-            int hp = node.has("hpPerLevelBonus") ? node.get("hpPerLevelBonus").asInt(0) : 0;
-            List<String> profs = new ArrayList<>();
-            if (node.has("grantedProficiencies") && node.get("grantedProficiencies").isArray()) {
-                for (JsonNode pNode : node.get("grantedProficiencies")) {
-                    profs.add(pNode.asText());
-                }
-            }
-            String actionName = node.has("actionName") ? node.get("actionName").asText() : null;
-            String actionType = node.has("actionType") ? node.get("actionType").asText() : null;
-            String diceFormula = node.has("diceFormula") && !node.get("diceFormula").isNull() ? node.get("diceFormula").asText() : null;
-            Integer uses = node.has("usesPerRest") && !node.get("usesPerRest").isNull() ? node.get("usesPerRest").asInt() : null;
-            RestType restType = RestType.NONE;
-            if (node.has("restType")) {
-                try {
-                    restType = RestType.valueOf(node.get("restType").asText().toUpperCase());
-                } catch (Exception ignored) {
-                }
-            }
-            return new MechanicalEffects(bonuses, ac, init, speed, hp, profs, actionName, actionType, diceFormula, uses, restType);
+            return OBJECT_MAPPER.readValue(json, MechanicalEffects.class);
         } catch (Exception e) {
             return MechanicalEffects.empty();
         }

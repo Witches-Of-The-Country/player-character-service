@@ -73,4 +73,45 @@ class MechanicalEffectsTest {
                 )
         );
     }
+
+    @Test
+    @DisplayName("Should create mechanical effects with spellChoice and abilityBonusChoice")
+    void shouldCreateMechanicalEffectsWithSpellChoice() {
+        SpellChoice spellChoice = new SpellChoice(2, 1, 1, List.of("CLERIC", "DRUID", "WIZARD"), false);
+        AbilityBonusChoice bonusChoice = new AbilityBonusChoice(1, List.of("STR", "DEX"), 1);
+        FeatPrerequisite prereq = new FeatPrerequisite("LEVEL", null, 4, "Nível 4+");
+
+        MechanicalEffects effects = new MechanicalEffects(
+                Map.of(),
+                0,
+                0,
+                0,
+                0,
+                List.of(),
+                null,
+                null,
+                null,
+                null,
+                RestType.NONE,
+                bonusChoice,
+                false,
+                null,
+                List.of(prereq),
+                spellChoice
+        );
+
+        assertNotNull(effects.spellChoice());
+        assertEquals(2, effects.spellChoice().cantripsCount());
+        assertEquals(1, effects.spellChoice().spellsCount());
+        assertEquals(1, effects.spellChoice().spellLevel());
+        assertFalse(effects.spellChoice().isRitualOnly());
+        assertEquals(List.of("CLERIC", "DRUID", "WIZARD"), effects.spellChoice().allowedClasses());
+
+        assertNotNull(effects.abilityBonusChoice());
+        assertEquals(1, effects.abilityBonusChoice().chooseCount());
+        assertEquals(List.of("STR", "DEX"), effects.abilityBonusChoice().allowedAbilities());
+
+        assertEquals(1, effects.prerequisiteRules().size());
+        assertEquals("LEVEL", effects.prerequisiteRules().get(0).type());
+    }
 }

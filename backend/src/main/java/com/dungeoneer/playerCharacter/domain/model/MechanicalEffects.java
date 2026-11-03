@@ -22,7 +22,8 @@ public record MechanicalEffects(
         AbilityBonusChoice abilityBonusChoice,
         boolean conditional,
         String conditionDescription,
-        List<FeatPrerequisite> prerequisiteRules
+        List<FeatPrerequisite> prerequisiteRules,
+        SpellChoice spellChoice
 ) {
 
     private static final Pattern DICE_PATTERN = Pattern.compile("^\\d{1,2}d(4|6|8|10|12|20|100)([+-]\\d{1,3})?$");
@@ -55,7 +56,45 @@ public record MechanicalEffects(
                 null,
                 false,
                 null,
-                Collections.emptyList()
+                Collections.emptyList(),
+                null
+        );
+    }
+
+    public MechanicalEffects(
+            Map<String, Integer> abilityBonuses,
+            int acBonus,
+            int initiativeBonus,
+            int speedBonus,
+            int hpPerLevelBonus,
+            List<String> grantedProficiencies,
+            String actionName,
+            String actionType,
+            String diceFormula,
+            Integer usesPerRest,
+            RestType restType,
+            AbilityBonusChoice abilityBonusChoice,
+            boolean conditional,
+            String conditionDescription,
+            List<FeatPrerequisite> prerequisiteRules
+    ) {
+        this(
+                abilityBonuses,
+                acBonus,
+                initiativeBonus,
+                speedBonus,
+                hpPerLevelBonus,
+                grantedProficiencies,
+                actionName,
+                actionType,
+                diceFormula,
+                usesPerRest,
+                restType,
+                abilityBonusChoice,
+                conditional,
+                conditionDescription,
+                prerequisiteRules,
+                null
         );
     }
 
@@ -94,7 +133,8 @@ public record MechanicalEffects(
                 null,
                 false,
                 null,
-                Collections.emptyList()
+                Collections.emptyList(),
+                null
         );
     }
 }

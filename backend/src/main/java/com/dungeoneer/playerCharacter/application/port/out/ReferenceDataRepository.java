@@ -58,10 +58,10 @@ public interface ReferenceDataRepository {
     List<Feat> findAllFeatsForArchetype(UUID archetypeId);
 
     default List<SpellJpaEntity> findSpellsWithCursor(Ruleset ruleset, Integer level, String school, String q, String afterName, UUID afterId, int limit) {
-        return findSpellsWithCursor(ruleset, level, school, q, afterName, afterId, limit, null);
+        return findSpellsWithCursor(ruleset, level != null ? List.of(level) : null, school != null ? List.of(school) : null, q, afterName, afterId, limit, null);
     }
 
-    List<SpellJpaEntity> findSpellsWithCursor(Ruleset ruleset, Integer level, String school, String q, String afterName, UUID afterId, int limit, UUID ownerId);
+    List<SpellJpaEntity> findSpellsWithCursor(Ruleset ruleset, List<Integer> levels, List<String> schools, String q, String afterName, UUID afterId, int limit, UUID ownerId);
 
     default List<FeatJpaEntity> findFeatsWithCursor(Ruleset ruleset, String q, String afterName, UUID afterId, int limit) {
         return findFeatsWithCursor(ruleset, q, afterName, afterId, limit, null);
@@ -74,10 +74,10 @@ public interface ReferenceDataRepository {
     List<FeatJpaEntity> findFeatsWithCursor(Ruleset ruleset, List<String> featTypes, String q, String afterName, UUID afterId, int limit, UUID ownerId);
 
     default List<Item> findItemsWithCursor(Ruleset ruleset, String category, String rarity, String q, String afterName, UUID afterId, int limit) {
-        return findItemsWithCursor(ruleset, category, rarity, q, afterName, afterId, limit, null);
+        return findItemsWithCursor(ruleset, category != null ? List.of(category) : null, rarity != null ? List.of(rarity) : null, q, afterName, afterId, limit, null);
     }
 
-    List<Item> findItemsWithCursor(Ruleset ruleset, String category, String rarity, String q, String afterName, UUID afterId, int limit, UUID ownerId);
+    List<Item> findItemsWithCursor(Ruleset ruleset, List<String> categories, List<String> rarities, String q, String afterName, UUID afterId, int limit, UUID ownerId);
 
     default List<Archetype> findArchetypesWithCursor(Ruleset ruleset, String q, String afterName, UUID afterId, int limit) {
         return findArchetypesWithCursor(ruleset, q, afterName, afterId, limit, null);

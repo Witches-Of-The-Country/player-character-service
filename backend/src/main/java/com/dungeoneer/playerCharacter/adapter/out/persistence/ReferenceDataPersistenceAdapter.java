@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Component
 public class ReferenceDataPersistenceAdapter implements ReferenceDataRepository {
@@ -151,9 +152,11 @@ public class ReferenceDataPersistenceAdapter implements ReferenceDataRepository 
     }
 
     @Override
-    public List<SpellJpaEntity> findSpellsWithCursor(Ruleset ruleset, Integer level, String school, String q, String afterName, UUID afterId, int limit, UUID ownerId) {
+    public List<SpellJpaEntity> findSpellsWithCursor(Ruleset ruleset, List<Integer> levels, List<String> schools, String q, String afterName, UUID afterId, int limit, UUID ownerId) {
         String rulesetStr = ruleset != null ? ruleset.name() : null;
-        return spellRepository.findSpellsWithCursor(rulesetStr, level, school, q, afterName, afterId, limit, ownerId);
+        String levelsStr = (levels != null && !levels.isEmpty()) ? levels.stream().map(String::valueOf).collect(Collectors.joining(",")) : null;
+        String schoolsStr = (schools != null && !schools.isEmpty()) ? String.join(",", schools) : null;
+        return spellRepository.findSpellsWithCursor(rulesetStr, levelsStr, schoolsStr, q, afterName, afterId, limit, ownerId);
     }
 
     @Override
@@ -164,9 +167,11 @@ public class ReferenceDataPersistenceAdapter implements ReferenceDataRepository 
     }
 
     @Override
-    public List<Item> findItemsWithCursor(Ruleset ruleset, String category, String rarity, String q, String afterName, UUID afterId, int limit, UUID ownerId) {
+    public List<Item> findItemsWithCursor(Ruleset ruleset, List<String> categories, List<String> rarities, String q, String afterName, UUID afterId, int limit, UUID ownerId) {
         String rulesetStr = ruleset != null ? ruleset.name() : null;
-        return itemRepository.findItemsWithCursor(rulesetStr, category, rarity, q, afterName, afterId, limit, ownerId)
+        String categoriesStr = (categories != null && !categories.isEmpty()) ? String.join(",", categories) : null;
+        String raritiesStr = (rarities != null && !rarities.isEmpty()) ? String.join(",", rarities) : null;
+        return itemRepository.findItemsWithCursor(rulesetStr, categoriesStr, raritiesStr, q, afterName, afterId, limit, ownerId)
                 .stream().map(ItemJpaEntity::toDomain).toList();
     }
 

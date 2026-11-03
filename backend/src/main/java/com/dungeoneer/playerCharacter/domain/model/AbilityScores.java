@@ -94,7 +94,16 @@ public class AbilityScores {
 
     public int getScore(String abilityName) {
         if (abilityName == null) return 10;
-        return switch (abilityName.trim().toUpperCase()) {
+        String normalized = abilityName.trim().toUpperCase();
+        if (normalized.contains("_OR_")) {
+            String[] parts = normalized.split("_OR_");
+            int max = 0;
+            for (String p : parts) {
+                max = Math.max(max, getScore(p));
+            }
+            return max;
+        }
+        return switch (normalized) {
             case "STRENGTH", "STR", "FOR", "FORCA", "FORÇA" -> strength;
             case "DEXTERITY", "DEX", "DES", "DESTREZA" -> dexterity;
             case "CONSTITUTION", "CON", "CONSTITUICAO", "CONSTITUIÇÃO" -> constitution;

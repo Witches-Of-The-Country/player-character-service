@@ -104,11 +104,15 @@ public class ReferenceDataController {
             @RequestParam(required = false) String q,
             @RequestParam(required = false) String ruleset,
             @RequestParam(required = false) Integer level,
+            @RequestParam(required = false) List<Integer> levels,
             @RequestParam(required = false) String school,
+            @RequestParam(required = false) List<String> schools,
             @RequestHeader(value = "X-User-Id", required = false) UUID userId
     ) {
         Ruleset parsedRuleset = parseRuleset(ruleset);
-        return ResponseEntity.ok(getReferenceDataUseCase.getSpells(cursor, limit, q, parsedRuleset, level, school, userId));
+        List<Integer> effectiveLevels = (levels != null && !levels.isEmpty()) ? levels : (level != null ? List.of(level) : null);
+        List<String> effectiveSchools = (schools != null && !schools.isEmpty()) ? schools : (school != null ? List.of(school) : null);
+        return ResponseEntity.ok(getReferenceDataUseCase.getSpells(cursor, limit, q, parsedRuleset, effectiveLevels, effectiveSchools, userId));
     }
 
     @GetMapping("/feats")
@@ -131,11 +135,15 @@ public class ReferenceDataController {
             @RequestParam(required = false) String q,
             @RequestParam(required = false) String ruleset,
             @RequestParam(required = false) String category,
+            @RequestParam(required = false) List<String> categories,
             @RequestParam(required = false) String rarity,
+            @RequestParam(required = false) List<String> rarities,
             @RequestHeader(value = "X-User-Id", required = false) UUID userId
     ) {
         Ruleset parsedRuleset = parseRuleset(ruleset);
-        return ResponseEntity.ok(getReferenceDataUseCase.getItems(cursor, limit, q, parsedRuleset, category, rarity, userId));
+        List<String> effectiveCategories = (categories != null && !categories.isEmpty()) ? categories : (category != null ? List.of(category) : null);
+        List<String> effectiveRarities = (rarities != null && !rarities.isEmpty()) ? rarities : (rarity != null ? List.of(rarity) : null);
+        return ResponseEntity.ok(getReferenceDataUseCase.getItems(cursor, limit, q, parsedRuleset, effectiveCategories, effectiveRarities, userId));
     }
 
     @PostMapping("/spells")

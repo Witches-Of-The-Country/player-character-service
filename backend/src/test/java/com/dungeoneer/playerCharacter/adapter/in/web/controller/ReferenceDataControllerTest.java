@@ -90,6 +90,20 @@ class ReferenceDataControllerTest {
     }
 
     @Test
+    @DisplayName("GET /api/reference/spells with multiple levels and schools delegates lists to use case")
+    void shouldPassMultiLevelsAndSchoolsToUseCase() throws Exception {
+        CursorPageResponse<SpellDto> page = new CursorPageResponse<>(List.of(), null, false, 0);
+        when(getReferenceDataUseCase.getSpells(any(), eq(20), any(), any(), eq(List.of(1, 2)), eq(List.of("Evocação", "Abjuração")), any()))
+                .thenReturn(page);
+
+        mockMvc.perform(get("/api/reference/spells")
+                        .param("levels", "1", "2")
+                        .param("schools", "Evocação", "Abjuração")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     @DisplayName("GET /api/reference/feats returns 200 OK with CursorPageResponse")
     void shouldReturnFeatsPaginated() throws Exception {
         FeatDto feat = new FeatDto(
@@ -120,6 +134,20 @@ class ReferenceDataControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].name").value("Espada Longa"))
                 .andExpect(jsonPath("$.items[0].itemCategory").value("WEAPON"));
+    }
+
+    @Test
+    @DisplayName("GET /api/reference/items with multiple categories and rarities delegates lists to use case")
+    void shouldPassMultiCategoriesAndRaritiesToUseCase() throws Exception {
+        CursorPageResponse<ItemDto> page = new CursorPageResponse<>(List.of(), null, false, 0);
+        when(getReferenceDataUseCase.getItems(any(), eq(20), any(), any(), eq(List.of("WEAPON", "ARMOR")), eq(List.of("RARE", "VERY_RARE")), any()))
+                .thenReturn(page);
+
+        mockMvc.perform(get("/api/reference/items")
+                        .param("categories", "WEAPON", "ARMOR")
+                        .param("rarities", "RARE", "VERY_RARE")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
     }
 
     @Test

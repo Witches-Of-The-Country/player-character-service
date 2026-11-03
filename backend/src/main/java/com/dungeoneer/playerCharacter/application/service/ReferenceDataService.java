@@ -58,14 +58,14 @@ public class ReferenceDataService implements GetReferenceDataUseCase {
     }
 
     @Override
-    public CursorPageResponse<SpellDto> getSpells(String cursor, int limit, String q, Ruleset ruleset, Integer level, String school, UUID ownerId) {
+    public CursorPageResponse<SpellDto> getSpells(String cursor, int limit, String q, Ruleset ruleset, List<Integer> levels, List<String> schools, UUID ownerId) {
         CursorData cursorData = decodeCursor(cursor);
         int fetchLimit = limit + 1;
 
         List<SpellJpaEntity> results = repository.findSpellsWithCursor(
                 ruleset,
-                level,
-                school,
+                levels,
+                schools,
                 q,
                 cursorData.afterName(),
                 cursorData.afterId(),
@@ -125,14 +125,14 @@ public class ReferenceDataService implements GetReferenceDataUseCase {
     }
 
     @Override
-    public CursorPageResponse<ItemDto> getItems(String cursor, int limit, String q, Ruleset ruleset, String category, String rarity, UUID ownerId) {
+    public CursorPageResponse<ItemDto> getItems(String cursor, int limit, String q, Ruleset ruleset, List<String> categories, List<String> rarities, UUID ownerId) {
         CursorData cursorData = decodeCursor(cursor);
         int fetchLimit = limit + 1;
 
         List<Item> results = repository.findItemsWithCursor(
                 ruleset,
-                category,
-                rarity,
+                categories,
+                rarities,
                 q,
                 cursorData.afterName(),
                 cursorData.afterId(),
