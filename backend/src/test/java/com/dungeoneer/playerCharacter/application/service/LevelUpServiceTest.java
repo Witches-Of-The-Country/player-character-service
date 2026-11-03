@@ -313,4 +313,239 @@ class LevelUpServiceTest {
                 .isInstanceOf(CharacterValidationException.class)
                 .hasMessageContaining("Pré-requisito do talento não atendido: Força 18+");
     }
+
+    @Test
+    @DisplayName("Should successfully apply half-feat ability bonus when valid choice is made")
+    void shouldApplyHalfFeatAbilityBonusChoice() {
+        when(characterRepository.findByIdAndUserId(characterId, userId)).thenReturn(Optional.of(character));
+        when(referenceDataRepository.findArchetypeById(archetypeId)).thenReturn(Optional.of(archetype));
+
+        UUID halfFeatId = UUID.randomUUID();
+        Feat athleteFeat = new Feat(
+                halfFeatId,
+                Ruleset.SRD_2024,
+                "athlete",
+                "Athlete",
+                "Atleta",
+                null,
+                "Aumente Força ou Destreza em 1",
+                "SRD",
+                null,
+                FeatType.GENERAL,
+                new MechanicalEffects(
+                        Map.of(),
+                        0, 0, 0, 0,
+                        List.of(), null, null, null, null,
+                        RestType.NONE,
+                        new AbilityBonusChoice(1, List.of("STR", "DEX"), 1),
+                        false, null, List.of()
+                )
+        );
+
+        when(referenceDataRepository.findFeatById(halfFeatId)).thenReturn(Optional.of(athleteFeat));
+        when(characterRepository.save(any(PlayerCharacter.class))).thenAnswer(i -> i.getArgument(0));
+        when(referenceDataRepository.findProgressionFeats(archetypeId, 2)).thenReturn(List.of());
+        when(sheetHydrator.hydrate(any(PlayerCharacter.class))).thenReturn(mock(CharacterSheetResult.class));
+
+        LevelUpCommand command = new LevelUpCommand(
+                archetypeId,
+                null,
+                HpCalculationMethod.AVERAGE,
+                null,
+                6,
+                false,
+                Map.of("STR", 1),
+                halfFeatId
+        );
+
+        levelUpService.levelUp(characterId, userId, command);
+
+        verify(characterRepository).save(argThat(saved ->
+                saved.getAbilityScores().getStrength() == 17 // base 16 + 1 = 17
+        ));
+    }
+
+    @Test
+    @DisplayName("Should reject half-feat when no ability score increase is provided")
+    void shouldRejectHalfFeatWhenNoAbilityBonusProvided() {
+        when(characterRepository.findByIdAndUserId(characterId, userId)).thenReturn(Optional.of(character));
+        when(referenceDataRepository.findArchetypeById(archetypeId)).thenReturn(Optional.of(archetype));
+
+        UUID halfFeatId = UUID.randomUUID();
+        Feat athleteFeat = new Feat(
+                halfFeatId,
+                Ruleset.SRD_2024,
+                "athlete",
+                "Athlete",
+                "Atleta",
+                null,
+                "Aumente Força ou Destreza em 1",
+                "SRD",
+                null,
+                FeatType.GENERAL,
+                new MechanicalEffects(
+                        Map.of(),
+                        0, 0, 0, 0,
+                        List.of(), null, null, null, null,
+                        RestType.NONE,
+                        new AbilityBonusChoice(1, List.of("STR", "DEX"), 1),
+                        false, null, List.of()
+                )
+        );
+
+        when(referenceDataRepository.findFeatById(halfFeatId)).thenReturn(Optional.of(athleteFeat));
+
+        LevelUpCommand command = new LevelUpCommand(
+                archetypeId,
+                null,
+                HpCalculationMethod.AVERAGE,
+                null,
+                6,
+                false,
+                null,
+                halfFeatId
+        );
+
+        assertThatThrownBy(() -> levelUpService.levelUp(characterId, userId, command))
+                .isInstanceOf(CharacterValidationException.class)
+                .hasMessageContaining("requires choosing 1 ability score increase(s)");
+    }
+
+    @Test
+    @DisplayName("Should reject half-feat when chosen ability is not in allowedAbilities")
+    void shouldRejectHalfFeatWhenChosenAbilityNotAllowed() {
+        when(characterRepository.findByIdAndUserId(characterId, userId)).thenReturn(Optional.of(character));
+        when(referenceDataRepository.findArchetypeById(archetypeId)).thenReturn(Optional.of(archetype));
+
+        UUID halfFeatId = UUID.randomUUID();
+        Feat athleteFeat = new Feat(
+                halfFeatId,
+                Ruleset.SRD_2024,
+                "athlete",
+                "Athlete",
+                "Atleta",
+                null,
+                "Aumente Força ou Destreza em 1",
+                "SRD",
+                null,
+                FeatType.GENERAL,
+                new MechanicalEffects(
+                        Map.of(),
+                        0, 0, 0, 0,
+                        List.of(), null, null, null, null,
+                        RestType.NONE,
+                        new AbilityBonusChoice(1, List.of("STR", "DEX"), 1),
+                        false, null, List.of()
+                )
+        );
+
+        when(referenceDataRepository.findFeatById(halfFeatId)).thenReturn(Optional.of(athleteFeat));
+
+        LevelUpCommand command = new LevelUpCommand(
+                archetypeId,
+                null,
+                HpCalculationMethod.AVERAGE,
+                null,
+                6,
+                false,
+                Map.of("CON", 1),
+                halfFeatId
+        );
+
+        assertThatThrownBy(() -> levelUpService.levelUp(characterId, userId, command))
+                .isInstanceOf(CharacterValidationException.class)
+                .hasMessageContaining("Ability 'CON' is not allowed for feat 'Atleta'");
+    }
+
+    @Test
+    @DisplayName("Should reject half-feat when bonus amount exceeds designated value")
+    void shouldRejectHalfFeatWhenBonusAmountExceedsLimit() {
+        when(characterRepository.findByIdAndUserId(characterId, userId)).thenReturn(Optional.of(character));
+        when(referenceDataRepository.findArchetypeById(archetypeId)).thenReturn(Optional.of(archetype));
+
+        UUID halfFeatId = UUID.randomUUID();
+        Feat athleteFeat = new Feat(
+                halfFeatId,
+                Ruleset.SRD_2024,
+                "athlete",
+                "Athlete",
+                "Atleta",
+                null,
+                "Aumente Força ou Destreza em 1",
+                "SRD",
+                null,
+                FeatType.GENERAL,
+                new MechanicalEffects(
+                        Map.of(),
+                        0, 0, 0, 0,
+                        List.of(), null, null, null, null,
+                        RestType.NONE,
+                        new AbilityBonusChoice(1, List.of("STR", "DEX"), 1),
+                        false, null, List.of()
+                )
+        );
+
+        when(referenceDataRepository.findFeatById(halfFeatId)).thenReturn(Optional.of(athleteFeat));
+
+        LevelUpCommand command = new LevelUpCommand(
+                archetypeId,
+                null,
+                HpCalculationMethod.AVERAGE,
+                null,
+                6,
+                false,
+                Map.of("STR", 2),
+                halfFeatId
+        );
+
+        assertThatThrownBy(() -> levelUpService.levelUp(characterId, userId, command))
+                .isInstanceOf(CharacterValidationException.class)
+                .hasMessageContaining("Ability bonus for 'STR' must be exactly +1");
+    }
+
+    @Test
+    @DisplayName("Should reject ability score increases when selecting a non-half feat")
+    void shouldRejectAbilityScoreIncreasesWhenSelectingNonHalfFeat() {
+        when(characterRepository.findByIdAndUserId(characterId, userId)).thenReturn(Optional.of(character));
+        when(referenceDataRepository.findArchetypeById(archetypeId)).thenReturn(Optional.of(archetype));
+
+        UUID featId = UUID.randomUUID();
+        Feat fullFeat = new Feat(
+                featId,
+                Ruleset.SRD_2024,
+                "alert",
+                "Alert",
+                "Alerta",
+                null,
+                "Iniciativa aprimorada sem bônus de atributo",
+                "SRD",
+                null,
+                FeatType.ORIGIN,
+                new MechanicalEffects(
+                        Map.of(),
+                        0, 5, 0, 0,
+                        List.of(), null, null, null, null,
+                        RestType.NONE,
+                        null,
+                        false, null, List.of()
+                )
+        );
+
+        when(referenceDataRepository.findFeatById(featId)).thenReturn(Optional.of(fullFeat));
+
+        LevelUpCommand command = new LevelUpCommand(
+                archetypeId,
+                null,
+                HpCalculationMethod.AVERAGE,
+                null,
+                6,
+                false,
+                Map.of("STR", 1),
+                featId
+        );
+
+        assertThatThrownBy(() -> levelUpService.levelUp(characterId, userId, command))
+                .isInstanceOf(CharacterValidationException.class)
+                .hasMessageContaining("Ability score increases cannot be provided when selecting a non-half feat: Alerta");
+    }
 }

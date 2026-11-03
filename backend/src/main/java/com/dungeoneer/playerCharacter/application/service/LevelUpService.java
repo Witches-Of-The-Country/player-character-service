@@ -109,26 +109,76 @@ public class LevelUpService implements AddExperienceUseCase, LevelUpUseCase {
 
         int newTotalLevel = currentTotalLevel + 1;
 
-        // Apply Ability Score Improvement (ASI) if provided
+        // Apply Ability Score Improvement (ASI) or Feat Mechanical Effects
         AbilityScores newAbilityScores = character.getAbilityScores();
-        if (command.abilityScoreIncreases() != null && !command.abilityScoreIncreases().isEmpty()) {
-            newAbilityScores = applyAbilityScoreIncreases(newAbilityScores, command.abilityScoreIncreases());
-        }
-
-        // Resolve selected Feat (if chosen at ASI level) and apply its MechanicalEffects
         Feat selectedFeat = null;
         int retroactiveFeatHpBonus = 0;
+
         if (command.selectedFeatId() != null) {
             selectedFeat = referenceDataRepository.findFeatById(command.selectedFeatId())
                     .orElseThrow(() -> new IllegalArgumentException("Selected feat not found: " + command.selectedFeatId()));
             MechanicalEffects featEffects = selectedFeat.getMechanicalEffects();
             if (featEffects != null) {
-                if (featEffects.abilityBonuses() != null && !featEffects.abilityBonuses().isEmpty()) {
+                // 1. Half-feat with choice of abilities (abilityBonusChoice)
+                if (featEffects.abilityBonusChoice() != null) {
+                    AbilityBonusChoice choice = featEffects.abilityBonusChoice();
+                    int chooseCount = choice.chooseCount() > 0 ? choice.chooseCount() : 1;
+                    int bonusAmount = choice.bonusAmount() > 0 ? choice.bonusAmount() : 1;
+                    List<String> allowed = choice.allowedAbilities() != null
+                            ? choice.allowedAbilities().stream().map(Srd2014RulesEngine::normalizeAbility).toList()
+                            : List.of();
+
+                    Map<String, Integer> increases = command.abilityScoreIncreases();
+                    if (increases == null || increases.isEmpty()) {
+                        throw new CharacterValidationException("Selecting feat '" + selectedFeat.getName() + "' requires choosing " + chooseCount + " ability score increase(s) from " + choice.allowedAbilities() + ".");
+                    }
+                    if (increases.size() != chooseCount) {
+                        throw new CharacterValidationException("Selecting feat '" + selectedFeat.getName() + "' requires exactly " + chooseCount + " ability choice(s), but " + increases.size() + " was provided.");
+                    }
+                    for (Map.Entry<String, Integer> entry : increases.entrySet()) {
+                        String normalizedKey = Srd2014RulesEngine.normalizeAbility(entry.getKey());
+                        if (!allowed.contains(normalizedKey)) {
+                            throw new CharacterValidationException("Ability '" + entry.getKey() + "' is not allowed for feat '" + selectedFeat.getName() + "'. Allowed abilities: " + choice.allowedAbilities());
+                        }
+                        int val = entry.getValue() != null ? entry.getValue() : 0;
+                        if (val != bonusAmount) {
+                            throw new CharacterValidationException("Ability bonus for '" + entry.getKey() + "' must be exactly +" + bonusAmount + ", but was " + val + ".");
+                        }
+                    }
+                    newAbilityScores = applyAbilityScoreIncreases(newAbilityScores, increases);
+                }
+                // 2. Feat with fixed ability bonuses (abilityBonuses)
+                else if (featEffects.abilityBonuses() != null && !featEffects.abilityBonuses().isEmpty()) {
+                    if (command.abilityScoreIncreases() != null && !command.abilityScoreIncreases().isEmpty()) {
+                        Map<String, Integer> normalizedProvided = new HashMap<>();
+                        command.abilityScoreIncreases().forEach((k, v) -> normalizedProvided.put(Srd2014RulesEngine.normalizeAbility(k), v));
+                        Map<String, Integer> normalizedExpected = new HashMap<>();
+                        featEffects.abilityBonuses().forEach((k, v) -> normalizedExpected.put(Srd2014RulesEngine.normalizeAbility(k), v));
+                        if (!normalizedProvided.equals(normalizedExpected)) {
+                            throw new CharacterValidationException("Provided ability score increases do not match the fixed bonuses for feat: " + selectedFeat.getName());
+                        }
+                    }
                     newAbilityScores = applyAbilityScoreIncreases(newAbilityScores, featEffects.abilityBonuses());
                 }
+                // 3. Feat has NO ability bonuses
+                else {
+                    if (command.abilityScoreIncreases() != null && !command.abilityScoreIncreases().isEmpty()) {
+                        throw new CharacterValidationException("Ability score increases cannot be provided when selecting a non-half feat: " + selectedFeat.getName());
+                    }
+                }
+
                 if (featEffects.hpPerLevelBonus() > 0) {
                     retroactiveFeatHpBonus += featEffects.hpPerLevelBonus() * newTotalLevel;
                 }
+            } else {
+                if (command.abilityScoreIncreases() != null && !command.abilityScoreIncreases().isEmpty()) {
+                    throw new CharacterValidationException("Ability score increases cannot be provided when selecting a non-half feat: " + selectedFeat.getName());
+                }
+            }
+        } else {
+            // Standard ASI (no feat selected)
+            if (command.abilityScoreIncreases() != null && !command.abilityScoreIncreases().isEmpty()) {
+                newAbilityScores = applyAbilityScoreIncreases(newAbilityScores, command.abilityScoreIncreases());
             }
         }
 
@@ -276,13 +326,14 @@ public class LevelUpService implements AddExperienceUseCase, LevelUpUseCase {
             validateFeatPrerequisites(selectedFeat, newAbilityScores, newTotalLevel, currentArchIds, character.getLineageId(), character.getFeats());
             final Feat featToSave = selectedFeat;
             if (!characterRepository.findFeatsByCharacterId(characterId).stream().anyMatch(cf -> cf.getFeatId().equals(featToSave.getId()))) {
+                Integer uses = featToSave.getMechanicalEffects() != null ? featToSave.getMechanicalEffects().usesPerRest() : null;
                 characterRepository.saveCharacterFeat(new CharacterFeat(
                         UUID.randomUUID(),
                         characterId,
                         featToSave.getId(),
                         newTotalLevel,
-                        featToSave.getMechanicalEffects().usesPerRest(),
-                        featToSave.getMechanicalEffects().usesPerRest(),
+                        uses,
+                        uses,
                         "{\"source\":\"FEAT\"}"
                 ));
             }

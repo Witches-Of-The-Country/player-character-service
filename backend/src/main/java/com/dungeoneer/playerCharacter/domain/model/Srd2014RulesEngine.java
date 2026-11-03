@@ -224,12 +224,12 @@ public class Srd2014RulesEngine implements RulesEngine {
         if (name == null) return "";
         String s = name.trim().toUpperCase();
         return switch (s) {
-            case "STR", "STRENGTH" -> "STRENGTH";
-            case "DEX", "DEXTERITY" -> "DEXTERITY";
-            case "CON", "CONSTITUTION" -> "CONSTITUTION";
-            case "INT", "INTELLIGENCE" -> "INTELLIGENCE";
-            case "WIS", "WISDOM" -> "WISDOM";
-            case "CHA", "CHARISMA" -> "CHARISMA";
+            case "STR", "STRENGTH", "FOR", "FORCA", "FORÇA" -> "STRENGTH";
+            case "DEX", "DEXTERITY", "DES", "DESTREZA" -> "DEXTERITY";
+            case "CON", "CONSTITUTION", "CONSTITUICAO", "CONSTITUIÇÃO" -> "CONSTITUTION";
+            case "INT", "INTELLIGENCE", "INTELIGENCIA", "INTELIGÊNCIA" -> "INTELLIGENCE";
+            case "WIS", "WISDOM", "SAB", "SABEDORIA" -> "WISDOM";
+            case "CHA", "CHARISMA", "CAR", "CARISMA" -> "CHARISMA";
             default -> s;
         };
     }
