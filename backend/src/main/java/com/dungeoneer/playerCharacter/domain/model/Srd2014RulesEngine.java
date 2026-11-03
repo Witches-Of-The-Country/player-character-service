@@ -220,6 +220,21 @@ public class Srd2014RulesEngine implements RulesEngine {
         return 1;
     }
 
+    @Override
+    public int calculateHitDieHealing(int dieRoll, int constitutionModifier) {
+        return Math.max(0, dieRoll + constitutionModifier);
+    }
+
+    @Override
+    public int calculateHitDiceRecovery(int totalCharacterLevel) {
+        return Math.max(1, totalCharacterLevel / 2);
+    }
+
+    @Override
+    public int calculateExhaustionRecovery(int currentExhaustion) {
+        return Math.max(0, currentExhaustion - 1);
+    }
+
     public static String normalizeAbility(String name) {
         if (name == null) return "";
         String s = name.trim().toUpperCase();

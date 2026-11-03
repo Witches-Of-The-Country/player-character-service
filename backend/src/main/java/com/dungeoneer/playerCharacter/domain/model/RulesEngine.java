@@ -44,4 +44,17 @@ public interface RulesEngine {
     int getXpForLevel(int level);
 
     int getLevelForXp(int experiencePoints);
+
+    int calculateHitDieHealing(int dieRoll, int constitutionModifier);
+
+    int calculateHitDiceRecovery(int totalCharacterLevel);
+
+    int calculateExhaustionRecovery(int currentExhaustion);
+
+    static RulesEngine forRuleset(Ruleset ruleset) {
+        if (ruleset == Ruleset.SRD_2024) {
+            return new Srd2024RulesEngine();
+        }
+        return new Srd2014RulesEngine();
+    }
 }

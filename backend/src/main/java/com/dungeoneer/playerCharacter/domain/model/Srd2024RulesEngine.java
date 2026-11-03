@@ -162,4 +162,19 @@ public class Srd2024RulesEngine implements RulesEngine {
     public int getLevelForXp(int experiencePoints) {
         return baseEngine.getLevelForXp(experiencePoints);
     }
+
+    @Override
+    public int calculateHitDieHealing(int dieRoll, int constitutionModifier) {
+        return baseEngine.calculateHitDieHealing(dieRoll, constitutionModifier);
+    }
+
+    @Override
+    public int calculateHitDiceRecovery(int totalCharacterLevel) {
+        return baseEngine.calculateHitDiceRecovery(totalCharacterLevel);
+    }
+
+    @Override
+    public int calculateExhaustionRecovery(int currentExhaustion) {
+        return baseEngine.calculateExhaustionRecovery(currentExhaustion);
+    }
 }

@@ -213,4 +213,40 @@ class RulesEngineTest {
         assertEquals(5, engine.calculateProficiencyBonus(13));
         assertEquals(6, engine.calculateProficiencyBonus(17));
     }
+
+    @Test
+    @DisplayName("TE-07: Rest calculations in SRD 2014 and SRD 2024 RulesEngines")
+    void shouldCalculateRestMechanicsForBothEngines() {
+        RulesEngine engine2014 = new Srd2014RulesEngine();
+        RulesEngine engine2024 = new Srd2024RulesEngine();
+
+        // Hit Die healing: dieRoll + CON mod (minimum 0 per die)
+        assertEquals(7, engine2014.calculateHitDieHealing(5, 2));
+        assertEquals(7, engine2024.calculateHitDieHealing(5, 2));
+        // Negative CON mod clamped at 0
+        assertEquals(0, engine2014.calculateHitDieHealing(1, -3));
+        assertEquals(0, engine2024.calculateHitDieHealing(1, -3));
+
+        // TE-05: Hit Dice recovery: half of total character level rounded down, minimum 1
+        assertEquals(1, engine2014.calculateHitDiceRecovery(1));
+        assertEquals(1, engine2024.calculateHitDiceRecovery(1));
+        assertEquals(1, engine2014.calculateHitDiceRecovery(2));
+        assertEquals(1, engine2024.calculateHitDiceRecovery(3));
+        assertEquals(3, engine2014.calculateHitDiceRecovery(7));
+        assertEquals(3, engine2024.calculateHitDiceRecovery(7));
+        assertEquals(10, engine2014.calculateHitDiceRecovery(20));
+        assertEquals(10, engine2024.calculateHitDiceRecovery(20));
+
+        // TE-06: Exhaustion recovery: decrement by 1, minimum 0
+        assertEquals(1, engine2014.calculateExhaustionRecovery(2));
+        assertEquals(1, engine2024.calculateExhaustionRecovery(2));
+        assertEquals(0, engine2014.calculateExhaustionRecovery(1));
+        assertEquals(0, engine2024.calculateExhaustionRecovery(1));
+        assertEquals(0, engine2014.calculateExhaustionRecovery(0));
+        assertEquals(0, engine2024.calculateExhaustionRecovery(0));
+
+        // Factory resolution
+        assertSame(Srd2014RulesEngine.class, RulesEngine.forRuleset(Ruleset.SRD_2014).getClass());
+        assertSame(Srd2024RulesEngine.class, RulesEngine.forRuleset(Ruleset.SRD_2024).getClass());
+    }
 }
