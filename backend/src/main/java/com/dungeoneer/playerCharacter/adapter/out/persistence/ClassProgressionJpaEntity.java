@@ -33,6 +33,9 @@ public class ClassProgressionJpaEntity {
     @Column(name = "class_level", nullable = false)
     private int classLevel;
 
+    @Column(name = "hit_dice_spent", nullable = false)
+    private int hitDiceSpent = 0;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -51,11 +54,25 @@ public class ClassProgressionJpaEntity {
             Instant createdAt,
             Instant updatedAt
     ) {
+        this(id, character, archetypeId, subclassId, classLevel, 0, createdAt, updatedAt);
+    }
+
+    public ClassProgressionJpaEntity(
+            UUID id,
+            PlayerCharacterJpaEntity character,
+            UUID archetypeId,
+            UUID subclassId,
+            int classLevel,
+            int hitDiceSpent,
+            Instant createdAt,
+            Instant updatedAt
+    ) {
         this.id = id;
         this.character = character;
         this.archetypeId = archetypeId;
         this.subclassId = subclassId;
         this.classLevel = classLevel;
+        this.hitDiceSpent = hitDiceSpent;
         this.createdAt = createdAt != null ? createdAt : Instant.now();
         this.updatedAt = updatedAt != null ? updatedAt : Instant.now();
     }
@@ -68,6 +85,7 @@ public class ClassProgressionJpaEntity {
                 domain.getArchetypeId(),
                 domain.getSubclassId(),
                 domain.getClassLevel(),
+                domain.getHitDiceSpent(),
                 now,
                 now
         );
@@ -79,7 +97,8 @@ public class ClassProgressionJpaEntity {
                 this.character != null ? this.character.getId() : null,
                 this.archetypeId,
                 this.subclassId,
-                this.classLevel
+                this.classLevel,
+                this.hitDiceSpent
         );
     }
 
@@ -121,6 +140,14 @@ public class ClassProgressionJpaEntity {
 
     public void setClassLevel(int classLevel) {
         this.classLevel = classLevel;
+    }
+
+    public int getHitDiceSpent() {
+        return hitDiceSpent;
+    }
+
+    public void setHitDiceSpent(int hitDiceSpent) {
+        this.hitDiceSpent = hitDiceSpent;
     }
 
     public Instant getCreatedAt() {

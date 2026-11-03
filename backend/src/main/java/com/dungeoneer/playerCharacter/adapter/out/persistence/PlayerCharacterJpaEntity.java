@@ -129,6 +129,9 @@ public class PlayerCharacterJpaEntity {
     @Column(name = "avatar_url")
     private String avatarUrl;
 
+    @Column(name = "exhaustion", nullable = false)
+    private int exhaustion = 0;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -219,6 +222,7 @@ public class PlayerCharacterJpaEntity {
         entity.setExperiencePoints(character.getExperiencePoints());
         entity.setCampaignId(character.getCampaignId());
         entity.setAvatarUrl(character.getAvatarUrl());
+        entity.setExhaustion(character.getExhaustion());
         entity.setCreatedAt(character.getCreatedAt());
         entity.setUpdatedAt(character.getUpdatedAt());
 
@@ -311,6 +315,7 @@ public class PlayerCharacterJpaEntity {
                 domainFeats,
                 pouch,
                 this.avatarUrl,
+                this.exhaustion,
                 this.createdAt,
                 this.updatedAt
         );
@@ -562,6 +567,14 @@ public class PlayerCharacterJpaEntity {
 
     public void setAvatarUrl(String avatarUrl) {
         this.avatarUrl = avatarUrl;
+    }
+
+    public int getExhaustion() {
+        return exhaustion;
+    }
+
+    public void setExhaustion(int exhaustion) {
+        this.exhaustion = exhaustion;
     }
 
     public Instant getCreatedAt() {

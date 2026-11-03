@@ -16,6 +16,8 @@ public class PlayerCharacter {
     public static final int DEFAULT_SPEED = 30;
     public static final int BASE_ARMOR_CLASS = 10;
     public static final int MAX_ATTUNED_ITEMS = 3;
+    public static final int MIN_EXHAUSTION = 0;
+    public static final int MAX_EXHAUSTION = 6;
 
     private final UUID id;
     private final String name;
@@ -45,6 +47,7 @@ public class PlayerCharacter {
     private final List<CharacterFeat> feats;
     private final CurrencyPouch currencyPouch;
     private final String avatarUrl;
+    private final int exhaustion;
     private final Instant createdAt;
     private final Instant updatedAt;
 
@@ -76,6 +79,7 @@ public class PlayerCharacter {
             List<CharacterFeat> feats,
             CurrencyPouch currencyPouch,
             String avatarUrl,
+            int exhaustion,
             Instant createdAt,
             Instant updatedAt
     ) {
@@ -83,6 +87,7 @@ public class PlayerCharacter {
         validateLevel(level);
         validateHitPoints(hitPointsCurrent, hitPointsMax, hitPointsTemp);
         validateAvatarUrl(avatarUrl);
+        validateExhaustion(exhaustion);
 
         if (ruleset == null) {
             throw new CharacterValidationException("Ruleset cannot be null.");
@@ -138,8 +143,74 @@ public class PlayerCharacter {
                 : Collections.emptyList();
         this.currencyPouch = currencyPouch != null ? currencyPouch : CurrencyPouch.empty();
         this.avatarUrl = avatarUrl != null && !avatarUrl.isBlank() ? avatarUrl.trim() : null;
+        this.exhaustion = exhaustion;
         this.createdAt = createdAt != null ? createdAt : Instant.now();
         this.updatedAt = updatedAt != null ? updatedAt : Instant.now();
+    }
+
+    public PlayerCharacter(
+            UUID id,
+            String name,
+            int level,
+            int hitPointsCurrent,
+            int hitPointsMax,
+            int hitPointsTemp,
+            int armorClass,
+            int initiativeBonus,
+            int speed,
+            int proficiencyBonus,
+            Ruleset ruleset,
+            AbilityScoreMethod abilityScoreMethod,
+            UUID lineageId,
+            UUID backgroundId,
+            UUID userId,
+            AbilityScores abilityScores,
+            String notes,
+            HpCalculationMethod hpCalculationMethod,
+            boolean hasPendingLevelChoices,
+            List<ClassProgression> classProgressions,
+            List<String> skillProficiencies,
+            int experiencePoints,
+            UUID campaignId,
+            List<CharacterItem> items,
+            List<CharacterFeat> feats,
+            CurrencyPouch currencyPouch,
+            String avatarUrl,
+            Instant createdAt,
+            Instant updatedAt
+    ) {
+        this(
+                id,
+                name,
+                level,
+                hitPointsCurrent,
+                hitPointsMax,
+                hitPointsTemp,
+                armorClass,
+                initiativeBonus,
+                speed,
+                proficiencyBonus,
+                ruleset,
+                abilityScoreMethod,
+                lineageId,
+                backgroundId,
+                userId,
+                abilityScores,
+                notes,
+                hpCalculationMethod,
+                hasPendingLevelChoices,
+                classProgressions,
+                skillProficiencies,
+                experiencePoints,
+                campaignId,
+                items,
+                feats,
+                currencyPouch,
+                avatarUrl,
+                0,
+                createdAt,
+                updatedAt
+        );
     }
 
     public PlayerCharacter(
@@ -544,6 +615,7 @@ public class PlayerCharacter {
                 this.feats,
                 this.currencyPouch,
                 this.avatarUrl,
+                this.exhaustion,
                 this.createdAt,
                 Instant.now()
         );
@@ -584,6 +656,7 @@ public class PlayerCharacter {
                 this.feats,
                 this.currencyPouch,
                 this.avatarUrl,
+                this.exhaustion,
                 this.createdAt,
                 Instant.now()
         );
@@ -644,6 +717,7 @@ public class PlayerCharacter {
                 newFeats,
                 this.currencyPouch,
                 this.avatarUrl,
+                this.exhaustion,
                 this.createdAt,
                 Instant.now()
         );
@@ -678,6 +752,7 @@ public class PlayerCharacter {
                 this.feats,
                 this.currencyPouch,
                 this.avatarUrl,
+                this.exhaustion,
                 this.createdAt,
                 Instant.now()
         );
@@ -716,6 +791,7 @@ public class PlayerCharacter {
                 this.feats,
                 this.currencyPouch,
                 this.avatarUrl,
+                this.exhaustion,
                 this.createdAt,
                 Instant.now()
         );
@@ -750,6 +826,7 @@ public class PlayerCharacter {
                 newFeats,
                 this.currencyPouch,
                 this.avatarUrl,
+                this.exhaustion,
                 this.createdAt,
                 Instant.now()
         );
@@ -785,6 +862,7 @@ public class PlayerCharacter {
                 this.feats,
                 this.currencyPouch,
                 this.avatarUrl,
+                this.exhaustion,
                 this.createdAt,
                 Instant.now()
         );
@@ -820,6 +898,7 @@ public class PlayerCharacter {
                 this.feats,
                 this.currencyPouch,
                 this.avatarUrl,
+                this.exhaustion,
                 this.createdAt,
                 Instant.now()
         );
@@ -872,6 +951,12 @@ public class PlayerCharacter {
         }
         if (!lower.startsWith("data:image/") && !lower.startsWith("http://") && !lower.startsWith("https://")) {
             throw new CharacterValidationException("Avatar must be a valid image Data URL or HTTP(S) link");
+        }
+    }
+
+    private static void validateExhaustion(int exhaustion) {
+        if (exhaustion < MIN_EXHAUSTION || exhaustion > MAX_EXHAUSTION) {
+            throw new CharacterValidationException("Exhaustion level must be between 0 and 6. Provided: " + exhaustion);
         }
     }
 
@@ -1014,6 +1099,7 @@ public class PlayerCharacter {
                 this.feats,
                 this.currencyPouch,
                 newAvatarUrl != null && !newAvatarUrl.isBlank() ? newAvatarUrl.trim() : null,
+                this.exhaustion,
                 this.createdAt,
                 Instant.now()
         );
@@ -1048,6 +1134,102 @@ public class PlayerCharacter {
                 this.feats,
                 newPouch != null ? newPouch : CurrencyPouch.empty(),
                 this.avatarUrl,
+                this.exhaustion,
+                this.createdAt,
+                Instant.now()
+        );
+    }
+
+    public int getExhaustion() {
+        return exhaustion;
+    }
+
+    public PlayerCharacter withExhaustion(int newExhaustion) {
+        validateExhaustion(newExhaustion);
+        return new PlayerCharacter(
+                this.id,
+                this.name,
+                this.level,
+                this.hitPointsCurrent,
+                this.hitPointsMax,
+                this.hitPointsTemp,
+                this.armorClass,
+                this.initiativeBonus,
+                this.speed,
+                this.proficiencyBonus,
+                this.ruleset,
+                this.abilityScoreMethod,
+                this.lineageId,
+                this.backgroundId,
+                this.userId,
+                this.abilityScores,
+                this.notes,
+                this.hpCalculationMethod,
+                this.hasPendingLevelChoices,
+                this.classProgressions,
+                this.skillProficiencies,
+                this.experiencePoints,
+                this.campaignId,
+                this.items,
+                this.feats,
+                this.currencyPouch,
+                this.avatarUrl,
+                newExhaustion,
+                this.createdAt,
+                Instant.now()
+        );
+    }
+
+    public PlayerCharacter addExhaustion(int levels) {
+        if (levels <= 0) {
+            return this;
+        }
+        int target = Math.min(MAX_EXHAUSTION, this.exhaustion + levels);
+        return withExhaustion(target);
+    }
+
+    public PlayerCharacter removeExhaustion(int levels) {
+        if (levels <= 0) {
+            return this;
+        }
+        int target = Math.max(MIN_EXHAUSTION, this.exhaustion - levels);
+        return withExhaustion(target);
+    }
+
+    public boolean isDeadFromExhaustion() {
+        return this.exhaustion >= MAX_EXHAUSTION;
+    }
+
+    public PlayerCharacter withClassProgressions(List<ClassProgression> newProgressions) {
+        return new PlayerCharacter(
+                this.id,
+                this.name,
+                this.level,
+                this.hitPointsCurrent,
+                this.hitPointsMax,
+                this.hitPointsTemp,
+                this.armorClass,
+                this.initiativeBonus,
+                this.speed,
+                this.proficiencyBonus,
+                this.ruleset,
+                this.abilityScoreMethod,
+                this.lineageId,
+                this.backgroundId,
+                this.userId,
+                this.abilityScores,
+                this.notes,
+                this.hpCalculationMethod,
+                this.hasPendingLevelChoices,
+                newProgressions,
+                this.skillProficiencies,
+                this.experiencePoints,
+                this.campaignId,
+                this.items,
+                this.feats,
+                this.currencyPouch,
+                this.avatarUrl,
+                this.exhaustion,
                 this.createdAt,
                 Instant.now()
         );

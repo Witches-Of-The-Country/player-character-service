@@ -363,4 +363,93 @@ class PlayerCharacterTest {
         assertEquals(50, leveledUp.getCurrencyPouch().gp());
         assertEquals(avatar, leveledUp.getAvatarUrl());
     }
+
+    @Test
+    @DisplayName("Should default exhaustion to 0 and allow valid exhaustion values (0-6)")
+    void shouldHandleExhaustionLifecycle() {
+        PlayerCharacter character = PlayerCharacter.createNew(
+                "Exhaustion Hero",
+                1,
+                10,
+                Ruleset.SRD_2024,
+                AbilityScoreMethod.STANDARD_ARRAY,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                createValidAbilityScores()
+        );
+
+        assertEquals(0, character.getExhaustion());
+        assertFalse(character.isDeadFromExhaustion());
+
+        PlayerCharacter exhausted = character.withExhaustion(3);
+        assertEquals(3, exhausted.getExhaustion());
+        assertFalse(exhausted.isDeadFromExhaustion());
+
+        PlayerCharacter added = exhausted.addExhaustion(2);
+        assertEquals(5, added.getExhaustion());
+
+        // Clamps at 6
+        PlayerCharacter maxExhausted = added.addExhaustion(3);
+        assertEquals(6, maxExhausted.getExhaustion());
+        assertTrue(maxExhausted.isDeadFromExhaustion());
+
+        // Remove exhaustion
+        PlayerCharacter recovered = maxExhausted.removeExhaustion(2);
+        assertEquals(4, recovered.getExhaustion());
+        assertFalse(recovered.isDeadFromExhaustion());
+
+        // Clamps at 0
+        PlayerCharacter fullRecovered = recovered.removeExhaustion(10);
+        assertEquals(0, fullRecovered.getExhaustion());
+    }
+
+    @Test
+    @DisplayName("Should reject invalid exhaustion levels (< 0 or > 6)")
+    void shouldRejectInvalidExhaustionLevels() {
+        PlayerCharacter character = PlayerCharacter.createNew(
+                "Hero",
+                1,
+                10,
+                Ruleset.SRD_2024,
+                AbilityScoreMethod.STANDARD_ARRAY,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                createValidAbilityScores()
+        );
+
+        assertThrows(CharacterValidationException.class, () -> character.withExhaustion(-1));
+        assertThrows(CharacterValidationException.class, () -> character.withExhaustion(7));
+    }
+
+    @Test
+    @DisplayName("Should preserve exhaustion across various character mutations")
+    void shouldPreserveExhaustionAcrossMutations() {
+        PlayerCharacter character = PlayerCharacter.createNew(
+                "Hero",
+                1,
+                10,
+                Ruleset.SRD_2024,
+                AbilityScoreMethod.STANDARD_ARRAY,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                createValidAbilityScores()
+        ).withExhaustion(2);
+
+        assertEquals(2, character.getExhaustion());
+
+        PlayerCharacter withHp = character.withCurrentHp(5);
+        assertEquals(2, withHp.getExhaustion());
+
+        PlayerCharacter withAc = withHp.withArmorClass(14);
+        assertEquals(2, withAc.getExhaustion());
+
+        PlayerCharacter withPouch = withAc.withCurrencyPouch(new CurrencyPouch(1, 2, 3, 4, 5));
+        assertEquals(2, withPouch.getExhaustion());
+
+        PlayerCharacter withAvatar = withPouch.withAvatarUrl("https://example.com/avatar.png");
+        assertEquals(2, withAvatar.getExhaustion());
+    }
 }
