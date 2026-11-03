@@ -15,6 +15,7 @@ import com.dungeoneer.playerCharacter.domain.model.Archetype;
 import com.dungeoneer.playerCharacter.domain.model.Background;
 import com.dungeoneer.playerCharacter.domain.model.CharacterFeat;
 import com.dungeoneer.playerCharacter.domain.model.Feat;
+import com.dungeoneer.playerCharacter.domain.model.FeatPrerequisite;
 import com.dungeoneer.playerCharacter.domain.model.FeatType;
 import com.dungeoneer.playerCharacter.domain.model.HitDiceEnum;
 import com.dungeoneer.playerCharacter.domain.model.HpCalculationMethod;
@@ -563,5 +564,61 @@ class CreateCharacterServiceTest {
         assertThatThrownBy(() -> service.createCharacter(svgCommand))
                 .isInstanceOf(CharacterValidationException.class)
                 .hasMessageContaining("SVG");
+    }
+
+    @Test
+    @DisplayName("Should reject character creation when origin feat prerequisites are not met")
+    void shouldRejectOriginFeatWhenPrerequisitesNotMet() {
+        UUID originFeatId = UUID.randomUUID();
+        Feat featWithPrereq = new Feat(
+                originFeatId,
+                Ruleset.SRD_2024,
+                "high-str-origin-feat",
+                "High Strength Feat",
+                "Talento de Força Alta",
+                "Força 18+",
+                "Requer força extraordinária",
+                "SRD",
+                null,
+                FeatType.ORIGIN,
+                new MechanicalEffects(
+                        Map.of(), 0, 0, 0, 0, List.of(),
+                        null, null, null, null, RestType.NONE,
+                        null, false, null,
+                        List.of(new FeatPrerequisite("ABILITY_SCORE", "STRENGTH", 18, "Força 18+"))
+                )
+        );
+
+        when(referenceDataRepository.findArchetypeById(archetypeId)).thenReturn(Optional.of(archetype));
+        when(referenceDataRepository.findLineageById(lineageId)).thenReturn(Optional.of(lineage));
+        when(referenceDataRepository.findBackgroundById(backgroundId)).thenReturn(Optional.of(background));
+        when(referenceDataRepository.findFeatById(originFeatId)).thenReturn(Optional.of(featWithPrereq));
+
+        CreateCharacterCommand command = new CreateCharacterCommand(
+                userId,
+                "Weak Hero",
+                1,
+                Ruleset.SRD_2024,
+                lineageId,
+                backgroundId,
+                archetypeId,
+                null,
+                AbilityScoreMethod.STANDARD_ARRAY,
+                15, 14, 13, 12, 10, 8, // STR 15 < 18
+                Map.of("DEXTERITY", 2, "CONSTITUTION", 1),
+                null,
+                HpCalculationMethod.MAX,
+                null,
+                List.of(),
+                "Notes",
+                List.of(),
+                List.of("Athletics"),
+                originFeatId,
+                null
+        );
+
+        assertThatThrownBy(() -> service.createCharacter(command))
+                .isInstanceOf(CharacterValidationException.class)
+                .hasMessageContaining("Pré-requisito do talento não atendido");
     }
 }

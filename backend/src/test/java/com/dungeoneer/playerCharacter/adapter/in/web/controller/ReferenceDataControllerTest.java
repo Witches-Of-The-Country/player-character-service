@@ -11,7 +11,10 @@ import com.dungeoneer.playerCharacter.application.dto.LineageDto;
 import com.dungeoneer.playerCharacter.application.dto.SpellDto;
 import com.dungeoneer.playerCharacter.application.port.in.GetReferenceDataUseCase;
 import com.dungeoneer.playerCharacter.domain.exception.CharacterValidationException;
+import com.dungeoneer.playerCharacter.domain.model.FeatType;
+import com.dungeoneer.playerCharacter.domain.model.MechanicalEffects;
 import com.dungeoneer.playerCharacter.domain.model.Ruleset;
+import com.dungeoneer.playerCharacter.domain.model.SpellChoice;
 import com.dungeoneer.playerCharacter.domain.model.SpellcastingType;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -117,6 +120,35 @@ class ReferenceDataControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].name").value("Alerta"))
                 .andExpect(jsonPath("$.hasNext").value(false));
+    }
+
+    @Test
+    @DisplayName("GET /api/reference/feats with featTypes and ruleset returns feats with spellChoice")
+    void shouldFilterFeatsByFeatTypesAndReturnMechanicalEffects() throws Exception {
+        SpellChoice spellChoice = new SpellChoice(2, 1, 1, List.of("CLERIC", "DRUID", "WIZARD"), false);
+        MechanicalEffects effects = new MechanicalEffects(
+                Map.of(), 0, 0, 0, 0, List.of(),
+                null, null, null, null, null,
+                null, false, null, List.of(),
+                spellChoice
+        );
+        FeatDto feat = new FeatDto(
+                UUID.randomUUID(), "SRD_2024", "magic-initiate-2024", "Magic Initiate", "Iniciado em Magia",
+                "Nível 1", "Aprende magias e truques", "SRD", FeatType.ORIGIN, effects
+        );
+        CursorPageResponse<FeatDto> page = new CursorPageResponse<>(List.of(feat), null, false, 1);
+        when(getReferenceDataUseCase.getFeats(any(), eq(20), any(), eq(Ruleset.SRD_2024), eq(List.of("ORIGIN")), any()))
+                .thenReturn(page);
+
+        mockMvc.perform(get("/api/reference/feats")
+                        .param("featTypes", "ORIGIN")
+                        .param("ruleset", "SRD_2024")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].slug").value("magic-initiate-2024"))
+                .andExpect(jsonPath("$.items[0].featType").value("ORIGIN"))
+                .andExpect(jsonPath("$.items[0].mechanicalEffects.spellChoice.cantripsCount").value(2))
+                .andExpect(jsonPath("$.items[0].mechanicalEffects.spellChoice.allowedClasses[0]").value("CLERIC"));
     }
 
     @Test
