@@ -114,4 +114,56 @@ class MechanicalEffectsTest {
         assertEquals(1, effects.prerequisiteRules().size());
         assertEquals("LEVEL", effects.prerequisiteRules().get(0).type());
     }
+
+    @Test
+    @DisplayName("Should create mechanical effects with structured charge configuration")
+    void shouldCreateMechanicalEffectsWithChargeConfiguration() {
+        MechanicalEffects effects = new MechanicalEffects(
+                Map.of(), 0, 0, 0, 0, List.of(), null, null, null, null, RestType.NONE,
+                null, false, null, List.of(), null,
+                ChargeType.ABILITY_MODIFIER, "cha ", null,
+                ChargeRecoveryType.FIXED, 1,
+                ChargeRecoveryType.ALL, null
+        );
+
+        assertEquals(ChargeType.ABILITY_MODIFIER, effects.maxChargesType());
+        assertEquals("CHA", effects.chargeAbility());
+        assertEquals(ChargeRecoveryType.FIXED, effects.shortRestRecoveryType());
+        assertEquals(1, effects.shortRestRecoveryFixed());
+        assertEquals(ChargeRecoveryType.ALL, effects.longRestRecoveryType());
+        assertNull(effects.longRestRecoveryFixed());
+    }
+
+    @Test
+    @DisplayName("Should throw exception on negative fixed charges or negative recovery")
+    void shouldThrowExceptionOnNegativeFixedChargesOrRecovery() {
+        assertThrows(CharacterValidationException.class, () ->
+                new MechanicalEffects(
+                        Map.of(), 0, 0, 0, 0, List.of(), null, null, null, null, RestType.NONE,
+                        null, false, null, List.of(), null,
+                        ChargeType.FIXED, null, -1,
+                        null, null, null, null
+                )
+        );
+
+        assertThrows(CharacterValidationException.class, () ->
+                new MechanicalEffects(
+                        Map.of(), 0, 0, 0, 0, List.of(), null, null, null, null, RestType.NONE,
+                        null, false, null, List.of(), null,
+                        ChargeType.FIXED, null, 1,
+                        ChargeRecoveryType.FIXED, -2,
+                        null, null
+                )
+        );
+
+        assertThrows(CharacterValidationException.class, () ->
+                new MechanicalEffects(
+                        Map.of(), 0, 0, 0, 0, List.of(), null, null, null, null, RestType.NONE,
+                        null, false, null, List.of(), null,
+                        ChargeType.FIXED, null, 1,
+                        null, null,
+                        ChargeRecoveryType.FIXED, -3
+                )
+        );
+    }
 }

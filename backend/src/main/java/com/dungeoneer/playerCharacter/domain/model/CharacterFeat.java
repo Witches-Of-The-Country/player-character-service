@@ -40,8 +40,12 @@ public class CharacterFeat {
         this.characterId = characterId;
         this.featId = featId;
         this.unlockedAtLevel = unlockedAtLevel;
-        this.currentCharges = currentCharges;
         this.maxCharges = maxCharges;
+        if (maxCharges != null && currentCharges != null && currentCharges > maxCharges) {
+            this.currentCharges = maxCharges;
+        } else {
+            this.currentCharges = currentCharges;
+        }
         this.choicesJson = choicesJson != null ? choicesJson : "{}";
     }
 
@@ -74,13 +78,33 @@ public class CharacterFeat {
     }
 
     public CharacterFeat withCurrentCharges(int currentCharges) {
+        int clamped = this.maxCharges != null ? Math.min(this.maxCharges, Math.max(0, currentCharges)) : Math.max(0, currentCharges);
         return new CharacterFeat(
                 this.id,
                 this.characterId,
                 this.featId,
                 this.unlockedAtLevel,
-                currentCharges,
+                clamped,
                 this.maxCharges,
+                this.choicesJson
+        );
+    }
+
+    public CharacterFeat withMaxCharges(Integer newMaxCharges) {
+        if (newMaxCharges != null && newMaxCharges < 0) {
+            throw new CharacterValidationException("Max charges cannot be negative.");
+        }
+        Integer clampedCurrent = this.currentCharges;
+        if (newMaxCharges != null && clampedCurrent != null && clampedCurrent > newMaxCharges) {
+            clampedCurrent = newMaxCharges;
+        }
+        return new CharacterFeat(
+                this.id,
+                this.characterId,
+                this.featId,
+                this.unlockedAtLevel,
+                clampedCurrent,
+                newMaxCharges,
                 this.choicesJson
         );
     }
@@ -96,6 +120,37 @@ public class CharacterFeat {
             return withCurrentCharges(this.maxCharges);
         }
         return this;
+    }
+
+    public CharacterFeat recoverCharges(
+            RestType restType,
+            MechanicalEffects effects,
+            AbilityScores abilityScores,
+            int proficiencyBonus,
+            int characterLevel
+    ) {
+        if (this.maxCharges == null || restType == null || restType == RestType.NONE) {
+            return this;
+        }
+        int current = this.currentCharges != null ? this.currentCharges : 0;
+        int recovered = FeatChargeCalculator.calculateRecoveryAmount(
+                restType,
+                effects,
+                current,
+                this.maxCharges,
+                abilityScores,
+                proficiencyBonus,
+                characterLevel
+        );
+        return withCurrentCharges(current + recovered);
+    }
+
+    public CharacterFeat recoverCharges(int amount) {
+        if (this.maxCharges == null || amount <= 0) {
+            return this;
+        }
+        int current = this.currentCharges != null ? this.currentCharges : 0;
+        return withCurrentCharges(Math.min(this.maxCharges, current + amount));
     }
 
     @Override
