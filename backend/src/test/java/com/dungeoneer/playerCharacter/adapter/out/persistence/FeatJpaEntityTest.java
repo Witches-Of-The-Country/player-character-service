@@ -1,7 +1,9 @@
 package com.dungeoneer.playerCharacter.adapter.out.persistence;
 
+import com.dungeoneer.playerCharacter.domain.model.AbilityBonusChoice;
 import com.dungeoneer.playerCharacter.domain.model.MechanicalEffects;
 import com.dungeoneer.playerCharacter.domain.model.RestType;
+import com.dungeoneer.playerCharacter.domain.model.SpellChoice;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -76,5 +78,60 @@ class FeatJpaEntityTest {
         assertNotNull(empty2);
         assertNotNull(empty3);
         assertTrue(empty1.abilityBonuses().isEmpty());
+    }
+
+    @Test
+    @DisplayName("Should preserve all effects in round-trip serialization and deserialization")
+    void shouldPreserveAllEffectsInRoundTrip() {
+        SpellChoice spellChoice = new SpellChoice(2, 1, 1, List.of("CLERIC", "DRUID", "WIZARD"), false);
+        AbilityBonusChoice bonusChoice = new AbilityBonusChoice(1, List.of("STR", "DEX"), 1);
+        com.dungeoneer.playerCharacter.domain.model.FeatPrerequisite prereq =
+                new com.dungeoneer.playerCharacter.domain.model.FeatPrerequisite("LEVEL", null, 4, "Nível 4+");
+
+        MechanicalEffects original = new MechanicalEffects(
+                java.util.Map.of("STR", 1),
+                1,
+                2,
+                10,
+                2,
+                List.of("Armadura Pesada"),
+                "Ação Teste",
+                "BONUS_ACTION",
+                "1d6",
+                2,
+                RestType.SHORT,
+                bonusChoice,
+                true,
+                "Condição ativa",
+                List.of(prereq),
+                spellChoice
+        );
+
+        String json = FeatJpaEntity.serializeEffects(original);
+        MechanicalEffects deserialized = FeatJpaEntity.deserializeEffects(json);
+
+        assertNotNull(deserialized);
+        assertEquals(1, deserialized.abilityBonuses().get("STR"));
+        assertEquals(1, deserialized.acBonus());
+        assertEquals(2, deserialized.initiativeBonus());
+        assertEquals(10, deserialized.speedBonus());
+        assertEquals(2, deserialized.hpPerLevelBonus());
+        assertEquals("Ação Teste", deserialized.actionName());
+        assertEquals(RestType.SHORT, deserialized.restType());
+        assertEquals(2, deserialized.usesPerRest());
+        assertTrue(deserialized.conditional());
+        assertEquals("Condição ativa", deserialized.conditionDescription());
+
+        assertNotNull(deserialized.spellChoice());
+        assertEquals(2, deserialized.spellChoice().cantripsCount());
+        assertEquals(1, deserialized.spellChoice().spellsCount());
+        assertEquals(List.of("CLERIC", "DRUID", "WIZARD"), deserialized.spellChoice().allowedClasses());
+
+        assertNotNull(deserialized.abilityBonusChoice());
+        assertEquals(1, deserialized.abilityBonusChoice().chooseCount());
+        assertEquals(List.of("STR", "DEX"), deserialized.abilityBonusChoice().allowedAbilities());
+
+        assertEquals(1, deserialized.prerequisiteRules().size());
+        assertEquals("LEVEL", deserialized.prerequisiteRules().get(0).type());
     }
 }
