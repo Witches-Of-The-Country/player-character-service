@@ -17,6 +17,7 @@ import com.dungeoneer.playerCharacter.domain.model.CharacterItem;
 import com.dungeoneer.playerCharacter.domain.model.DamageRoll;
 import com.dungeoneer.playerCharacter.domain.model.DamageType;
 import com.dungeoneer.playerCharacter.domain.model.Feat;
+import com.dungeoneer.playerCharacter.domain.model.FeatChargeCalculator;
 import com.dungeoneer.playerCharacter.domain.model.Item;
 import com.dungeoneer.playerCharacter.domain.model.Lineage;
 import com.dungeoneer.playerCharacter.domain.model.MechanicalEffects;
@@ -172,23 +173,29 @@ public class CharacterSheetHydrator {
 
         for (CharacterFeat charFeat : character.getFeats()) {
             Feat feat = featMap.get(charFeat.getFeatId());
-            feats.add(CharacterFeatDto.fromDomain(charFeat, feat));
+
+            Integer currentCharges = charFeat.getCurrentCharges();
+            Integer maxCharges = charFeat.getMaxCharges();
 
             if (feat != null) {
+                if (feat.getMechanicalEffects() != null) {
+                    Integer computedMax = FeatChargeCalculator.calculateMaxCharges(
+                            feat.getMechanicalEffects(),
+                            character.getAbilityScores(),
+                            character.getProficiencyBonus(),
+                            character.getLevel()
+                    );
+                    if (computedMax != null) {
+                        maxCharges = computedMax;
+                    }
+                }
+
                 String normalized = feat.getName().toUpperCase();
                 if (normalized.contains("DEFESA SEM ARMADURA") || normalized.contains("UNARMORED DEFENSE")) {
                     if (archetype != null && "BARBARIAN".equalsIgnoreCase(archetype.getName())) {
                         hasBarbUnarmored = true;
                     } else if (archetype != null && "MONK".equalsIgnoreCase(archetype.getName())) {
                         hasMonkUnarmored = true;
-                    }
-                }
-                Integer currentCharges = charFeat.getCurrentCharges();
-                Integer maxCharges = charFeat.getMaxCharges();
-
-                if (maxCharges == null && feat.getMechanicalEffects() != null) {
-                    if (feat.getMechanicalEffects().usesPerRest() != null) {
-                        maxCharges = feat.getMechanicalEffects().usesPerRest();
                     }
                 }
 
@@ -198,9 +205,19 @@ public class CharacterSheetHydrator {
                     }
                 }
 
-                if (currentCharges == null && maxCharges != null) {
-                    currentCharges = maxCharges;
+                if (maxCharges != null) {
+                    if (currentCharges == null) {
+                        currentCharges = maxCharges;
+                    } else if (currentCharges > maxCharges) {
+                        currentCharges = maxCharges;
+                    }
                 }
+            }
+
+            feats.add(CharacterFeatDto.fromDomain(charFeat, feat, currentCharges, maxCharges));
+
+            if (feat != null) {
+                String normalized = feat.getName().toUpperCase();
 
                 if (normalized.contains("ATAQUE DESCUIDADO") || normalized.contains("RECKLESS ATTACK")) {
                     int strMod = character.getAbilityScores() != null ? character.getAbilityScores().getStrengthModifier() : 0;

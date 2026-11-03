@@ -263,19 +263,24 @@ public class LevelUpService implements AddExperienceUseCase, LevelUpUseCase {
         );
         PlayerCharacter saved = characterRepository.save(updated);
 
+        int newProficiencyBonus = rulesEngine.calculateProficiencyBonus(newTotalLevel);
+
         // Unlock progression feats for the archetype at newClassLevel
         List<Feat> archetypeFeats = referenceDataRepository.findProgressionFeats(archetype.getId(), newClassLevel);
         if (archetypeFeats != null) {
             for (Feat feat : archetypeFeats) {
                 if (!characterRepository.findFeatsByCharacterId(characterId).stream().anyMatch(cf -> cf.getFeatId().equals(feat.getId()))) {
                     String source = feat.getSource() != null ? feat.getSource() : "CLASS";
+                    Integer uses = feat.getMechanicalEffects() != null
+                            ? FeatChargeCalculator.calculateMaxCharges(feat.getMechanicalEffects(), newAbilityScores, newProficiencyBonus, newTotalLevel)
+                            : null;
                     characterRepository.saveCharacterFeat(new CharacterFeat(
                             UUID.randomUUID(),
                             characterId,
                             feat.getId(),
                             newTotalLevel,
-                            feat.getMechanicalEffects().usesPerRest(),
-                            feat.getMechanicalEffects().usesPerRest(),
+                            uses,
+                            uses,
                             String.format("{\"source\":\"%s\"}", source)
                     ));
                 }
@@ -288,13 +293,16 @@ public class LevelUpService implements AddExperienceUseCase, LevelUpUseCase {
             if (subclassFeats != null) {
                 for (Feat feat : subclassFeats) {
                     if (!characterRepository.findFeatsByCharacterId(characterId).stream().anyMatch(cf -> cf.getFeatId().equals(feat.getId()))) {
+                        Integer uses = feat.getMechanicalEffects() != null
+                                ? FeatChargeCalculator.calculateMaxCharges(feat.getMechanicalEffects(), newAbilityScores, newProficiencyBonus, newTotalLevel)
+                                : null;
                         characterRepository.saveCharacterFeat(new CharacterFeat(
                                 UUID.randomUUID(),
                                 characterId,
                                 feat.getId(),
                                 newTotalLevel,
-                                feat.getMechanicalEffects().usesPerRest(),
-                                feat.getMechanicalEffects().usesPerRest(),
+                                uses,
+                                uses,
                                 "{\"source\":\"SUBCLASS\"}"
                         ));
                     }
@@ -307,13 +315,16 @@ public class LevelUpService implements AddExperienceUseCase, LevelUpUseCase {
         if (lineageFeats != null) {
             for (Feat feat : lineageFeats) {
                 if (!characterRepository.findFeatsByCharacterId(characterId).stream().anyMatch(cf -> cf.getFeatId().equals(feat.getId()))) {
+                    Integer uses = feat.getMechanicalEffects() != null
+                            ? FeatChargeCalculator.calculateMaxCharges(feat.getMechanicalEffects(), newAbilityScores, newProficiencyBonus, newTotalLevel)
+                            : null;
                     characterRepository.saveCharacterFeat(new CharacterFeat(
                             UUID.randomUUID(),
                             characterId,
                             feat.getId(),
                             newTotalLevel,
-                            feat.getMechanicalEffects().usesPerRest(),
-                            feat.getMechanicalEffects().usesPerRest(),
+                            uses,
+                            uses,
                             "{\"source\":\"LINEAGE\"}"
                     ));
                 }
@@ -326,7 +337,9 @@ public class LevelUpService implements AddExperienceUseCase, LevelUpUseCase {
             validateFeatPrerequisites(selectedFeat, newAbilityScores, newTotalLevel, currentArchIds, character.getLineageId(), character.getFeats());
             final Feat featToSave = selectedFeat;
             if (!characterRepository.findFeatsByCharacterId(characterId).stream().anyMatch(cf -> cf.getFeatId().equals(featToSave.getId()))) {
-                Integer uses = featToSave.getMechanicalEffects() != null ? featToSave.getMechanicalEffects().usesPerRest() : null;
+                Integer uses = featToSave.getMechanicalEffects() != null
+                        ? FeatChargeCalculator.calculateMaxCharges(featToSave.getMechanicalEffects(), newAbilityScores, newProficiencyBonus, newTotalLevel)
+                        : null;
                 characterRepository.saveCharacterFeat(new CharacterFeat(
                         UUID.randomUUID(),
                         characterId,

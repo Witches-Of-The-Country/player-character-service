@@ -9,10 +9,10 @@ import java.util.regex.Pattern;
 
 public record MechanicalEffects(
         Map<String, Integer> abilityBonuses,
-        int acBonus,
-        int initiativeBonus,
-        int speedBonus,
-        int hpPerLevelBonus,
+        Integer acBonus,
+        Integer initiativeBonus,
+        Integer speedBonus,
+        Integer hpPerLevelBonus,
         List<String> grantedProficiencies,
         String actionName,
         String actionType,
@@ -20,7 +20,7 @@ public record MechanicalEffects(
         Integer usesPerRest,
         RestType restType,
         AbilityBonusChoice abilityBonusChoice,
-        boolean conditional,
+        Boolean conditional,
         String conditionDescription,
         List<FeatPrerequisite> prerequisiteRules,
         SpellChoice spellChoice,
@@ -151,6 +151,12 @@ public record MechanicalEffects(
     }
 
     public MechanicalEffects {
+        acBonus = acBonus != null ? acBonus : 0;
+        initiativeBonus = initiativeBonus != null ? initiativeBonus : 0;
+        speedBonus = speedBonus != null ? speedBonus : 0;
+        hpPerLevelBonus = hpPerLevelBonus != null ? hpPerLevelBonus : 0;
+        conditional = conditional != null ? conditional : false;
+
         if (diceFormula != null && !diceFormula.trim().isEmpty()) {
             String normalizedFormula = diceFormula.trim();
             if (!DICE_PATTERN.matcher(normalizedFormula).matches()) {

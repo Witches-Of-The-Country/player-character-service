@@ -1,5 +1,6 @@
 package com.dungeoneer.playerCharacter.domain.model;
 
+import com.dungeoneer.playerCharacter.adapter.out.persistence.FeatJpaEntity;
 import com.dungeoneer.playerCharacter.domain.exception.CharacterValidationException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -165,5 +166,55 @@ class MechanicalEffectsTest {
                         ChargeRecoveryType.FIXED, -3
                 )
         );
+    }
+
+    @Test
+    @DisplayName("TE-04: Should safely deserialize legacy feat JSON without new charge fields")
+    void shouldSafelyDeserializeLegacyFeatJson() {
+        String legacyJson = """
+                {
+                    "usesPerRest": 3,
+                    "restType": "SHORT",
+                    "actionName": "Retomar Fôlego",
+                    "diceFormula": "1d10+1"
+                }
+                """;
+        MechanicalEffects effects = FeatJpaEntity.deserializeEffects(legacyJson);
+        assertNotNull(effects);
+        assertEquals(3, effects.usesPerRest());
+        assertEquals(RestType.SHORT, effects.restType());
+        assertNull(effects.maxChargesType());
+        assertNull(effects.shortRestRecoveryType());
+        assertNull(effects.longRestRecoveryType());
+
+        // When processed by FeatChargeCalculator, fallback should work seamlessly
+        AbilityScores scores = new AbilityScores(10, 10, 10, 10, 10, 10);
+        assertEquals(3, FeatChargeCalculator.calculateMaxCharges(effects, scores, 2, 1));
+        assertEquals(3, FeatChargeCalculator.calculateRecoveryAmount(RestType.SHORT, effects, 0, 3, scores, 2, 1));
+        assertEquals(3, FeatChargeCalculator.calculateRecoveryAmount(RestType.LONG, effects, 0, 3, scores, 2, 1));
+    }
+
+    @Test
+    @DisplayName("TP-03 Persistence: Full round-trip JSON serialization and deserialization of MechanicalEffects with charges")
+    void shouldSerializeAndDeserializeMechanicalEffectsWithCharges() {
+        MechanicalEffects original = new MechanicalEffects(
+                Map.of("STR", 1), 1, 2, 5, 1, List.of("Athletics"), "Grito de Guerra", "BONUS_ACTION",
+                "1d6", 2, RestType.SHORT, null, false, null, List.of(), null,
+                ChargeType.ABILITY_MODIFIER, "STR", null,
+                ChargeRecoveryType.FIXED, 2,
+                ChargeRecoveryType.ALL, null
+        );
+
+        String json = FeatJpaEntity.serializeEffects(original);
+        assertNotNull(json);
+        assertTrue(json.contains("ABILITY_MODIFIER"));
+        assertTrue(json.contains("STR"));
+
+        MechanicalEffects deserialized = FeatJpaEntity.deserializeEffects(json);
+        assertEquals(ChargeType.ABILITY_MODIFIER, deserialized.maxChargesType());
+        assertEquals("STR", deserialized.chargeAbility());
+        assertEquals(ChargeRecoveryType.FIXED, deserialized.shortRestRecoveryType());
+        assertEquals(2, deserialized.shortRestRecoveryFixed());
+        assertEquals(ChargeRecoveryType.ALL, deserialized.longRestRecoveryType());
     }
 }

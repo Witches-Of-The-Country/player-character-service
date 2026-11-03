@@ -462,4 +462,96 @@ class HomebrewServiceTest {
                 .isInstanceOf(CharacterValidationException.class)
                 .hasMessageContaining("Official SRD items cannot be modified");
     }
+
+    @Test
+    @DisplayName("TP-03: createFeat with custom charge configuration successfully creates and persists homebrew feat")
+    void shouldCreateFeatWithChargeConfiguration() {
+        when(repository.saveFeat(any(Feat.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        MechanicalEffects effects = new MechanicalEffects(
+                Map.of(), 0, 0, 0, 0, List.of(), null, null, null, null, null,
+                null, false, null, List.of(), null,
+                com.dungeoneer.playerCharacter.domain.model.ChargeType.ABILITY_MODIFIER, "CHA", null,
+                com.dungeoneer.playerCharacter.domain.model.ChargeRecoveryType.FIXED, 1,
+                com.dungeoneer.playerCharacter.domain.model.ChargeRecoveryType.ALL, null
+        );
+
+        CreateHomebrewFeatRequest request = new CreateHomebrewFeatRequest(
+                "Inspiração Rúnica",
+                "Runic Inspiration",
+                null,
+                "Concede dados de inspiração.",
+                com.dungeoneer.playerCharacter.domain.model.FeatType.GENERAL,
+                effects
+        );
+
+        FeatDto result = homebrewService.createFeat(ownerId, request);
+
+        assertThat(result).isNotNull();
+        assertThat(result.name()).isEqualTo("Inspiração Rúnica");
+        assertThat(result.mechanicalEffects()).isNotNull();
+        assertThat(result.mechanicalEffects().maxChargesType()).isEqualTo(com.dungeoneer.playerCharacter.domain.model.ChargeType.ABILITY_MODIFIER);
+        assertThat(result.mechanicalEffects().chargeAbility()).isEqualTo("CHA");
+        assertThat(result.mechanicalEffects().shortRestRecoveryType()).isEqualTo(com.dungeoneer.playerCharacter.domain.model.ChargeRecoveryType.FIXED);
+        assertThat(result.mechanicalEffects().shortRestRecoveryFixed()).isEqualTo(1);
+        assertThat(result.mechanicalEffects().longRestRecoveryType()).isEqualTo(com.dungeoneer.playerCharacter.domain.model.ChargeRecoveryType.ALL);
+    }
+
+    @Test
+    @DisplayName("TE-03: createFeat should reject ABILITY_MODIFIER charge configuration when chargeAbility is missing")
+    void shouldRejectFeatWhenAbilityModifierHasNoAbility() {
+        MechanicalEffects effects = new MechanicalEffects(
+                Map.of(), 0, 0, 0, 0, List.of(), null, null, null, null, null,
+                null, false, null, List.of(), null,
+                com.dungeoneer.playerCharacter.domain.model.ChargeType.ABILITY_MODIFIER, null, null,
+                null, null, null, null
+        );
+
+        CreateHomebrewFeatRequest request = new CreateHomebrewFeatRequest(
+                "Inspiração Inválida", null, null, "Desc", null, effects
+        );
+
+        assertThatThrownBy(() -> homebrewService.createFeat(ownerId, request))
+                .isInstanceOf(CharacterValidationException.class)
+                .hasMessageContaining("O atributo da fórmula de cargas é obrigatório");
+    }
+
+    @Test
+    @DisplayName("TE-03: createFeat should reject FIXED charge configuration when fixedMaxCharges is not positive")
+    void shouldRejectFeatWhenFixedMaxChargesIsNotPositive() {
+        MechanicalEffects effects = new MechanicalEffects(
+                Map.of(), 0, 0, 0, 0, List.of(), null, null, null, null, null,
+                null, false, null, List.of(), null,
+                com.dungeoneer.playerCharacter.domain.model.ChargeType.FIXED, null, 0,
+                null, null, null, null
+        );
+
+        CreateHomebrewFeatRequest request = new CreateHomebrewFeatRequest(
+                "Carga Fixa Zero", null, null, "Desc", null, effects
+        );
+
+        assertThatThrownBy(() -> homebrewService.createFeat(ownerId, request))
+                .isInstanceOf(CharacterValidationException.class)
+                .hasMessageContaining("O número de cargas fixas deve ser maior que zero");
+    }
+
+    @Test
+    @DisplayName("TE-03: createFeat should reject FIXED recovery configuration when recovery amount is not positive")
+    void shouldRejectFeatWhenFixedRecoveryIsNotPositive() {
+        MechanicalEffects effects = new MechanicalEffects(
+                Map.of(), 0, 0, 0, 0, List.of(), null, null, null, null, null,
+                null, false, null, List.of(), null,
+                com.dungeoneer.playerCharacter.domain.model.ChargeType.FIXED, null, 3,
+                com.dungeoneer.playerCharacter.domain.model.ChargeRecoveryType.FIXED, 0,
+                null, null
+        );
+
+        CreateHomebrewFeatRequest request = new CreateHomebrewFeatRequest(
+                "Recuperação Fixa Zero", null, null, "Desc", null, effects
+        );
+
+        assertThatThrownBy(() -> homebrewService.createFeat(ownerId, request))
+                .isInstanceOf(CharacterValidationException.class)
+                .hasMessageContaining("recuperadas no descanso curto deve ser maior que zero");
+    }
 }

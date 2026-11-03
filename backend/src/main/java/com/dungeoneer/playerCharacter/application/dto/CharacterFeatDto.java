@@ -20,6 +20,20 @@ public record CharacterFeatDto(
         MechanicalEffects mechanicalEffects
 ) {
     public static CharacterFeatDto fromDomain(CharacterFeat charFeat, Feat feat) {
+        return fromDomain(
+                charFeat,
+                feat,
+                charFeat != null ? charFeat.getCurrentCharges() : null,
+                charFeat != null ? charFeat.getMaxCharges() : null
+        );
+    }
+
+    public static CharacterFeatDto fromDomain(
+            CharacterFeat charFeat,
+            Feat feat,
+            Integer currentCharges,
+            Integer maxCharges
+    ) {
         String source = feat != null && feat.getSource() != null ? feat.getSource() : "ORIGIN";
         return new CharacterFeatDto(
                 charFeat.getId(),
@@ -30,8 +44,8 @@ public record CharacterFeatDto(
                 source,
                 feat != null ? feat.getDescription() : "",
                 charFeat.getUnlockedAtLevel(),
-                charFeat.getCurrentCharges(),
-                charFeat.getMaxCharges(),
+                currentCharges,
+                maxCharges,
                 feat != null ? feat.getMechanicalEffects() : null
         );
     }

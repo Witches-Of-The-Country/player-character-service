@@ -132,4 +132,57 @@ class CharacterSheetHydratorTest {
         // Versatile: 1d10 + STR (+3) + Magic (+2) = 1d10+5
         assertThat(weaponAction.versatileDice()).isEqualTo("1d10+5");
     }
+
+    @Test
+    @DisplayName("Should dynamically recalculate feat charges and clamp current charges on hydration")
+    void shouldDynamicallyRecalculateFeatChargesOnHydration() {
+        // CHA 18 (+4), Level 3, Prof +2
+        AbilityScores abilityScores = new AbilityScores(10, 10, 10, 10, 10, 18);
+        UUID characterId = UUID.randomUUID();
+        UUID featId = UUID.randomUUID();
+
+        MechanicalEffects effects = new MechanicalEffects(
+                Map.of(), 0, 0, 0, 0, List.of(), "Inspiração Mística", "BONUS_ACTION",
+                "1d8", null, null, null, false, null, List.of(), null,
+                ChargeType.ABILITY_MODIFIER, "CHA", null,
+                ChargeRecoveryType.NONE, null,
+                ChargeRecoveryType.ALL, null
+        );
+
+        Feat feat = new Feat(
+                featId, Ruleset.HOMEBREW, "inspiracao-mistica", "Mystic Inspiration", "Inspiração Mística",
+                null, "Concede bônus", "HOMEBREW", null, FeatType.GENERAL, effects
+        );
+
+        // CharacterFeat was stored with stale currentCharges = 10, maxCharges = null
+        CharacterFeat charFeat = new CharacterFeat(
+                UUID.randomUUID(), characterId, featId, 1, 10, null, "{}"
+        );
+
+        PlayerCharacter character = new PlayerCharacter(
+                characterId, "Bard", 3, 20, 20, 0, 10, 0, 30, 2,
+                Ruleset.SRD_2024, AbilityScoreMethod.STANDARD_ARRAY,
+                UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+                abilityScores, "", HpCalculationMethod.MAX, false,
+                List.of(), List.of(), 0, null, List.of(), List.of(charFeat),
+                CurrencyPouch.empty(), null, Instant.now(), Instant.now()
+        );
+
+        CharacterSheetResult response = CharacterSheetHydrator.toSheetResult(
+                character, null, null, null, Collections.emptyMap(), Map.of(featId, feat)
+        );
+
+        assertThat(response.feats()).hasSize(1);
+        var hydratedFeat = response.feats().get(0);
+        // CHA modifier is +4, so dynamic maxCharges must be 4
+        assertThat(hydratedFeat.maxCharges()).isEqualTo(4);
+        // currentCharges was 10, must be clamped to 4
+        assertThat(hydratedFeat.currentCharges()).isEqualTo(4);
+
+        assertThat(response.actions()).isNotNull();
+        var action = response.actions().stream().filter(a -> a.name().equals("Inspiração Mística")).findFirst().orElse(null);
+        assertThat(action).isNotNull();
+        assertThat(action.maxCharges()).isEqualTo(4);
+        assertThat(action.currentCharges()).isEqualTo(4);
+    }
 }

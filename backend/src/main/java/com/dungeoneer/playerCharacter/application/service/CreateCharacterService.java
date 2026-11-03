@@ -21,6 +21,7 @@ import com.dungeoneer.playerCharacter.domain.model.CharacterFeat;
 import com.dungeoneer.playerCharacter.domain.model.ClassProgression;
 import com.dungeoneer.playerCharacter.domain.model.CurrencyPouch;
 import com.dungeoneer.playerCharacter.domain.model.Feat;
+import com.dungeoneer.playerCharacter.domain.model.FeatChargeCalculator;
 import com.dungeoneer.playerCharacter.domain.model.FeatPrerequisite;
 import com.dungeoneer.playerCharacter.domain.model.HpCalculationMethod;
 import com.dungeoneer.playerCharacter.domain.model.HpRoll;
@@ -335,7 +336,14 @@ public class CreateCharacterService implements CreateCharacterUseCase {
         Set<UUID> addedFeatIds = new HashSet<>();
         for (Feat feat : initialFeats) {
             if (feat != null && feat.getId() != null && addedFeatIds.add(feat.getId())) {
-                Integer uses = feat.getMechanicalEffects() != null ? feat.getMechanicalEffects().usesPerRest() : null;
+                Integer uses = feat.getMechanicalEffects() != null
+                        ? FeatChargeCalculator.calculateMaxCharges(
+                                feat.getMechanicalEffects(),
+                                finalScores,
+                                proficiencyBonus,
+                                effectiveInitialLevel
+                        )
+                        : null;
                 String sourceName = feat.getFeatType() != null ? feat.getFeatType().name() : "CLASS";
                 String choicesJson = String.format("{\"source\":\"%s\"}", sourceName);
                 CharacterFeat cf = new CharacterFeat(

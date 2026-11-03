@@ -16,6 +16,8 @@ import com.dungeoneer.playerCharacter.application.port.in.CreateHomebrewUseCase;
 import com.dungeoneer.playerCharacter.application.port.out.ReferenceDataRepository;
 import com.dungeoneer.playerCharacter.domain.exception.CharacterValidationException;
 import com.dungeoneer.playerCharacter.domain.model.Archetype;
+import com.dungeoneer.playerCharacter.domain.model.ChargeRecoveryType;
+import com.dungeoneer.playerCharacter.domain.model.ChargeType;
 import com.dungeoneer.playerCharacter.domain.model.Feat;
 import com.dungeoneer.playerCharacter.domain.model.FeatType;
 import com.dungeoneer.playerCharacter.domain.model.HitDiceEnum;
@@ -93,6 +95,8 @@ public class HomebrewService implements CreateHomebrewUseCase {
             throw new CharacterValidationException("Feat creation payload cannot be null");
         }
 
+        validateFeatMechanicalEffects(request.mechanicalEffects());
+
         UUID id = UUID.randomUUID();
         String slug = toSlug(request.name());
         String nameEn = (request.nameEn() != null && !request.nameEn().isBlank()) ? request.nameEn() : slug;
@@ -113,6 +117,41 @@ public class HomebrewService implements CreateHomebrewUseCase {
 
         Feat saved = repository.saveFeat(feat);
         return FeatDto.fromDomain(saved);
+    }
+
+    private void validateFeatMechanicalEffects(MechanicalEffects effects) {
+        if (effects == null) {
+            return;
+        }
+
+        if (effects.maxChargesType() != null) {
+            if (effects.maxChargesType() == ChargeType.ABILITY_MODIFIER) {
+                if (effects.chargeAbility() == null || effects.chargeAbility().isBlank()) {
+                    throw new CharacterValidationException("O atributo da fórmula de cargas é obrigatório quando o tipo for Modificador de Atributo (ABILITY_MODIFIER).");
+                }
+            } else if (effects.maxChargesType() == ChargeType.FIXED) {
+                if (effects.fixedMaxCharges() == null || effects.fixedMaxCharges() <= 0) {
+                    throw new CharacterValidationException("O número de cargas fixas deve ser maior que zero quando o tipo for Fixo (FIXED).");
+                }
+            }
+        }
+
+        if (effects.shortRestRecoveryType() == ChargeRecoveryType.FIXED) {
+            if (effects.shortRestRecoveryFixed() == null || effects.shortRestRecoveryFixed() <= 0) {
+                throw new CharacterValidationException("A quantidade de cargas recuperadas no descanso curto deve ser maior que zero quando a recuperação for Fixa.");
+            }
+        }
+
+        if (effects.longRestRecoveryType() == ChargeRecoveryType.FIXED) {
+            if (effects.longRestRecoveryFixed() == null || effects.longRestRecoveryFixed() <= 0) {
+                throw new CharacterValidationException("A quantidade de cargas recuperadas no descanso longo deve ser maior que zero quando a recuperação for Fixa.");
+            }
+        }
+
+        if ((effects.shortRestRecoveryType() == ChargeRecoveryType.MODIFIER || effects.longRestRecoveryType() == ChargeRecoveryType.MODIFIER)
+                && (effects.chargeAbility() == null || effects.chargeAbility().isBlank())) {
+            throw new CharacterValidationException("O atributo da fórmula de cargas é obrigatório quando a recuperação for baseada em Modificador de Atributo (MODIFIER).");
+        }
     }
 
     @Override
