@@ -12,6 +12,7 @@ import com.dungeoneer.playerCharacter.application.dto.CharacterNoteResult;
 import com.dungeoneer.playerCharacter.application.dto.CharacterSheetResult;
 import com.dungeoneer.playerCharacter.application.dto.CharacterSummaryResult;
 import com.dungeoneer.playerCharacter.application.dto.CreateCharacterCommand;
+import com.dungeoneer.playerCharacter.application.dto.RestCommand;
 import com.dungeoneer.playerCharacter.application.dto.RollAbilityScoresResult;
 import com.dungeoneer.playerCharacter.application.dto.RollHitPointsCommand;
 import com.dungeoneer.playerCharacter.application.dto.RollHitPointsResult;
@@ -30,6 +31,7 @@ import com.dungeoneer.playerCharacter.application.port.in.UpdateCharacterUseCase
 import com.dungeoneer.playerCharacter.domain.exception.CharacterNotFoundException;
 import com.dungeoneer.playerCharacter.domain.exception.CharacterValidationException;
 import com.dungeoneer.playerCharacter.domain.exception.InvalidRollTokenException;
+import com.dungeoneer.playerCharacter.domain.exception.RestValidationException;
 import com.dungeoneer.playerCharacter.domain.exception.RollConflictException;
 import com.dungeoneer.playerCharacter.domain.model.AbilityScoreMethod;
 import com.dungeoneer.playerCharacter.domain.model.AbilityScores;
@@ -38,6 +40,7 @@ import com.dungeoneer.playerCharacter.domain.model.Background;
 import com.dungeoneer.playerCharacter.domain.model.HitDiceEnum;
 import com.dungeoneer.playerCharacter.domain.model.HpCalculationMethod;
 import com.dungeoneer.playerCharacter.domain.model.Lineage;
+import com.dungeoneer.playerCharacter.domain.model.RestType;
 import com.dungeoneer.playerCharacter.domain.model.Ruleset;
 import com.dungeoneer.playerCharacter.domain.model.SpellcastingType;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -97,6 +100,16 @@ class PlayerCharacterControllerTest {
     private ListCharacterNotesUseCase listCharacterNotesUseCase;
     @MockitoBean
     private UpdateCharacterNoteUseCase updateCharacterNoteUseCase;
+    @MockitoBean
+    private com.dungeoneer.playerCharacter.application.port.in.AddExperienceUseCase addExperienceUseCase;
+    @MockitoBean
+    private com.dungeoneer.playerCharacter.application.port.in.LevelUpUseCase levelUpUseCase;
+    @MockitoBean
+    private com.dungeoneer.playerCharacter.application.port.in.ManageInventoryUseCase manageInventoryUseCase;
+    @MockitoBean
+    private com.dungeoneer.playerCharacter.application.port.in.UseConsumableUseCase useConsumableUseCase;
+    @MockitoBean
+    private com.dungeoneer.playerCharacter.application.port.in.RestUseCase restUseCase;
 
     private CharacterSheetResult createMockSheet(UUID characterId, UUID userId, String name) {
         return new CharacterSheetResult(
@@ -507,5 +520,94 @@ class PlayerCharacterControllerTest {
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.title").value("Validation Error"))
                 .andExpect(jsonPath("$.status").value(422));
+    }
+
+    @Test
+    @DisplayName("TP-03: POST /api/characters/{id}/rest returns 200 OK with updated character sheet")
+    void shouldTakeRestSuccessfully() throws Exception {
+        UUID userId = UUID.randomUUID();
+        UUID characterId = UUID.randomUUID();
+        RestCommand command = new RestCommand(RestType.LONG);
+
+        when(restUseCase.takeRest(eq(characterId), eq(userId), any(RestCommand.class)))
+                .thenReturn(createMockSheet(characterId, userId, "Galdor"));
+
+        mockMvc.perform(post("/api/characters/" + characterId + "/rest")
+                        .header("X-User-Id", userId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(command)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(characterId.toString()))
+                .andExpect(jsonPath("$.name").value("Galdor"));
+    }
+
+    @Test
+    @DisplayName("TE-02: POST /api/characters/{id}/rest with overspending Hit Dice returns 400 Bad Request ProblemDetail")
+    void shouldReturn400WhenOverspendingHitDice() throws Exception {
+        UUID userId = UUID.randomUUID();
+        UUID characterId = UUID.randomUUID();
+        UUID cpId = UUID.randomUUID();
+        RestCommand command = new RestCommand(
+                RestType.SHORT,
+                null,
+                List.of(new RestCommand.HitDiceSpendRequest(cpId, 5))
+        );
+
+        when(restUseCase.takeRest(eq(characterId), eq(userId), any(RestCommand.class)))
+                .thenThrow(new RestValidationException("Cannot spend 5 Hit Dice. Only 1 available for class progression " + cpId));
+
+        mockMvc.perform(post("/api/characters/" + characterId + "/rest")
+                        .header("X-User-Id", userId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(command)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Bad Request"))
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("Cannot spend 5 Hit Dice")));
+    }
+
+    @Test
+    @DisplayName("TE-03: POST /api/characters/{id}/rest for dead character (0 HP) returns 422 ProblemDetail")
+    void shouldReturn422WhenRestingWhileDead() throws Exception {
+        UUID userId = UUID.randomUUID();
+        UUID characterId = UUID.randomUUID();
+        RestCommand command = new RestCommand(RestType.LONG);
+
+        when(restUseCase.takeRest(eq(characterId), eq(userId), any(RestCommand.class)))
+                .thenThrow(new CharacterValidationException("Dead or unconscious characters (0 HP) cannot take a rest."));
+
+        mockMvc.perform(post("/api/characters/" + characterId + "/rest")
+                        .header("X-User-Id", userId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(command)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.title").value("Validation Error"))
+                .andExpect(jsonPath("$.status").value(422))
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("0 HP")));
+    }
+
+    @Test
+    @DisplayName("TE-04: POST /api/characters/{id}/rest with foreign class progression returns 400 ProblemDetail")
+    void shouldReturn400WhenClassProgressionNotFound() throws Exception {
+        UUID userId = UUID.randomUUID();
+        UUID characterId = UUID.randomUUID();
+        UUID foreignCpId = UUID.randomUUID();
+        RestCommand command = new RestCommand(
+                RestType.SHORT,
+                null,
+                List.of(new RestCommand.HitDiceSpendRequest(foreignCpId, 1))
+        );
+
+        when(restUseCase.takeRest(eq(characterId), eq(userId), any(RestCommand.class)))
+                .thenThrow(new RestValidationException("Class progression not found: " + foreignCpId));
+
+        mockMvc.perform(post("/api/characters/" + characterId + "/rest")
+                        .header("X-User-Id", userId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(command)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Bad Request"))
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("Class progression not found")));
     }
 }

@@ -24,9 +24,37 @@ public interface RulesEngine {
 
     int calculateArmorClass(int dexterityModifier);
 
+    int calculateArmorClass(
+            int dexterityModifier,
+            ArmorMechanics armor,
+            ArmorMechanics shield,
+            int extraBonus,
+            boolean hasBarbarianUnarmoredDefense,
+            int constitutionModifier,
+            boolean hasMonkUnarmoredDefense,
+            int wisdomModifier
+    );
+
     int calculateInitiativeBonus(int dexterityModifier);
 
     int calculateProficiencyBonus(int level);
 
     int calculateSpeed(Lineage lineage);
+
+    int getXpForLevel(int level);
+
+    int getLevelForXp(int experiencePoints);
+
+    int calculateHitDieHealing(int dieRoll, int constitutionModifier);
+
+    int calculateHitDiceRecovery(int totalCharacterLevel);
+
+    int calculateExhaustionRecovery(int currentExhaustion);
+
+    static RulesEngine forRuleset(Ruleset ruleset) {
+        if (ruleset == Ruleset.SRD_2024) {
+            return new Srd2024RulesEngine();
+        }
+        return new Srd2014RulesEngine();
+    }
 }

@@ -8,16 +8,21 @@ import com.dungeoneer.playerCharacter.application.port.out.HpRollRepositoryPort;
 import com.dungeoneer.playerCharacter.application.port.out.PlayerCharacterRepositoryPort;
 import com.dungeoneer.playerCharacter.application.port.out.ReferenceDataRepository;
 import com.dungeoneer.playerCharacter.domain.exception.CharacterValidationException;
-import com.dungeoneer.playerCharacter.domain.exception.InvalidRollTokenException;
 import com.dungeoneer.playerCharacter.domain.exception.RollConflictException;
 import com.dungeoneer.playerCharacter.domain.model.AbilityRoll;
 import com.dungeoneer.playerCharacter.domain.model.AbilityScoreMethod;
 import com.dungeoneer.playerCharacter.domain.model.Archetype;
 import com.dungeoneer.playerCharacter.domain.model.Background;
+import com.dungeoneer.playerCharacter.domain.model.CharacterFeat;
+import com.dungeoneer.playerCharacter.domain.model.Feat;
+import com.dungeoneer.playerCharacter.domain.model.FeatPrerequisite;
+import com.dungeoneer.playerCharacter.domain.model.FeatType;
 import com.dungeoneer.playerCharacter.domain.model.HitDiceEnum;
 import com.dungeoneer.playerCharacter.domain.model.HpCalculationMethod;
 import com.dungeoneer.playerCharacter.domain.model.Lineage;
+import com.dungeoneer.playerCharacter.domain.model.MechanicalEffects;
 import com.dungeoneer.playerCharacter.domain.model.PlayerCharacter;
+import com.dungeoneer.playerCharacter.domain.model.RestType;
 import com.dungeoneer.playerCharacter.domain.model.Ruleset;
 import com.dungeoneer.playerCharacter.domain.model.SpellcastingType;
 import org.junit.jupiter.api.BeforeEach;
@@ -168,6 +173,53 @@ class CreateCharacterServiceTest {
     }
 
     @Test
+    @DisplayName("Creates character above level 1 by initializing at Level 1 with target level XP floor and pending level choices")
+    void shouldInitializeAtLevel1WithXpFloorWhenCreatedAboveLevel1() {
+        UUID originFeatId = UUID.randomUUID();
+        Feat toughFeat = new Feat(
+                originFeatId, Ruleset.SRD_2024, "tough", "Tough", "Vigoroso", null,
+                "+2 PV por nível", "SRD", null, FeatType.ORIGIN,
+                new MechanicalEffects(Map.of(), 0, 0, 0, 2, List.of(), null, null, null, null, RestType.NONE)
+        );
+        when(referenceDataRepository.findFeatById(originFeatId)).thenReturn(Optional.of(toughFeat));
+
+        CreateCharacterCommand command = new CreateCharacterCommand(
+                userId,
+                "Sir Lancelot",
+                5,
+                Ruleset.SRD_2024,
+                lineageId,
+                backgroundId,
+                archetypeId,
+                null,
+                AbilityScoreMethod.STANDARD_ARRAY,
+                15, 14, 13, 12, 10, 8,
+                Map.of("STRENGTH", 2, "CONSTITUTION", 1),
+                null,
+                HpCalculationMethod.ROLLED,
+                null,
+                List.of(),
+                "Starting at target level 5",
+                List.of(),
+                List.of(),
+                originFeatId
+        );
+
+        when(playerCharacterRepository.save(any(PlayerCharacter.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        CharacterSheetResult result = service.createCharacter(command);
+
+        assertThat(result.level()).isEqualTo(1);
+        assertThat(result.experiencePoints()).isEqualTo(6500);
+        assertThat(result.hasPendingLevelChoices()).isTrue();
+        assertThat(result.hpCalculationMethod()).isEqualTo(HpCalculationMethod.ROLLED);
+        // Level 1 Fighter: 10 (d10) + 2 (CON) + 2 (Tough) = 14 HP
+        assertThat(result.hitPointsMax()).isEqualTo(14);
+        assertThat(result.feats()).hasSize(1);
+    }
+
+    @Test
     @DisplayName("TP-01: Creates character with ROLLED scores and consumes token atomically")
     void shouldCreateCharacterWithRolledScoresAndConsumeToken() {
         UUID abilityRollId = UUID.randomUUID();
@@ -205,7 +257,6 @@ class CreateCharacterServiceTest {
     @DisplayName("TE-01: Reused ability roll token throws RollConflictException")
     void shouldRejectReusedAbilityRollToken() {
         UUID abilityRollId = UUID.randomUUID();
-        // already used = true
         AbilityRoll roll = new AbilityRoll(abilityRollId, userId, List.of(16, 14, 13, 12, 10, 9), "[]", true, Instant.now());
         when(abilityRollRepository.findById(abilityRollId)).thenReturn(Optional.of(roll));
 
@@ -248,7 +299,7 @@ class CreateCharacterServiceTest {
                 archetypeId,
                 null,
                 AbilityScoreMethod.ROLLED,
-                18, 14, 13, 12, 10, 9, // 18 was not rolled!
+                18, 14, 13, 12, 10, 9,
                 Map.of("STRENGTH", 2, "CONSTITUTION", 1),
                 abilityRollId,
                 HpCalculationMethod.MAX,
@@ -318,7 +369,7 @@ class CreateCharacterServiceTest {
         UUID secondaryArchetypeId = UUID.randomUUID();
         List<ClassProgressionCommand> multiclassProgressions = List.of(
                 new ClassProgressionCommand(archetypeId, null, 2),
-                new ClassProgressionCommand(secondaryArchetypeId, null, 1) // sum is 3, total level is 5
+                new ClassProgressionCommand(secondaryArchetypeId, null, 1)
         );
 
         CreateCharacterCommand command = new CreateCharacterCommand(
@@ -344,5 +395,230 @@ class CreateCharacterServiceTest {
         assertThatThrownBy(() -> service.createCharacter(command))
                 .isInstanceOf(CharacterValidationException.class)
                 .hasMessageContaining("Sum of class progression levels");
+    }
+
+    @Test
+    @DisplayName("BUGFIX-001: Character creation with Origin Feat produces valid JSON choices and avoids duplicate saveCharacterFeat")
+    void shouldCreateCharacterWithOriginFeatAndValidJsonChoices() {
+        UUID originFeatId = UUID.randomUUID();
+        Feat originFeat = new Feat(
+                originFeatId,
+                Ruleset.SRD_2024,
+                "tough",
+                "Tough",
+                "Robusto",
+                null,
+                "Hit points increase",
+                "SRD_2024",
+                null,
+                FeatType.ORIGIN,
+                new MechanicalEffects(
+                        Map.of(),
+                        0,
+                        0,
+                        0,
+                        2,
+                        List.of(),
+                        null,
+                        null,
+                        null,
+                        null,
+                        RestType.NONE
+                )
+        );
+        when(referenceDataRepository.findFeatById(originFeatId)).thenReturn(Optional.of(originFeat));
+
+        CreateCharacterCommand command = new CreateCharacterCommand(
+                userId,
+                "Hero With Feat",
+                5,
+                Ruleset.SRD_2024,
+                lineageId,
+                backgroundId,
+                archetypeId,
+                null,
+                AbilityScoreMethod.STANDARD_ARRAY,
+                15, 14, 13, 12, 10, 8,
+                Map.of("STRENGTH", 1, "CONSTITUTION", 1, "DEXTERITY", 1),
+                null,
+                HpCalculationMethod.AVERAGE,
+                null,
+                List.of(),
+                "Level 5 hero with origin feat",
+                List.of(new ClassProgressionCommand(archetypeId, null, 5)),
+                List.of("Athletics", "Survival"),
+                originFeatId
+        );
+
+        when(playerCharacterRepository.save(any(PlayerCharacter.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        CharacterSheetResult result = service.createCharacter(command);
+
+        assertThat(result).isNotNull();
+        ArgumentCaptor<PlayerCharacter> captor = ArgumentCaptor.forClass(PlayerCharacter.class);
+        verify(playerCharacterRepository).save(captor.capture());
+        PlayerCharacter savedChar = captor.getValue();
+
+        assertThat(savedChar.getFeats()).isNotEmpty();
+        for (CharacterFeat cf : savedChar.getFeats()) {
+            assertThat(cf.getChoicesJson())
+                    .startsWith("{")
+                    .endsWith("}")
+                    .contains("\"source\"");
+        }
+    }
+
+    @Test
+    @DisplayName("Should save character with valid avatar and reject SVG or script injection")
+    void shouldHandleAvatarUrlOnCreation() {
+        UUID originFeatId = UUID.randomUUID();
+        Feat originFeat = new Feat(
+                originFeatId,
+                Ruleset.SRD_2024,
+                "tough",
+                "Tough",
+                "Robusto",
+                null,
+                "Gain extra HP",
+                "SRD",
+                null,
+                FeatType.ORIGIN,
+                new MechanicalEffects(
+                        Map.of(),
+                        0,
+                        0,
+                        0,
+                        2,
+                        List.of(),
+                        null,
+                        null,
+                        null,
+                        null,
+                        RestType.NONE
+                )
+        );
+
+        when(referenceDataRepository.findArchetypeById(archetypeId)).thenReturn(Optional.of(archetype));
+        when(referenceDataRepository.findLineageById(lineageId)).thenReturn(Optional.of(lineage));
+        when(referenceDataRepository.findBackgroundById(backgroundId)).thenReturn(Optional.of(background));
+        when(referenceDataRepository.findFeatById(originFeatId)).thenReturn(Optional.of(originFeat));
+        when(playerCharacterRepository.save(any(PlayerCharacter.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        String validAvatar = "data:image/webp;base64,UklGRkAAAABXRUJQVlA4...";
+        CreateCharacterCommand validCommand = new CreateCharacterCommand(
+                userId,
+                "Avatar Hero",
+                1,
+                Ruleset.SRD_2024,
+                lineageId,
+                backgroundId,
+                archetypeId,
+                null,
+                AbilityScoreMethod.STANDARD_ARRAY,
+                15, 14, 13, 12, 10, 8,
+                Map.of("STRENGTH", 1, "CONSTITUTION", 1, "DEXTERITY", 1),
+                null,
+                HpCalculationMethod.MAX,
+                null,
+                List.of(),
+                "Notes",
+                List.of(),
+                List.of("Athletics"),
+                originFeatId,
+                validAvatar
+        );
+
+        CharacterSheetResult result = service.createCharacter(validCommand);
+        assertThat(result).isNotNull();
+
+        ArgumentCaptor<PlayerCharacter> captor = ArgumentCaptor.forClass(PlayerCharacter.class);
+        verify(playerCharacterRepository).save(captor.capture());
+        assertThat(captor.getValue().getAvatarUrl()).isEqualTo(validAvatar);
+
+        // SVG rejection
+        CreateCharacterCommand svgCommand = new CreateCharacterCommand(
+                userId,
+                "Malicious Hero",
+                1,
+                Ruleset.SRD_2024,
+                lineageId,
+                backgroundId,
+                archetypeId,
+                null,
+                AbilityScoreMethod.STANDARD_ARRAY,
+                15, 14, 13, 12, 10, 8,
+                Map.of("STRENGTH", 1, "CONSTITUTION", 1, "DEXTERITY", 1),
+                null,
+                HpCalculationMethod.MAX,
+                null,
+                List.of(),
+                "Notes",
+                List.of(),
+                List.of("Athletics"),
+                originFeatId,
+                "data:image/svg+xml;base64,PHN2Zz48L3N2Zz4="
+        );
+
+        assertThatThrownBy(() -> service.createCharacter(svgCommand))
+                .isInstanceOf(CharacterValidationException.class)
+                .hasMessageContaining("SVG");
+    }
+
+    @Test
+    @DisplayName("Should reject character creation when origin feat prerequisites are not met")
+    void shouldRejectOriginFeatWhenPrerequisitesNotMet() {
+        UUID originFeatId = UUID.randomUUID();
+        Feat featWithPrereq = new Feat(
+                originFeatId,
+                Ruleset.SRD_2024,
+                "high-str-origin-feat",
+                "High Strength Feat",
+                "Talento de Força Alta",
+                "Força 18+",
+                "Requer força extraordinária",
+                "SRD",
+                null,
+                FeatType.ORIGIN,
+                new MechanicalEffects(
+                        Map.of(), 0, 0, 0, 0, List.of(),
+                        null, null, null, null, RestType.NONE,
+                        null, false, null,
+                        List.of(new FeatPrerequisite("ABILITY_SCORE", "STRENGTH", 18, "Força 18+"))
+                )
+        );
+
+        when(referenceDataRepository.findArchetypeById(archetypeId)).thenReturn(Optional.of(archetype));
+        when(referenceDataRepository.findLineageById(lineageId)).thenReturn(Optional.of(lineage));
+        when(referenceDataRepository.findBackgroundById(backgroundId)).thenReturn(Optional.of(background));
+        when(referenceDataRepository.findFeatById(originFeatId)).thenReturn(Optional.of(featWithPrereq));
+
+        CreateCharacterCommand command = new CreateCharacterCommand(
+                userId,
+                "Weak Hero",
+                1,
+                Ruleset.SRD_2024,
+                lineageId,
+                backgroundId,
+                archetypeId,
+                null,
+                AbilityScoreMethod.STANDARD_ARRAY,
+                15, 14, 13, 12, 10, 8, // STR 15 < 18
+                Map.of("DEXTERITY", 2, "CONSTITUTION", 1),
+                null,
+                HpCalculationMethod.MAX,
+                null,
+                List.of(),
+                "Notes",
+                List.of(),
+                List.of("Athletics"),
+                originFeatId,
+                null
+        );
+
+        assertThatThrownBy(() -> service.createCharacter(command))
+                .isInstanceOf(CharacterValidationException.class)
+                .hasMessageContaining("Pré-requisito do talento não atendido");
     }
 }

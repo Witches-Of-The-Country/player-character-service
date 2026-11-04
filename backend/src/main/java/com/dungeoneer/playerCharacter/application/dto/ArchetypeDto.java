@@ -18,8 +18,43 @@ public record ArchetypeDto(
         SpellcastingType spellcastingType,
         String spellcastingAbility,
         Ruleset ruleset,
-        String source
+        String source,
+        int subclassLevel,
+        String spellPreparationType
 ) {
+    public ArchetypeDto(
+            UUID id,
+            String name,
+            String hitDice,
+            String primaryAbility,
+            List<String> savingThrowProficiencies,
+            List<String> armorProficiencies,
+            List<String> weaponProficiencies,
+            SpellcastingType spellcastingType,
+            String spellcastingAbility,
+            Ruleset ruleset,
+            String source,
+            int subclassLevel
+    ) {
+        this(id, name, hitDice, primaryAbility, savingThrowProficiencies, armorProficiencies, weaponProficiencies, spellcastingType, spellcastingAbility, ruleset, source, subclassLevel, "NONE");
+    }
+
+    public ArchetypeDto(
+            UUID id,
+            String name,
+            String hitDice,
+            String primaryAbility,
+            List<String> savingThrowProficiencies,
+            List<String> armorProficiencies,
+            List<String> weaponProficiencies,
+            SpellcastingType spellcastingType,
+            String spellcastingAbility,
+            Ruleset ruleset,
+            String source
+    ) {
+        this(id, name, hitDice, primaryAbility, savingThrowProficiencies, armorProficiencies, weaponProficiencies, spellcastingType, spellcastingAbility, ruleset, source, 3, "NONE");
+    }
+
     public static ArchetypeDto fromDomain(Archetype domain) {
         return new ArchetypeDto(
                 domain.getId(),
@@ -32,7 +67,9 @@ public record ArchetypeDto(
                 domain.getSpellcastingType(),
                 domain.getSpellcastingAbility(),
                 domain.getRuleset(),
-                domain.getSource()
+                domain.getSource(),
+                domain.getSubclassLevel(),
+                domain.getSpellPreparationType() != null ? domain.getSpellPreparationType().name() : "NONE"
         );
     }
 }

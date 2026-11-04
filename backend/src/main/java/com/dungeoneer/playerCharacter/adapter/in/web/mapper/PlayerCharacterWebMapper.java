@@ -79,7 +79,9 @@ public final class PlayerCharacterWebMapper {
                 hpRollIds,
                 request.notes(),
                 classProgressions,
-                skillProficiencies
+                skillProficiencies,
+                request.originFeatId(),
+                request.avatarUrl()
         );
     }
 
@@ -90,7 +92,8 @@ public final class PlayerCharacterWebMapper {
                 request.name(),
                 request.hitPointsCurrent(),
                 request.hitPointsTemp(),
-                request.notes()
+                request.notes(),
+                request.avatarUrl()
         );
     }
 
@@ -119,6 +122,15 @@ public final class PlayerCharacterWebMapper {
                 result.classProgressions(),
                 result.savingThrows(),
                 result.skills(),
+                result.experiencePoints(),
+                result.campaignId(),
+                result.inventory(),
+                result.feats(),
+                result.actions(),
+                result.currency(),
+                result.avatarUrl(),
+                result.classes(),
+                result.exhaustion(),
                 result.createdAt(),
                 result.updatedAt()
         );
@@ -131,11 +143,14 @@ public final class PlayerCharacterWebMapper {
                 result.level(),
                 result.ruleset(),
                 result.className(),
+                result.subclassName(),
                 result.lineageName(),
                 result.backgroundName(),
                 result.hitPointsCurrent(),
                 result.hitPointsMax(),
                 result.armorClass(),
+                result.avatarUrl(),
+                result.classes(),
                 result.updatedAt()
         );
     }

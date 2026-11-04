@@ -6,21 +6,29 @@ import com.dungeoneer.playerCharacter.application.dto.CreateHomebrewFeatRequest;
 import com.dungeoneer.playerCharacter.application.dto.CreateHomebrewItemRequest;
 import com.dungeoneer.playerCharacter.application.dto.CreateHomebrewLineageRequest;
 import com.dungeoneer.playerCharacter.application.dto.CreateHomebrewSpellRequest;
+import com.dungeoneer.playerCharacter.application.dto.CreateHomebrewSubclassRequest;
 import com.dungeoneer.playerCharacter.application.dto.FeatDto;
 import com.dungeoneer.playerCharacter.application.dto.ItemDto;
 import com.dungeoneer.playerCharacter.application.dto.LineageDto;
 import com.dungeoneer.playerCharacter.application.dto.SpellDto;
+import com.dungeoneer.playerCharacter.application.dto.SubclassDto;
 import com.dungeoneer.playerCharacter.application.port.in.CreateHomebrewUseCase;
 import com.dungeoneer.playerCharacter.application.port.out.ReferenceDataRepository;
 import com.dungeoneer.playerCharacter.domain.exception.CharacterValidationException;
 import com.dungeoneer.playerCharacter.domain.model.Archetype;
+import com.dungeoneer.playerCharacter.domain.model.ChargeRecoveryType;
+import com.dungeoneer.playerCharacter.domain.model.ChargeType;
 import com.dungeoneer.playerCharacter.domain.model.Feat;
+import com.dungeoneer.playerCharacter.domain.model.FeatType;
 import com.dungeoneer.playerCharacter.domain.model.HitDiceEnum;
 import com.dungeoneer.playerCharacter.domain.model.Item;
 import com.dungeoneer.playerCharacter.domain.model.Lineage;
+import com.dungeoneer.playerCharacter.domain.model.MechanicalEffects;
 import com.dungeoneer.playerCharacter.domain.model.Ruleset;
 import com.dungeoneer.playerCharacter.domain.model.Spell;
+import com.dungeoneer.playerCharacter.domain.model.SpellPreparationType;
 import com.dungeoneer.playerCharacter.domain.model.SpellcastingType;
+import com.dungeoneer.playerCharacter.domain.model.Subclass;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -70,7 +78,8 @@ public class HomebrewService implements CreateHomebrewUseCase {
                 request.duration(),
                 request.description(),
                 "HOMEBREW",
-                ownerId
+                ownerId,
+                request.mechanicalProperties()
         );
 
         Spell saved = repository.saveSpell(spell);
@@ -86,6 +95,8 @@ public class HomebrewService implements CreateHomebrewUseCase {
             throw new CharacterValidationException("Feat creation payload cannot be null");
         }
 
+        validateFeatMechanicalEffects(request.mechanicalEffects());
+
         UUID id = UUID.randomUUID();
         String slug = toSlug(request.name());
         String nameEn = (request.nameEn() != null && !request.nameEn().isBlank()) ? request.nameEn() : slug;
@@ -99,11 +110,48 @@ public class HomebrewService implements CreateHomebrewUseCase {
                 request.prerequisites(),
                 request.description(),
                 "HOMEBREW",
-                ownerId
+                ownerId,
+                request.featType() != null ? request.featType() : FeatType.GENERAL,
+                request.mechanicalEffects() != null ? request.mechanicalEffects() : MechanicalEffects.empty()
         );
 
         Feat saved = repository.saveFeat(feat);
         return FeatDto.fromDomain(saved);
+    }
+
+    private void validateFeatMechanicalEffects(MechanicalEffects effects) {
+        if (effects == null) {
+            return;
+        }
+
+        if (effects.maxChargesType() != null) {
+            if (effects.maxChargesType() == ChargeType.ABILITY_MODIFIER) {
+                if (effects.chargeAbility() == null || effects.chargeAbility().isBlank()) {
+                    throw new CharacterValidationException("O atributo da fórmula de cargas é obrigatório quando o tipo for Modificador de Atributo (ABILITY_MODIFIER).");
+                }
+            } else if (effects.maxChargesType() == ChargeType.FIXED) {
+                if (effects.fixedMaxCharges() == null || effects.fixedMaxCharges() <= 0) {
+                    throw new CharacterValidationException("O número de cargas fixas deve ser maior que zero quando o tipo for Fixo (FIXED).");
+                }
+            }
+        }
+
+        if (effects.shortRestRecoveryType() == ChargeRecoveryType.FIXED) {
+            if (effects.shortRestRecoveryFixed() == null || effects.shortRestRecoveryFixed() <= 0) {
+                throw new CharacterValidationException("A quantidade de cargas recuperadas no descanso curto deve ser maior que zero quando a recuperação for Fixa.");
+            }
+        }
+
+        if (effects.longRestRecoveryType() == ChargeRecoveryType.FIXED) {
+            if (effects.longRestRecoveryFixed() == null || effects.longRestRecoveryFixed() <= 0) {
+                throw new CharacterValidationException("A quantidade de cargas recuperadas no descanso longo deve ser maior que zero quando a recuperação for Fixa.");
+            }
+        }
+
+        if ((effects.shortRestRecoveryType() == ChargeRecoveryType.MODIFIER || effects.longRestRecoveryType() == ChargeRecoveryType.MODIFIER)
+                && (effects.chargeAbility() == null || effects.chargeAbility().isBlank())) {
+            throw new CharacterValidationException("O atributo da fórmula de cargas é obrigatório quando a recuperação for baseada em Modificador de Atributo (MODIFIER).");
+        }
     }
 
     @Override
@@ -134,7 +182,8 @@ public class HomebrewService implements CreateHomebrewUseCase {
                 request.weight(),
                 request.description(),
                 "HOMEBREW",
-                ownerId
+                ownerId,
+                request.resolveMechanicalProperties()
         );
 
         Item saved = repository.saveItem(item);
@@ -165,22 +214,67 @@ public class HomebrewService implements CreateHomebrewUseCase {
         }
 
         UUID id = UUID.randomUUID();
+
+        int subclassLevel = (request.subclassLevel() != null && request.subclassLevel() >= 1 && request.subclassLevel() <= 20)
+                ? request.subclassLevel()
+                : 3;
+
+        SpellPreparationType prepType = SpellPreparationType.NONE;
+        if (request.spellPreparationType() != null && !request.spellPreparationType().isBlank()) {
+            try {
+                prepType = SpellPreparationType.valueOf(request.spellPreparationType().trim().toUpperCase());
+            } catch (Exception ignored) {
+            }
+        }
+
         Archetype archetype = new Archetype(
                 id,
                 request.name(),
                 hitDice,
                 request.primaryAbility(),
-                request.savingThrowProficiencies() != null ? request.savingThrowProficiencies() : Collections.emptyList(),
+                request.savingThrowProficiencies(),
                 request.armorProficiencies() != null ? request.armorProficiencies() : Collections.emptyList(),
                 request.weaponProficiencies() != null ? request.weaponProficiencies() : Collections.emptyList(),
                 spellcastingType,
                 request.spellcastingAbility(),
                 Ruleset.HOMEBREW,
                 "HOMEBREW",
-                ownerId
+                ownerId,
+                subclassLevel,
+                prepType
         );
 
         Archetype saved = repository.saveArchetype(archetype);
+
+        if (request.progressionFeats() != null) {
+            for (var entry : request.progressionFeats()) {
+                int unlockLevel = Math.max(1, Math.min(20, entry.unlockLevel()));
+                UUID targetFeatId = entry.featId();
+                if (targetFeatId == null && entry.name() != null && !entry.name().isBlank()) {
+                    UUID newFeatId = UUID.randomUUID();
+                    String slug = toSlug(entry.name());
+                    Feat inlineFeat = new Feat(
+                            newFeatId,
+                            Ruleset.HOMEBREW,
+                            slug,
+                            slug,
+                            entry.name().trim(),
+                            null,
+                            entry.description() != null && !entry.description().isBlank() ? entry.description().trim() : entry.name().trim(),
+                            "HOMEBREW",
+                            ownerId,
+                            FeatType.CLASS,
+                            entry.mechanicalEffects() != null ? entry.mechanicalEffects() : MechanicalEffects.empty()
+                    );
+                    Feat savedFeat = repository.saveFeat(inlineFeat);
+                    targetFeatId = savedFeat.getId();
+                }
+                if (targetFeatId != null) {
+                    repository.saveArchetypeFeatLink(saved.getId(), targetFeatId, unlockLevel);
+                }
+            }
+        }
+
         return ArchetypeDto.fromDomain(saved);
     }
 
@@ -194,12 +288,14 @@ public class HomebrewService implements CreateHomebrewUseCase {
         }
 
         UUID id = UUID.randomUUID();
+        String size = (request.size() != null && !request.size().isBlank()) ? request.size().toUpperCase() : "MEDIUM";
+
         Lineage lineage = new Lineage(
                 id,
                 request.name(),
                 request.description(),
                 request.speed() > 0 ? request.speed() : 30,
-                request.size() != null ? request.size().toUpperCase() : "MEDIUM",
+                size,
                 request.abilityBonuses() != null ? request.abilityBonuses() : Collections.emptyMap(),
                 request.traitsSummary() != null ? request.traitsSummary() : Collections.emptyList(),
                 Ruleset.HOMEBREW,
@@ -208,16 +304,357 @@ public class HomebrewService implements CreateHomebrewUseCase {
         );
 
         Lineage saved = repository.saveLineage(lineage);
+
+        if (request.inlineFeats() != null) {
+            for (var entry : request.inlineFeats()) {
+                int unlockLevel = Math.max(1, Math.min(20, entry.unlockLevel()));
+                UUID targetFeatId = entry.featId();
+                if (targetFeatId == null && entry.name() != null && !entry.name().isBlank()) {
+                    UUID newFeatId = UUID.randomUUID();
+                    String featSlug = toSlug(entry.name());
+                    Feat inlineFeat = new Feat(
+                            newFeatId,
+                            Ruleset.HOMEBREW,
+                            featSlug,
+                            featSlug,
+                            entry.name().trim(),
+                            null,
+                            entry.description() != null && !entry.description().isBlank() ? entry.description().trim() : entry.name().trim(),
+                            "HOMEBREW",
+                            ownerId,
+                            FeatType.LINEAGE,
+                            entry.mechanicalEffects() != null ? entry.mechanicalEffects() : MechanicalEffects.empty()
+                    );
+                    Feat savedFeat = repository.saveFeat(inlineFeat);
+                    targetFeatId = savedFeat.getId();
+                }
+                if (targetFeatId != null) {
+                    repository.saveLineageFeatLink(saved.getId(), targetFeatId, unlockLevel);
+                }
+            }
+        }
+
         return LineageDto.fromDomain(saved);
     }
 
-    private String toSlug(String input) {
-        if (input == null) {
-            return UUID.randomUUID().toString();
+    @Override
+    public SubclassDto createSubclass(UUID ownerId, CreateHomebrewSubclassRequest request) {
+        if (ownerId == null) {
+            throw new CharacterValidationException("Owner id is required for homebrew creation");
         }
-        String nowhitespace = WHITESPACE.matcher(input.trim().toLowerCase(Locale.ROOT)).replaceAll("-");
+        if (request == null) {
+            throw new CharacterValidationException("Subclass payload cannot be null");
+        }
+        if (request.archetypeId() == null) {
+            throw new CharacterValidationException("Archetype id is required");
+        }
+
+        Archetype archetype = repository.findArchetypeById(request.archetypeId())
+                .orElseThrow(() -> new CharacterValidationException("Archetype not found: " + request.archetypeId()));
+
+        UUID id = UUID.randomUUID();
+        String slug = toSlug(request.name());
+        String nameEn = (request.nameEn() != null && !request.nameEn().isBlank()) ? request.nameEn() : slug;
+
+        Subclass subclass = new Subclass(
+                id,
+                archetype.getId(),
+                Ruleset.HOMEBREW,
+                slug,
+                nameEn,
+                request.name(),
+                request.description(),
+                "HOMEBREW",
+                ownerId
+        );
+
+        Subclass saved = repository.saveSubclass(subclass);
+
+        if (request.progressionFeats() != null) {
+            for (var entry : request.progressionFeats()) {
+                int unlockLevel = Math.max(1, Math.min(20, entry.unlockLevel()));
+                UUID targetFeatId = entry.featId();
+                if (targetFeatId == null && entry.name() != null && !entry.name().isBlank()) {
+                    UUID newFeatId = UUID.randomUUID();
+                    String featSlug = toSlug(entry.name());
+                    Feat inlineFeat = new Feat(
+                            newFeatId,
+                            Ruleset.HOMEBREW,
+                            featSlug,
+                            featSlug,
+                            entry.name().trim(),
+                            null,
+                            entry.description() != null && !entry.description().isBlank() ? entry.description().trim() : entry.name().trim(),
+                            "HOMEBREW",
+                            ownerId,
+                            FeatType.SUBCLASS,
+                            entry.mechanicalEffects() != null ? entry.mechanicalEffects() : MechanicalEffects.empty()
+                    );
+                    Feat savedFeat = repository.saveFeat(inlineFeat);
+                    targetFeatId = savedFeat.getId();
+                }
+                if (targetFeatId != null) {
+                    repository.saveSubclassFeatLink(saved.getId(), targetFeatId, unlockLevel);
+                }
+            }
+        }
+
+        return SubclassDto.fromDomain(saved);
+    }
+
+    @Override
+    public SpellDto updateSpell(UUID spellId, UUID ownerId, CreateHomebrewSpellRequest request) {
+        if (spellId == null) {
+            throw new CharacterValidationException("Spell id is required for update");
+        }
+        if (request == null) {
+            throw new CharacterValidationException("Spell update payload cannot be null");
+        }
+
+        Spell existing = repository.findSpellById(spellId)
+                .orElseThrow(() -> new CharacterValidationException("Spell not found: " + spellId));
+
+        if (existing.getRuleset() != Ruleset.HOMEBREW) {
+            throw new CharacterValidationException("Official SRD spells cannot be modified");
+        }
+
+        String nameEn = (request.nameEn() != null && !request.nameEn().isBlank()) ? request.nameEn() : existing.getNameEn();
+
+        Spell updated = new Spell(
+                existing.getId(),
+                Ruleset.HOMEBREW,
+                existing.getSlug(),
+                nameEn,
+                request.name(),
+                request.level(),
+                request.school(),
+                request.castingTime(),
+                request.rangeArea(),
+                request.components(),
+                request.duration(),
+                request.description(),
+                "HOMEBREW",
+                existing.getOwnerId() != null ? existing.getOwnerId() : ownerId,
+                request.mechanicalProperties()
+        );
+
+        Spell saved = repository.saveSpell(updated);
+        return SpellDto.fromDomain(saved);
+    }
+
+    @Override
+    public FeatDto updateFeat(UUID featId, UUID ownerId, CreateHomebrewFeatRequest request) {
+        if (featId == null) {
+            throw new CharacterValidationException("Feat id is required for update");
+        }
+        if (request == null) {
+            throw new CharacterValidationException("Feat update payload cannot be null");
+        }
+
+        Feat existing = repository.findFeatById(featId)
+                .orElseThrow(() -> new CharacterValidationException("Feat not found: " + featId));
+
+        if (existing.getRuleset() != Ruleset.HOMEBREW) {
+            throw new CharacterValidationException("Official SRD feats cannot be modified");
+        }
+
+        String nameEn = (request.nameEn() != null && !request.nameEn().isBlank()) ? request.nameEn() : existing.getNameEn();
+
+        Feat updated = new Feat(
+                existing.getId(),
+                Ruleset.HOMEBREW,
+                existing.getSlug(),
+                nameEn,
+                request.name(),
+                request.prerequisites(),
+                request.description(),
+                "HOMEBREW",
+                existing.getOwnerId() != null ? existing.getOwnerId() : ownerId,
+                request.featType() != null ? request.featType() : FeatType.GENERAL,
+                request.mechanicalEffects() != null ? request.mechanicalEffects() : MechanicalEffects.empty()
+        );
+
+        Feat saved = repository.saveFeat(updated);
+        return FeatDto.fromDomain(saved);
+    }
+
+    @Override
+    public ItemDto updateItem(UUID itemId, UUID ownerId, CreateHomebrewItemRequest request) {
+        if (itemId == null) {
+            throw new CharacterValidationException("Item id is required for update");
+        }
+        if (request == null) {
+            throw new CharacterValidationException("Item update payload cannot be null");
+        }
+
+        Item existing = repository.findItemById(itemId)
+                .orElseThrow(() -> new CharacterValidationException("Item not found: " + itemId));
+
+        if (existing.getRuleset() != Ruleset.HOMEBREW) {
+            throw new CharacterValidationException("Official SRD items cannot be modified");
+        }
+
+        String nameEn = (request.nameEn() != null && !request.nameEn().isBlank()) ? request.nameEn() : existing.getNameEn();
+        String rarity = (request.rarity() != null && !request.rarity().isBlank()) ? request.rarity().toUpperCase() : existing.getRarity();
+
+        Item updated = new Item(
+                existing.getId(),
+                Ruleset.HOMEBREW,
+                existing.getSlug(),
+                nameEn,
+                request.name(),
+                request.itemCategory().toUpperCase(),
+                request.itemType(),
+                rarity,
+                request.isAttunement(),
+                request.cost(),
+                request.weight(),
+                request.description(),
+                "HOMEBREW",
+                existing.getOwnerId() != null ? existing.getOwnerId() : ownerId,
+                request.resolveMechanicalProperties()
+        );
+
+        Item saved = repository.saveItem(updated);
+        return ItemDto.fromDomain(saved);
+    }
+
+    @Override
+    public ArchetypeDto updateArchetype(UUID archetypeId, UUID ownerId, CreateHomebrewArchetypeRequest request) {
+        if (archetypeId == null) {
+            throw new CharacterValidationException("Archetype id is required for update");
+        }
+        if (request == null) {
+            throw new CharacterValidationException("Archetype update payload cannot be null");
+        }
+
+        Archetype existing = repository.findArchetypeById(archetypeId)
+                .orElseThrow(() -> new CharacterValidationException("Archetype not found: " + archetypeId));
+
+        if (existing.getRuleset() != Ruleset.HOMEBREW) {
+            throw new CharacterValidationException("Official SRD archetypes cannot be modified");
+        }
+
+        HitDiceEnum hitDice;
+        try {
+            hitDice = HitDiceEnum.valueOf(request.hitDice().trim().toUpperCase());
+        } catch (Exception e) {
+            hitDice = existing.getHitDice();
+        }
+
+        SpellcastingType spellcastingType;
+        try {
+            spellcastingType = SpellcastingType.valueOf(request.spellcastingType().trim().toUpperCase());
+        } catch (Exception e) {
+            spellcastingType = existing.getSpellcastingType();
+        }
+
+        int subclassLevel = (request.subclassLevel() != null && request.subclassLevel() >= 1 && request.subclassLevel() <= 20)
+                ? request.subclassLevel()
+                : existing.getSubclassLevel();
+
+        SpellPreparationType prepType = existing.getSpellPreparationType();
+        if (request.spellPreparationType() != null && !request.spellPreparationType().isBlank()) {
+            try {
+                prepType = SpellPreparationType.valueOf(request.spellPreparationType().trim().toUpperCase());
+            } catch (Exception ignored) {
+            }
+        }
+
+        Archetype updated = new Archetype(
+                existing.getId(),
+                request.name(),
+                hitDice,
+                request.primaryAbility(),
+                request.savingThrowProficiencies() != null ? request.savingThrowProficiencies() : existing.getSavingThrowProficiencies(),
+                request.armorProficiencies() != null ? request.armorProficiencies() : existing.getArmorProficiencies(),
+                request.weaponProficiencies() != null ? request.weaponProficiencies() : existing.getWeaponProficiencies(),
+                spellcastingType,
+                request.spellcastingAbility(),
+                Ruleset.HOMEBREW,
+                "HOMEBREW",
+                existing.getOwnerId() != null ? existing.getOwnerId() : ownerId,
+                subclassLevel,
+                prepType
+        );
+
+        Archetype saved = repository.saveArchetype(updated);
+        return ArchetypeDto.fromDomain(saved);
+    }
+
+    @Override
+    public LineageDto updateLineage(UUID lineageId, UUID ownerId, CreateHomebrewLineageRequest request) {
+        if (lineageId == null) {
+            throw new CharacterValidationException("Lineage id is required for update");
+        }
+        if (request == null) {
+            throw new CharacterValidationException("Lineage update payload cannot be null");
+        }
+
+        Lineage existing = repository.findLineageById(lineageId)
+                .orElseThrow(() -> new CharacterValidationException("Lineage not found: " + lineageId));
+
+        if (existing.getRuleset() != Ruleset.HOMEBREW) {
+            throw new CharacterValidationException("Official SRD lineages cannot be modified");
+        }
+
+        Lineage updated = new Lineage(
+                existing.getId(),
+                request.name(),
+                request.description(),
+                request.speed(),
+                request.size(),
+                request.abilityBonuses(),
+                request.traitsSummary(),
+                Ruleset.HOMEBREW,
+                "HOMEBREW",
+                existing.getOwnerId() != null ? existing.getOwnerId() : ownerId
+        );
+
+        Lineage saved = repository.saveLineage(updated);
+        return LineageDto.fromDomain(saved);
+    }
+
+    @Override
+    public SubclassDto updateSubclass(UUID subclassId, UUID ownerId, CreateHomebrewSubclassRequest request) {
+        if (subclassId == null) {
+            throw new CharacterValidationException("Subclass id is required for update");
+        }
+        if (request == null) {
+            throw new CharacterValidationException("Subclass update payload cannot be null");
+        }
+
+        Subclass existing = repository.findSubclassById(subclassId)
+                .orElseThrow(() -> new CharacterValidationException("Subclass not found: " + subclassId));
+
+        if (existing.getRuleset() != Ruleset.HOMEBREW) {
+            throw new CharacterValidationException("Official SRD subclasses cannot be modified");
+        }
+
+        UUID archetypeId = request.archetypeId() != null ? request.archetypeId() : existing.getArchetypeId();
+        String nameEn = (request.nameEn() != null && !request.nameEn().isBlank()) ? request.nameEn() : existing.getNameEn();
+
+        Subclass updated = new Subclass(
+                existing.getId(),
+                archetypeId,
+                Ruleset.HOMEBREW,
+                existing.getSlug(),
+                nameEn,
+                request.name(),
+                request.description(),
+                "HOMEBREW",
+                existing.getOwnerId() != null ? existing.getOwnerId() : ownerId
+        );
+
+        Subclass saved = repository.saveSubclass(updated);
+        return SubclassDto.fromDomain(saved);
+    }
+
+    private String toSlug(String input) {
+        if (input == null) return UUID.randomUUID().toString();
+        String nowhitespace = WHITESPACE.matcher(input).replaceAll("-");
         String normalized = Normalizer.normalize(nowhitespace, Normalizer.Form.NFD);
         String slug = NONLATIN.matcher(normalized).replaceAll("");
-        return slug.isBlank() ? UUID.randomUUID().toString() : slug;
+        return slug.toLowerCase(Locale.ENGLISH) + "-" + UUID.randomUUID().toString().substring(0, 8);
     }
 }

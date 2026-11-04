@@ -22,6 +22,18 @@ public record UpdateCharacterCommand(
         @Min(value = 0, message = "Temporary hit points cannot be negative")
         Integer hitPointsTemp,
 
-        String notes
+        String notes,
+
+        String avatarUrl
 ) {
+    public UpdateCharacterCommand(
+            UUID characterId,
+            UUID userId,
+            String name,
+            Integer hitPointsCurrent,
+            Integer hitPointsTemp,
+            String notes
+    ) {
+        this(characterId, userId, name, hitPointsCurrent, hitPointsTemp, notes, null);
+    }
 }

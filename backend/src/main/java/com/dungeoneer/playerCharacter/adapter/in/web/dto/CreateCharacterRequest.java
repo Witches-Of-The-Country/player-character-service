@@ -59,8 +59,95 @@ public record CreateCharacterRequest(
 
         List<@Valid ClassProgressionRequest> classProgressions,
 
-        List<String> skillProficiencies
+        List<String> skillProficiencies,
+
+        UUID originFeatId,
+
+        @Size(max = 700000, message = "Avatar URL cannot exceed 700,000 characters")
+        String avatarUrl
 ) {
+        public CreateCharacterRequest(
+                String name,
+                Integer level,
+                Ruleset ruleset,
+                UUID lineageId,
+                UUID backgroundId,
+                UUID archetypeId,
+                UUID subclassId,
+                AbilityScoreMethod abilityScoreMethod,
+                Map<String, Integer> abilityScores,
+                Map<String, Integer> abilityScoreBonuses,
+                UUID abilityRollId,
+                HpCalculationMethod hpCalculationMethod,
+                UUID hpRollId,
+                List<UUID> hpRollIds,
+                String notes,
+                List<@Valid ClassProgressionRequest> classProgressions,
+                List<String> skillProficiencies,
+                UUID originFeatId
+        ) {
+                this(
+                        name,
+                        level,
+                        ruleset,
+                        lineageId,
+                        backgroundId,
+                        archetypeId,
+                        subclassId,
+                        abilityScoreMethod,
+                        abilityScores,
+                        abilityScoreBonuses,
+                        abilityRollId,
+                        hpCalculationMethod,
+                        hpRollId,
+                        hpRollIds,
+                        notes,
+                        classProgressions,
+                        skillProficiencies,
+                        originFeatId,
+                        null
+                );
+        }
+        public CreateCharacterRequest(
+                String name,
+                Integer level,
+                Ruleset ruleset,
+                UUID lineageId,
+                UUID backgroundId,
+                UUID archetypeId,
+                UUID subclassId,
+                AbilityScoreMethod abilityScoreMethod,
+                Map<String, Integer> abilityScores,
+                Map<String, Integer> abilityScoreBonuses,
+                UUID abilityRollId,
+                HpCalculationMethod hpCalculationMethod,
+                UUID hpRollId,
+                List<UUID> hpRollIds,
+                String notes,
+                List<@Valid ClassProgressionRequest> classProgressions,
+                List<String> skillProficiencies
+        ) {
+                this(
+                        name,
+                        level,
+                        ruleset,
+                        lineageId,
+                        backgroundId,
+                        archetypeId,
+                        subclassId,
+                        abilityScoreMethod,
+                        abilityScores,
+                        abilityScoreBonuses,
+                        abilityRollId,
+                        hpCalculationMethod,
+                        hpRollId,
+                        hpRollIds,
+                        notes,
+                        classProgressions,
+                        skillProficiencies,
+                        null
+                );
+        }
         public CreateCharacterRequest(
                 String name,
                 Integer level,

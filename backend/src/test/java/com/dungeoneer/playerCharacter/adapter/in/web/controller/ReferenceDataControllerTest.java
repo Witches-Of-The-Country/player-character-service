@@ -10,7 +10,11 @@ import com.dungeoneer.playerCharacter.application.dto.ItemDto;
 import com.dungeoneer.playerCharacter.application.dto.LineageDto;
 import com.dungeoneer.playerCharacter.application.dto.SpellDto;
 import com.dungeoneer.playerCharacter.application.port.in.GetReferenceDataUseCase;
+import com.dungeoneer.playerCharacter.domain.exception.CharacterValidationException;
+import com.dungeoneer.playerCharacter.domain.model.FeatType;
+import com.dungeoneer.playerCharacter.domain.model.MechanicalEffects;
 import com.dungeoneer.playerCharacter.domain.model.Ruleset;
+import com.dungeoneer.playerCharacter.domain.model.SpellChoice;
 import com.dungeoneer.playerCharacter.domain.model.SpellcastingType;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -29,6 +33,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(ReferenceDataController.class)
@@ -88,19 +93,62 @@ class ReferenceDataControllerTest {
     }
 
     @Test
+    @DisplayName("GET /api/reference/spells with multiple levels and schools delegates lists to use case")
+    void shouldPassMultiLevelsAndSchoolsToUseCase() throws Exception {
+        CursorPageResponse<SpellDto> page = new CursorPageResponse<>(List.of(), null, false, 0);
+        when(getReferenceDataUseCase.getSpells(any(), eq(20), any(), any(), eq(List.of(1, 2)), eq(List.of("Evocação", "Abjuração")), any()))
+                .thenReturn(page);
+
+        mockMvc.perform(get("/api/reference/spells")
+                        .param("levels", "1", "2")
+                        .param("schools", "Evocação", "Abjuração")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     @DisplayName("GET /api/reference/feats returns 200 OK with CursorPageResponse")
     void shouldReturnFeatsPaginated() throws Exception {
         FeatDto feat = new FeatDto(
                 UUID.randomUUID(), "SRD_2024", "alert-2024", "Alert", "Alerta", "Nível 1", "Iniciativa", "SRD"
         );
         CursorPageResponse<FeatDto> page = new CursorPageResponse<>(List.of(feat), null, false, 1);
-        when(getReferenceDataUseCase.getFeats(any(), eq(20), any(), any(), any())).thenReturn(page);
+        when(getReferenceDataUseCase.getFeats(any(), eq(20), any(), any(), any(), any())).thenReturn(page);
 
         mockMvc.perform(get("/api/reference/feats")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].name").value("Alerta"))
                 .andExpect(jsonPath("$.hasNext").value(false));
+    }
+
+    @Test
+    @DisplayName("GET /api/reference/feats with featTypes and ruleset returns feats with spellChoice")
+    void shouldFilterFeatsByFeatTypesAndReturnMechanicalEffects() throws Exception {
+        SpellChoice spellChoice = new SpellChoice(2, 1, 1, List.of("CLERIC", "DRUID", "WIZARD"), false);
+        MechanicalEffects effects = new MechanicalEffects(
+                Map.of(), 0, 0, 0, 0, List.of(),
+                null, null, null, null, null,
+                null, false, null, List.of(),
+                spellChoice
+        );
+        FeatDto feat = new FeatDto(
+                UUID.randomUUID(), "SRD_2024", "magic-initiate-2024", "Magic Initiate", "Iniciado em Magia",
+                "Nível 1", "Aprende magias e truques", "SRD", FeatType.ORIGIN, effects
+        );
+        CursorPageResponse<FeatDto> page = new CursorPageResponse<>(List.of(feat), null, false, 1);
+        when(getReferenceDataUseCase.getFeats(any(), eq(20), any(), eq(Ruleset.SRD_2024), eq(List.of("ORIGIN")), any()))
+                .thenReturn(page);
+
+        mockMvc.perform(get("/api/reference/feats")
+                        .param("featTypes", "ORIGIN")
+                        .param("ruleset", "SRD_2024")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].slug").value("magic-initiate-2024"))
+                .andExpect(jsonPath("$.items[0].featType").value("ORIGIN"))
+                .andExpect(jsonPath("$.items[0].mechanicalEffects.spellChoice.cantripsCount").value(2))
+                .andExpect(jsonPath("$.items[0].mechanicalEffects.spellChoice.allowedClasses[0]").value("CLERIC"));
     }
 
     @Test
@@ -121,11 +169,135 @@ class ReferenceDataControllerTest {
     }
 
     @Test
+    @DisplayName("GET /api/reference/items with multiple categories and rarities delegates lists to use case")
+    void shouldPassMultiCategoriesAndRaritiesToUseCase() throws Exception {
+        CursorPageResponse<ItemDto> page = new CursorPageResponse<>(List.of(), null, false, 0);
+        when(getReferenceDataUseCase.getItems(any(), eq(20), any(), any(), eq(List.of("WEAPON", "ARMOR")), eq(List.of("RARE", "VERY_RARE")), any()))
+                .thenReturn(page);
+
+        mockMvc.perform(get("/api/reference/items")
+                        .param("categories", "WEAPON", "ARMOR")
+                        .param("rarities", "RARE", "VERY_RARE")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     @DisplayName("GET /api/reference/spells with invalid limit (> 100) returns 400 Bad Request")
     void shouldReturnBadRequestWhenLimitExceedsMax() throws Exception {
         mockMvc.perform(get("/api/reference/spells")
                         .param("limit", "150")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("POST /api/reference/items with mechanicalProperties returns 201 Created")
+    void shouldCreateHomebrewItemWithMechanicalProperties() throws Exception {
+        UUID userId = UUID.randomUUID();
+        UUID itemId = UUID.randomUUID();
+        ItemDto createdItem = new ItemDto(
+                itemId, "HOMEBREW", "espada-flamejante", "Flame Blade", "Espada Flamejante",
+                "WEAPON", "Espada Longa", "RARE", true, "1500 po", "1.5 kg", "Espada em chamas", "HOMEBREW"
+        );
+
+        when(createHomebrewUseCase.createItem(eq(userId), any())).thenReturn(createdItem);
+
+        String jsonPayload = """
+                {
+                    "name": "Espada Flamejante",
+                    "nameEn": "Flame Blade",
+                    "itemCategory": "WEAPON",
+                    "itemType": "Espada Longa",
+                    "rarity": "RARE",
+                    "attunement": true,
+                    "cost": "1500 po",
+                    "weight": "1.5 kg",
+                    "description": "Espada em chamas",
+                    "mechanicalProperties": {
+                        "type": "WEAPON",
+                        "damageRolls": [
+                            {"diceFormula": "1d8", "damageType": "SLASHING"}
+                        ],
+                        "versatileDice": "1d10",
+                        "magicBonus": 1,
+                        "properties": ["VERSATILE"]
+                    }
+                }
+                """;
+
+        mockMvc.perform(post("/api/reference/items")
+                        .header("X-User-Id", userId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonPayload))
+                .andExpect(status().isCreated())
+                .andExpect(header().string("Location", org.hamcrest.Matchers.containsString("/api/reference/items/" + itemId)))
+                .andExpect(jsonPath("$.name").value("Espada Flamejante"))
+                .andExpect(jsonPath("$.itemCategory").value("WEAPON"));
+
+        verify(createHomebrewUseCase).createItem(eq(userId), any());
+    }
+
+    @Test
+    @DisplayName("PUT /api/reference/items/{id} returns 200 OK on valid update")
+    void shouldUpdateHomebrewItem() throws Exception {
+        UUID userId = UUID.randomUUID();
+        UUID itemId = UUID.randomUUID();
+        ItemDto updatedItem = new ItemDto(
+                itemId, "HOMEBREW", "espada-flamejante", "Flame Blade", "Espada Flamejante +1",
+                "WEAPON", "Espada Longa", "VERY_RARE", true, "5000 po", "1.5 kg", "Espada em chamas azuis", "HOMEBREW"
+        );
+
+        when(createHomebrewUseCase.updateItem(eq(itemId), eq(userId), any())).thenReturn(updatedItem);
+
+        String jsonPayload = """
+                {
+                    "name": "Espada Flamejante +1",
+                    "nameEn": "Flame Blade",
+                    "itemCategory": "WEAPON",
+                    "itemType": "Espada Longa",
+                    "rarity": "VERY_RARE",
+                    "attunement": true,
+                    "cost": "5000 po",
+                    "weight": "1.5 kg",
+                    "description": "Espada em chamas azuis"
+                }
+                """;
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/reference/items/" + itemId)
+                        .header("X-User-Id", userId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonPayload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Espada Flamejante +1"))
+                .andExpect(jsonPath("$.rarity").value("VERY_RARE"));
+
+        verify(createHomebrewUseCase).updateItem(eq(itemId), eq(userId), any());
+    }
+
+    @Test
+    @DisplayName("PUT /api/reference/items/{id} returns 422 Unprocessable Entity when update violates ruleset immutability")
+    void shouldReturnBadRequestWhenUpdatingOfficialItem() throws Exception {
+        UUID userId = UUID.randomUUID();
+        UUID itemId = UUID.randomUUID();
+
+        when(createHomebrewUseCase.updateItem(eq(itemId), eq(userId), any()))
+                .thenThrow(new CharacterValidationException("Official SRD items cannot be modified"));
+
+        String jsonPayload = """
+                {
+                    "name": "Espada Modificada",
+                    "itemCategory": "WEAPON",
+                    "itemType": "Espada Longa",
+                    "description": "Tentativa de modificar item oficial"
+                }
+                """;
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/reference/items/" + itemId)
+                        .header("X-User-Id", userId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonPayload))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.detail").value("Official SRD items cannot be modified"));
     }
 }

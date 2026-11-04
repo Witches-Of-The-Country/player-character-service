@@ -58,14 +58,14 @@ public class ReferenceDataService implements GetReferenceDataUseCase {
     }
 
     @Override
-    public CursorPageResponse<SpellDto> getSpells(String cursor, int limit, String q, Ruleset ruleset, Integer level, String school, UUID ownerId) {
+    public CursorPageResponse<SpellDto> getSpells(String cursor, int limit, String q, Ruleset ruleset, List<Integer> levels, List<String> schools, UUID ownerId) {
         CursorData cursorData = decodeCursor(cursor);
         int fetchLimit = limit + 1;
 
         List<SpellJpaEntity> results = repository.findSpellsWithCursor(
                 ruleset,
-                level,
-                school,
+                levels,
+                schools,
                 q,
                 cursorData.afterName(),
                 cursorData.afterId(),
@@ -87,12 +87,23 @@ public class ReferenceDataService implements GetReferenceDataUseCase {
     }
 
     @Override
-    public CursorPageResponse<FeatDto> getFeats(String cursor, int limit, String q, Ruleset ruleset, UUID ownerId) {
+    public CursorPageResponse<FeatDto> getFeats(String cursor, int limit, String q, Ruleset ruleset, List<String> featTypes, UUID ownerId) {
         CursorData cursorData = decodeCursor(cursor);
         int fetchLimit = limit + 1;
 
+        List<String> validatedFeatTypes = (featTypes != null)
+                ? featTypes.stream()
+                        .filter(java.util.Objects::nonNull)
+                        .map(String::trim)
+                        .map(String::toUpperCase)
+                        .filter(s -> !s.isEmpty())
+                        .limit(10)
+                        .toList()
+                : null;
+
         List<FeatJpaEntity> results = repository.findFeatsWithCursor(
                 ruleset,
+                validatedFeatTypes,
                 q,
                 cursorData.afterName(),
                 cursorData.afterId(),
@@ -114,14 +125,14 @@ public class ReferenceDataService implements GetReferenceDataUseCase {
     }
 
     @Override
-    public CursorPageResponse<ItemDto> getItems(String cursor, int limit, String q, Ruleset ruleset, String category, String rarity, UUID ownerId) {
+    public CursorPageResponse<ItemDto> getItems(String cursor, int limit, String q, Ruleset ruleset, List<String> categories, List<String> rarities, UUID ownerId) {
         CursorData cursorData = decodeCursor(cursor);
         int fetchLimit = limit + 1;
 
         List<Item> results = repository.findItemsWithCursor(
                 ruleset,
-                category,
-                rarity,
+                categories,
+                rarities,
                 q,
                 cursorData.afterName(),
                 cursorData.afterId(),
@@ -194,6 +205,27 @@ public class ReferenceDataService implements GetReferenceDataUseCase {
 
         List<LineageDto> dtos = pageItems.stream().map(LineageDto::fromDomain).toList();
         return new CursorPageResponse<>(dtos, nextCursor, hasMore, pageItems.size());
+    }
+
+    @Override
+    public List<com.dungeoneer.playerCharacter.application.dto.SubclassDto> getSubclasses(UUID archetypeId, Ruleset ruleset) {
+        return repository.findSubclassesByArchetypeId(archetypeId, ruleset, null).stream()
+                .map(com.dungeoneer.playerCharacter.application.dto.SubclassDto::fromDomain)
+                .toList();
+    }
+
+    @Override
+    public List<FeatDto> getProgressionFeats(UUID archetypeId, int level) {
+        return repository.findProgressionFeats(archetypeId, level).stream()
+                .map(FeatDto::fromDomain)
+                .toList();
+    }
+
+    @Override
+    public List<FeatDto> getSubclassProgressionFeats(UUID subclassId, int level) {
+        return repository.findSubclassProgressionFeats(subclassId, level).stream()
+                .map(FeatDto::fromDomain)
+                .toList();
     }
 
     private String encodeCursor(String name, UUID id) {

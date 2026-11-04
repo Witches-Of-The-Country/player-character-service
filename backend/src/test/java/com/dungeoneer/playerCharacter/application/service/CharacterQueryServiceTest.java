@@ -50,7 +50,8 @@ class CharacterQueryServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new CharacterQueryService(playerCharacterRepository, referenceDataRepository);
+        CharacterSheetHydrator hydrator = new CharacterSheetHydrator(referenceDataRepository);
+        service = new CharacterQueryService(playerCharacterRepository, referenceDataRepository, hydrator);
         userId = UUID.randomUUID();
         characterId = UUID.randomUUID();
         archetypeId = UUID.randomUUID();
@@ -119,5 +120,54 @@ class CharacterQueryServiceTest {
         assertThat(list).hasSize(1);
         assertThat(list.get(0).name()).isEqualTo("Gimli");
         assertThat(list.get(0).id()).isEqualTo(characterId);
+    }
+
+    @Test
+    @DisplayName("Spec 006: listCharacters provides primary subclass and multiclass progression details")
+    void shouldIncludeSubclassAndMulticlassDetailsInSummary() {
+        UUID fighterId = UUID.randomUUID();
+        UUID battleMasterSubclassId = UUID.randomUUID();
+        UUID wizardId = UUID.randomUUID();
+
+        Archetype fighter = new Archetype(fighterId, "Fighter", HitDiceEnum.D10, "STR", List.of(), List.of(), List.of(), SpellcastingType.NONE, null, Ruleset.SRD_2024, "SRD", null);
+        Archetype wizard = new Archetype(wizardId, "Wizard", HitDiceEnum.D6, "INT", List.of(), List.of(), List.of(), SpellcastingType.FULL, null, Ruleset.SRD_2024, "SRD", null);
+        com.dungeoneer.playerCharacter.domain.model.Subclass battleMaster = new com.dungeoneer.playerCharacter.domain.model.Subclass(
+                battleMasterSubclassId, fighterId, Ruleset.SRD_2024, "battle-master", "Battle Master", "Battle Master", "Battle Master desc", "SRD", null
+        );
+
+        when(referenceDataRepository.findArchetypeById(fighterId)).thenReturn(Optional.of(fighter));
+        when(referenceDataRepository.findArchetypeById(wizardId)).thenReturn(Optional.of(wizard));
+        when(referenceDataRepository.findSubclassById(battleMasterSubclassId)).thenReturn(Optional.of(battleMaster));
+        when(referenceDataRepository.findLineageById(lineageId)).thenReturn(Optional.empty());
+        when(referenceDataRepository.findBackgroundById(backgroundId)).thenReturn(Optional.empty());
+
+        PlayerCharacter multiclassChar = new PlayerCharacter(
+                characterId, "Valeros", 7, 50, 50, 0, 18, 1, 30, 3,
+                Ruleset.SRD_2024, AbilityScoreMethod.STANDARD_ARRAY, lineageId, backgroundId, userId,
+                new AbilityScores(16, 12, 14, 14, 10, 8), "",
+                HpCalculationMethod.MAX, false,
+                List.of(
+                        new ClassProgression(UUID.randomUUID(), characterId, fighterId, battleMasterSubclassId, 5),
+                        new ClassProgression(UUID.randomUUID(), characterId, wizardId, null, 2)
+                ),
+                Instant.now(), Instant.now()
+        );
+
+        when(playerCharacterRepository.findAllByUserIdOrderByUpdatedAtDesc(userId))
+                .thenReturn(List.of(multiclassChar));
+
+        List<CharacterSummaryResult> summaries = service.listCharacters(userId);
+
+        assertThat(summaries).hasSize(1);
+        CharacterSummaryResult summary = summaries.get(0);
+        assertThat(summary.className()).isEqualTo("Fighter");
+        assertThat(summary.subclassName()).isEqualTo("Battle Master");
+        assertThat(summary.classes()).hasSize(2);
+        assertThat(summary.classes().get(0).className()).isEqualTo("Fighter");
+        assertThat(summary.classes().get(0).subclassName()).isEqualTo("Battle Master");
+        assertThat(summary.classes().get(0).classLevel()).isEqualTo(5);
+        assertThat(summary.classes().get(1).className()).isEqualTo("Wizard");
+        assertThat(summary.classes().get(1).subclassName()).isNull();
+        assertThat(summary.classes().get(1).classLevel()).isEqualTo(2);
     }
 }

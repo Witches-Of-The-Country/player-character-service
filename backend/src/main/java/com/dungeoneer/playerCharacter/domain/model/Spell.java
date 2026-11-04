@@ -21,6 +21,7 @@ public class Spell {
     private final String description;
     private final String source;
     private final UUID ownerId;
+    private final String mechanicalProperties;
 
     public Spell(
             UUID id,
@@ -36,7 +37,8 @@ public class Spell {
             String duration,
             String description,
             String source,
-            UUID ownerId
+            UUID ownerId,
+            String mechanicalProperties
     ) {
         if (id == null) {
             throw new CharacterValidationException("Spell id cannot be null");
@@ -74,6 +76,28 @@ public class Spell {
         this.description = description.trim();
         this.source = (source != null && !source.trim().isEmpty()) ? source.trim() : "HOMEBREW";
         this.ownerId = ownerId;
+        this.mechanicalProperties = (mechanicalProperties != null && !mechanicalProperties.trim().isEmpty())
+                ? mechanicalProperties.trim()
+                : "{}";
+    }
+
+    public Spell(
+            UUID id,
+            Ruleset ruleset,
+            String slug,
+            String nameEn,
+            String name,
+            int level,
+            String school,
+            String castingTime,
+            String rangeArea,
+            String components,
+            String duration,
+            String description,
+            String source,
+            UUID ownerId
+    ) {
+        this(id, ruleset, slug, nameEn, name, level, school, castingTime, rangeArea, components, duration, description, source, ownerId, "{}");
     }
 
     public UUID getId() {
@@ -130,6 +154,10 @@ public class Spell {
 
     public UUID getOwnerId() {
         return ownerId;
+    }
+
+    public String getMechanicalProperties() {
+        return mechanicalProperties;
     }
 
     @Override

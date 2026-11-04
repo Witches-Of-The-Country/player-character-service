@@ -21,22 +21,26 @@ public interface GetReferenceDataUseCase {
     List<BackgroundDto> getBackgrounds(Ruleset ruleset);
 
     default CursorPageResponse<SpellDto> getSpells(String cursor, int limit, String q, Ruleset ruleset, Integer level, String school) {
-        return getSpells(cursor, limit, q, ruleset, level, school, null);
+        return getSpells(cursor, limit, q, ruleset, level != null ? List.of(level) : null, school != null ? List.of(school) : null, null);
     }
 
-    CursorPageResponse<SpellDto> getSpells(String cursor, int limit, String q, Ruleset ruleset, Integer level, String school, UUID ownerId);
+    CursorPageResponse<SpellDto> getSpells(String cursor, int limit, String q, Ruleset ruleset, List<Integer> levels, List<String> schools, UUID ownerId);
 
     default CursorPageResponse<FeatDto> getFeats(String cursor, int limit, String q, Ruleset ruleset) {
-        return getFeats(cursor, limit, q, ruleset, null);
+        return getFeats(cursor, limit, q, ruleset, null, null);
     }
 
-    CursorPageResponse<FeatDto> getFeats(String cursor, int limit, String q, Ruleset ruleset, UUID ownerId);
+    default CursorPageResponse<FeatDto> getFeats(String cursor, int limit, String q, Ruleset ruleset, UUID ownerId) {
+        return getFeats(cursor, limit, q, ruleset, null, ownerId);
+    }
+
+    CursorPageResponse<FeatDto> getFeats(String cursor, int limit, String q, Ruleset ruleset, List<String> featTypes, UUID ownerId);
 
     default CursorPageResponse<ItemDto> getItems(String cursor, int limit, String q, Ruleset ruleset, String category, String rarity) {
-        return getItems(cursor, limit, q, ruleset, category, rarity, null);
+        return getItems(cursor, limit, q, ruleset, category != null ? List.of(category) : null, rarity != null ? List.of(rarity) : null, null);
     }
 
-    CursorPageResponse<ItemDto> getItems(String cursor, int limit, String q, Ruleset ruleset, String category, String rarity, UUID ownerId);
+    CursorPageResponse<ItemDto> getItems(String cursor, int limit, String q, Ruleset ruleset, List<String> categories, List<String> rarities, UUID ownerId);
 
     default CursorPageResponse<ArchetypeDto> getClassesPaginated(String cursor, int limit, String q, Ruleset ruleset) {
         return getClassesPaginated(cursor, limit, q, ruleset, null);
@@ -49,4 +53,12 @@ public interface GetReferenceDataUseCase {
     }
 
     CursorPageResponse<LineageDto> getLineagesPaginated(String cursor, int limit, String q, Ruleset ruleset, UUID ownerId);
+
+    List<com.dungeoneer.playerCharacter.application.dto.SubclassDto> getSubclasses(UUID archetypeId, Ruleset ruleset);
+
+    List<FeatDto> getProgressionFeats(UUID archetypeId, int level);
+
+    default List<FeatDto> getSubclassProgressionFeats(UUID subclassId, int level) {
+        return List.of();
+    }
 }

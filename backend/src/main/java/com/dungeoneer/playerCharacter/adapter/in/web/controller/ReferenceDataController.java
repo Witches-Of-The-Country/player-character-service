@@ -1,6 +1,8 @@
 package com.dungeoneer.playerCharacter.adapter.in.web.controller;
 
 import com.dungeoneer.playerCharacter.application.dto.ArchetypeDto;
+import com.dungeoneer.playerCharacter.application.dto.SubclassDto;
+import com.dungeoneer.playerCharacter.application.dto.CreateHomebrewSubclassRequest;
 import com.dungeoneer.playerCharacter.application.dto.BackgroundDto;
 import com.dungeoneer.playerCharacter.application.dto.CreateHomebrewArchetypeRequest;
 import com.dungeoneer.playerCharacter.application.dto.CreateHomebrewFeatRequest;
@@ -22,7 +24,9 @@ import jakarta.validation.constraints.Min;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -100,11 +104,15 @@ public class ReferenceDataController {
             @RequestParam(required = false) String q,
             @RequestParam(required = false) String ruleset,
             @RequestParam(required = false) Integer level,
+            @RequestParam(required = false) List<Integer> levels,
             @RequestParam(required = false) String school,
+            @RequestParam(required = false) List<String> schools,
             @RequestHeader(value = "X-User-Id", required = false) UUID userId
     ) {
         Ruleset parsedRuleset = parseRuleset(ruleset);
-        return ResponseEntity.ok(getReferenceDataUseCase.getSpells(cursor, limit, q, parsedRuleset, level, school, userId));
+        List<Integer> effectiveLevels = (levels != null && !levels.isEmpty()) ? levels : (level != null ? List.of(level) : null);
+        List<String> effectiveSchools = (schools != null && !schools.isEmpty()) ? schools : (school != null ? List.of(school) : null);
+        return ResponseEntity.ok(getReferenceDataUseCase.getSpells(cursor, limit, q, parsedRuleset, effectiveLevels, effectiveSchools, userId));
     }
 
     @GetMapping("/feats")
@@ -113,10 +121,11 @@ public class ReferenceDataController {
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit,
             @RequestParam(required = false) String q,
             @RequestParam(required = false) String ruleset,
+            @RequestParam(required = false) List<String> featTypes,
             @RequestHeader(value = "X-User-Id", required = false) UUID userId
     ) {
         Ruleset parsedRuleset = parseRuleset(ruleset);
-        return ResponseEntity.ok(getReferenceDataUseCase.getFeats(cursor, limit, q, parsedRuleset, userId));
+        return ResponseEntity.ok(getReferenceDataUseCase.getFeats(cursor, limit, q, parsedRuleset, featTypes, userId));
     }
 
     @GetMapping("/items")
@@ -126,11 +135,15 @@ public class ReferenceDataController {
             @RequestParam(required = false) String q,
             @RequestParam(required = false) String ruleset,
             @RequestParam(required = false) String category,
+            @RequestParam(required = false) List<String> categories,
             @RequestParam(required = false) String rarity,
+            @RequestParam(required = false) List<String> rarities,
             @RequestHeader(value = "X-User-Id", required = false) UUID userId
     ) {
         Ruleset parsedRuleset = parseRuleset(ruleset);
-        return ResponseEntity.ok(getReferenceDataUseCase.getItems(cursor, limit, q, parsedRuleset, category, rarity, userId));
+        List<String> effectiveCategories = (categories != null && !categories.isEmpty()) ? categories : (category != null ? List.of(category) : null);
+        List<String> effectiveRarities = (rarities != null && !rarities.isEmpty()) ? rarities : (rarity != null ? List.of(rarity) : null);
+        return ResponseEntity.ok(getReferenceDataUseCase.getItems(cursor, limit, q, parsedRuleset, effectiveCategories, effectiveRarities, userId));
     }
 
     @PostMapping("/spells")
@@ -196,6 +209,98 @@ public class ReferenceDataController {
                 .buildAndExpand(created.id())
                 .toUri();
         return ResponseEntity.created(location).body(created);
+    }
+
+    @GetMapping("/subclasses")
+    public ResponseEntity<List<SubclassDto>> getSubclasses(
+            @RequestParam UUID archetypeId,
+            @RequestParam(required = false) String ruleset
+    ) {
+        Ruleset parsedRuleset = parseRuleset(ruleset);
+        return ResponseEntity.ok(getReferenceDataUseCase.getSubclasses(archetypeId, parsedRuleset));
+    }
+
+    @GetMapping("/progression-feats")
+    public ResponseEntity<List<FeatDto>> getProgressionFeats(
+            @RequestParam UUID archetypeId,
+            @RequestParam int level
+    ) {
+        return ResponseEntity.ok(getReferenceDataUseCase.getProgressionFeats(archetypeId, level));
+    }
+
+    @GetMapping("/subclass-progression-feats")
+    public ResponseEntity<List<FeatDto>> getSubclassProgressionFeats(
+            @RequestParam UUID subclassId,
+            @RequestParam int level
+    ) {
+        return ResponseEntity.ok(getReferenceDataUseCase.getSubclassProgressionFeats(subclassId, level));
+    }
+
+    @PostMapping("/subclasses")
+    public ResponseEntity<SubclassDto> createSubclass(
+            @RequestHeader(value = "X-User-Id", required = true) UUID userId,
+            @Valid @RequestBody CreateHomebrewSubclassRequest request
+    ) {
+        SubclassDto created = createHomebrewUseCase.createSubclass(userId, request);
+        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+                .path("/{id}")
+                .buildAndExpand(created.id())
+                .toUri();
+        return ResponseEntity.created(location).body(created);
+    }
+
+    @PutMapping("/spells/{id}")
+    public ResponseEntity<SpellDto> updateSpell(
+            @PathVariable UUID id,
+            @RequestHeader(value = "X-User-Id", required = false) UUID userId,
+            @Valid @RequestBody CreateHomebrewSpellRequest request
+    ) {
+        return ResponseEntity.ok(createHomebrewUseCase.updateSpell(id, userId, request));
+    }
+
+    @PutMapping("/feats/{id}")
+    public ResponseEntity<FeatDto> updateFeat(
+            @PathVariable UUID id,
+            @RequestHeader(value = "X-User-Id", required = false) UUID userId,
+            @Valid @RequestBody CreateHomebrewFeatRequest request
+    ) {
+        return ResponseEntity.ok(createHomebrewUseCase.updateFeat(id, userId, request));
+    }
+
+    @PutMapping("/items/{id}")
+    public ResponseEntity<ItemDto> updateItem(
+            @PathVariable UUID id,
+            @RequestHeader(value = "X-User-Id", required = false) UUID userId,
+            @Valid @RequestBody CreateHomebrewItemRequest request
+    ) {
+        return ResponseEntity.ok(createHomebrewUseCase.updateItem(id, userId, request));
+    }
+
+    @PutMapping("/classes/{id}")
+    public ResponseEntity<ArchetypeDto> updateArchetype(
+            @PathVariable UUID id,
+            @RequestHeader(value = "X-User-Id", required = false) UUID userId,
+            @Valid @RequestBody CreateHomebrewArchetypeRequest request
+    ) {
+        return ResponseEntity.ok(createHomebrewUseCase.updateArchetype(id, userId, request));
+    }
+
+    @PutMapping("/lineages/{id}")
+    public ResponseEntity<LineageDto> updateLineage(
+            @PathVariable UUID id,
+            @RequestHeader(value = "X-User-Id", required = false) UUID userId,
+            @Valid @RequestBody CreateHomebrewLineageRequest request
+    ) {
+        return ResponseEntity.ok(createHomebrewUseCase.updateLineage(id, userId, request));
+    }
+
+    @PutMapping("/subclasses/{id}")
+    public ResponseEntity<SubclassDto> updateSubclass(
+            @PathVariable UUID id,
+            @RequestHeader(value = "X-User-Id", required = false) UUID userId,
+            @Valid @RequestBody CreateHomebrewSubclassRequest request
+    ) {
+        return ResponseEntity.ok(createHomebrewUseCase.updateSubclass(id, userId, request));
     }
 
     private Ruleset parseRuleset(String ruleset) {

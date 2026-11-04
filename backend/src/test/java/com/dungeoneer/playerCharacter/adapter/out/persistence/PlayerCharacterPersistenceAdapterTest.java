@@ -108,4 +108,56 @@ class PlayerCharacterPersistenceAdapterTest {
         adapter.deleteByIdAndUserId(characterId, userId);
         assertThat(adapter.findById(characterId)).isEmpty();
     }
+
+    @Test
+    @DisplayName("TP-04: Persistence of Flyway V27 columns (exhaustion and hit_dice_spent) across rest cycle")
+    void shouldPersistExhaustionAndHitDiceSpentAcrossRestCycle() {
+        UUID userId = UUID.randomUUID();
+        UUID characterId = UUID.randomUUID();
+        AbilityScores scores = new AbilityScores(16, 14, 15, 10, 12, 8);
+
+        ClassProgression progression = new ClassProgression(
+                UUID.randomUUID(),
+                characterId,
+                FIGHTER_ARCHETYPE,
+                null,
+                5,
+                2
+        );
+
+        PlayerCharacter character = PlayerCharacter.createNew(
+                "Boromir",
+                5,
+                40,
+                Ruleset.SRD_2024,
+                AbilityScoreMethod.STANDARD_ARRAY,
+                DWARF_LINEAGE,
+                SOLDIER_BACKGROUND,
+                userId,
+                scores
+        ).withExhaustion(3)
+         .withClassProgressions(List.of(progression));
+
+        PlayerCharacter saved = adapter.save(character);
+        UUID savedId = saved.getId();
+
+        assertThat(saved.getExhaustion()).isEqualTo(3);
+        assertThat(saved.getClassProgressions().get(0).getHitDiceSpent()).isEqualTo(2);
+
+        // Verify retrieval from DB
+        PlayerCharacter reloaded = adapter.findByIdAndUserId(savedId, userId).orElseThrow();
+        assertThat(reloaded.getExhaustion()).isEqualTo(3);
+        assertThat(reloaded.getClassProgressions().get(0).getHitDiceSpent()).isEqualTo(2);
+
+        // Simulate Long Rest state change: exhaustion - 1, hit dice recovered
+        ClassProgression updatedProgression = reloaded.getClassProgressions().get(0).recoverHitDice(2);
+        PlayerCharacter rested = reloaded.withExhaustion(2)
+                .withClassProgressions(List.of(updatedProgression));
+
+        adapter.save(rested);
+
+        PlayerCharacter afterRest = adapter.findByIdAndUserId(savedId, userId).orElseThrow();
+        assertThat(afterRest.getExhaustion()).isEqualTo(2);
+        assertThat(afterRest.getClassProgressions().get(0).getHitDiceSpent()).isEqualTo(0);
+    }
 }

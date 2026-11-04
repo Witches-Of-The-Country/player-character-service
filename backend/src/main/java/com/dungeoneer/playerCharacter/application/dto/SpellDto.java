@@ -18,8 +18,27 @@ public record SpellDto(
         String components,
         String duration,
         String description,
-        String source
+        String source,
+        String mechanicalProperties
 ) {
+    public SpellDto(
+            UUID id,
+            String ruleset,
+            String slug,
+            String nameEn,
+            String name,
+            int level,
+            String school,
+            String castingTime,
+            String rangeArea,
+            String components,
+            String duration,
+            String description,
+            String source
+    ) {
+        this(id, ruleset, slug, nameEn, name, level, school, castingTime, rangeArea, components, duration, description, source, "{}");
+    }
+
     public static SpellDto fromEntity(SpellJpaEntity entity) {
         return new SpellDto(
                 entity.getId(),
@@ -34,7 +53,8 @@ public record SpellDto(
                 entity.getComponents(),
                 entity.getDuration(),
                 entity.getDescription(),
-                entity.getSource()
+                entity.getSource(),
+                entity.getMechanicalProperties()
         );
     }
 
@@ -52,7 +72,8 @@ public record SpellDto(
                 spell.getComponents(),
                 spell.getDuration(),
                 spell.getDescription(),
-                spell.getSource()
+                spell.getSource(),
+                spell.getMechanicalProperties()
         );
     }
 }

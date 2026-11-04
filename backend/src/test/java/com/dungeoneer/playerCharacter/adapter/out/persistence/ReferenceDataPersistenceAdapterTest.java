@@ -91,4 +91,20 @@ class ReferenceDataPersistenceAdapterTest {
         var items = adapter.findItemsWithCursor(null, null, null, null, null, null, 10);
         assertThat(items).isNotEmpty();
     }
+
+    @Test
+    @DisplayName("should query items filtered by canonical categories and rarities")
+    void shouldFindItemsByCategoryAndRarity() {
+        var potions = adapter.findItemsWithCursor(null, List.of("POTION"), null, null, null, null, 10, null);
+        assertThat(potions).isNotEmpty();
+        assertThat(potions).allMatch(i -> "POTION".equalsIgnoreCase(i.getItemCategory()) || i.getItemType().toLowerCase().contains("potion") || i.getItemType().toLowerCase().contains("poção"));
+
+        var wondrous = adapter.findItemsWithCursor(null, List.of("WONDROUS"), null, null, null, null, 10, null);
+        assertThat(wondrous).isNotEmpty();
+        assertThat(wondrous).allMatch(i -> "WONDROUS".equalsIgnoreCase(i.getItemCategory()) || i.getItemType().toLowerCase().contains("wondrous") || i.getItemType().toLowerCase().contains("maravilhoso"));
+
+        var commonItems = adapter.findItemsWithCursor(null, null, List.of("COMMON"), null, null, null, 20, null);
+        assertThat(commonItems).isNotEmpty();
+        assertThat(commonItems).allMatch(i -> i.getRarity() == null || List.of("NONE", "COMMON", "COMUM").contains(i.getRarity().toUpperCase()));
+    }
 }

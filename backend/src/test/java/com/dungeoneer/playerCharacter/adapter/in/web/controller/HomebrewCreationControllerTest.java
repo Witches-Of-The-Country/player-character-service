@@ -145,6 +145,100 @@ class HomebrewCreationControllerTest {
     }
 
     @Test
+    @DisplayName("TP-03 MockMvc: POST /api/reference/feats with custom charges returns 201 Created")
+    void shouldCreateFeatWithCustomCharges() throws Exception {
+        UUID featId = UUID.randomUUID();
+        com.dungeoneer.playerCharacter.domain.model.MechanicalEffects effects = new com.dungeoneer.playerCharacter.domain.model.MechanicalEffects(
+                Map.of(), 0, 0, 0, 0, List.of(), null, null, null, null, null,
+                null, false, null, List.of(), null,
+                com.dungeoneer.playerCharacter.domain.model.ChargeType.ABILITY_MODIFIER, "CHA", null,
+                com.dungeoneer.playerCharacter.domain.model.ChargeRecoveryType.FIXED, 1,
+                com.dungeoneer.playerCharacter.domain.model.ChargeRecoveryType.ALL, null
+        );
+        FeatDto featDto = new FeatDto(
+                featId, "HOMEBREW", "orador-mistico", "Mystic Speaker", "Orador Místico",
+                null, "Usa carisma para influenciar", "HOMEBREW",
+                com.dungeoneer.playerCharacter.domain.model.FeatType.GENERAL, effects
+        );
+
+        when(createHomebrewUseCase.createFeat(eq(userId), any(CreateHomebrewFeatRequest.class))).thenReturn(featDto);
+
+        String json = """
+                {
+                    "name": "Orador Místico",
+                    "description": "Usa carisma para influenciar",
+                    "mechanicalEffects": {
+                        "maxChargesType": "ABILITY_MODIFIER",
+                        "chargeAbility": "CHA",
+                        "shortRestRecoveryType": "FIXED",
+                        "shortRestRecoveryFixed": 1,
+                        "longRestRecoveryType": "ALL"
+                    }
+                }
+                """;
+
+        mockMvc.perform(post("/api/reference/feats")
+                        .header("X-User-Id", userId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.name").value("Orador Místico"))
+                .andExpect(jsonPath("$.mechanicalEffects.maxChargesType").value("ABILITY_MODIFIER"))
+                .andExpect(jsonPath("$.mechanicalEffects.chargeAbility").value("CHA"))
+                .andExpect(jsonPath("$.mechanicalEffects.shortRestRecoveryType").value("FIXED"))
+                .andExpect(jsonPath("$.mechanicalEffects.shortRestRecoveryFixed").value(1))
+                .andExpect(jsonPath("$.mechanicalEffects.longRestRecoveryType").value("ALL"));
+    }
+
+    @Test
+    @DisplayName("TE-03 MockMvc: POST /api/reference/feats with malformed enum returns 400 Bad Request ProblemDetail")
+    void shouldReturn400WhenFeatPayloadHasMalformedEnum() throws Exception {
+        String json = """
+                {
+                    "name": "Talento Inválido",
+                    "description": "Descrição",
+                    "mechanicalEffects": {
+                        "maxChargesType": "INVALID_CHARGE_TYPE"
+                    }
+                }
+                """;
+
+        mockMvc.perform(post("/api/reference/feats")
+                        .header("X-User-Id", userId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Bad Request"))
+                .andExpect(jsonPath("$.status").value(400));
+    }
+
+    @Test
+    @DisplayName("TE-03 MockMvc: POST /api/reference/feats with validation error returns 422 ProblemDetail")
+    void shouldReturn422WhenFeatChargeValidationFails() throws Exception {
+        when(createHomebrewUseCase.createFeat(eq(userId), any(CreateHomebrewFeatRequest.class)))
+                .thenThrow(new com.dungeoneer.playerCharacter.domain.exception.CharacterValidationException("O atributo da fórmula de cargas é obrigatório"));
+
+        String json = """
+                {
+                    "name": "Talento Sem Atributo",
+                    "description": "Descrição",
+                    "mechanicalEffects": {
+                        "maxChargesType": "ABILITY_MODIFIER"
+                    }
+                }
+                """;
+
+        mockMvc.perform(post("/api/reference/feats")
+                        .header("X-User-Id", userId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.title").value("Validation Error"))
+                .andExpect(jsonPath("$.status").value(422))
+                .andExpect(jsonPath("$.detail").value("O atributo da fórmula de cargas é obrigatório"));
+    }
+
+    @Test
     @DisplayName("POST /api/reference/items returns 201 Created")
     void shouldCreateItemSuccessfully() throws Exception {
         UUID itemId = UUID.randomUUID();

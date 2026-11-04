@@ -1,9 +1,11 @@
 package com.dungeoneer.playerCharacter.application.dto;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -24,6 +26,18 @@ public record CreateHomebrewLineageRequest(
 
         Map<String, Integer> abilityBonuses,
 
-        List<String> traitsSummary
+        List<String> traitsSummary,
+
+        List<@Valid HomebrewProgressionFeatRequest> inlineFeats
 ) {
+    public CreateHomebrewLineageRequest(
+            String name,
+            String description,
+            int speed,
+            String size,
+            Map<String, Integer> abilityBonuses,
+            List<String> traitsSummary
+    ) {
+        this(name, description, speed, size, abilityBonuses, traitsSummary, Collections.emptyList());
+    }
 }

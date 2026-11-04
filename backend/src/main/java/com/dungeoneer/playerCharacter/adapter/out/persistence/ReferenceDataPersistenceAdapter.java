@@ -8,11 +8,14 @@ import com.dungeoneer.playerCharacter.domain.model.Item;
 import com.dungeoneer.playerCharacter.domain.model.Lineage;
 import com.dungeoneer.playerCharacter.domain.model.Ruleset;
 import com.dungeoneer.playerCharacter.domain.model.Spell;
+import com.dungeoneer.playerCharacter.domain.model.Subclass;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Component
 public class ReferenceDataPersistenceAdapter implements ReferenceDataRepository {
@@ -23,6 +26,10 @@ public class ReferenceDataPersistenceAdapter implements ReferenceDataRepository 
     private final SpringDataSpellRepository spellRepository;
     private final SpringDataFeatRepository featRepository;
     private final SpringDataItemRepository itemRepository;
+    private final SpringDataSubclassRepository subclassRepository;
+    private final SpringDataArchetypeFeatRepository archetypeFeatRepository;
+    private final SpringDataSubclassFeatRepository subclassFeatRepository;
+    private final SpringDataLineageFeatRepository lineageFeatRepository;
 
     public ReferenceDataPersistenceAdapter(
             SpringDataArchetypeRepository archetypeRepository,
@@ -30,7 +37,11 @@ public class ReferenceDataPersistenceAdapter implements ReferenceDataRepository 
             SpringDataBackgroundRepository backgroundRepository,
             SpringDataSpellRepository spellRepository,
             SpringDataFeatRepository featRepository,
-            SpringDataItemRepository itemRepository
+            SpringDataItemRepository itemRepository,
+            SpringDataSubclassRepository subclassRepository,
+            SpringDataArchetypeFeatRepository archetypeFeatRepository,
+            SpringDataSubclassFeatRepository subclassFeatRepository,
+            SpringDataLineageFeatRepository lineageFeatRepository
     ) {
         this.archetypeRepository = archetypeRepository;
         this.lineageRepository = lineageRepository;
@@ -38,6 +49,10 @@ public class ReferenceDataPersistenceAdapter implements ReferenceDataRepository 
         this.spellRepository = spellRepository;
         this.featRepository = featRepository;
         this.itemRepository = itemRepository;
+        this.subclassRepository = subclassRepository;
+        this.archetypeFeatRepository = archetypeFeatRepository;
+        this.subclassFeatRepository = subclassFeatRepository;
+        this.lineageFeatRepository = lineageFeatRepository;
     }
 
     @Override
@@ -80,57 +95,98 @@ public class ReferenceDataPersistenceAdapter implements ReferenceDataRepository 
     }
 
     @Override
-    public List<SpellJpaEntity> findSpellsWithCursor(Ruleset ruleset, Integer level, String school, String q, String afterName, UUID afterId, int limit, UUID ownerId) {
-        String rulesetStr = (ruleset != null) ? ruleset.name() : null;
-        return spellRepository.findSpellsWithCursor(rulesetStr, level, school, q, afterName, afterId, limit, ownerId);
+    public Optional<Spell> findSpellById(UUID id) {
+        return spellRepository.findById(id).map(SpellJpaEntity::toDomain);
     }
 
     @Override
-    public List<FeatJpaEntity> findFeatsWithCursor(Ruleset ruleset, String q, String afterName, UUID afterId, int limit, UUID ownerId) {
-        String rulesetStr = (ruleset != null) ? ruleset.name() : null;
-        return featRepository.findFeatsWithCursor(rulesetStr, q, afterName, afterId, limit, ownerId);
+    public Optional<Item> findItemById(UUID id) {
+        return itemRepository.findById(id).map(ItemJpaEntity::toDomain);
     }
 
     @Override
-    public List<Item> findItemsWithCursor(Ruleset ruleset, String category, String rarity, String q, String afterName, UUID afterId, int limit, UUID ownerId) {
-        String rulesetStr = (ruleset != null) ? ruleset.name() : null;
-        return itemRepository.findItemsWithCursor(rulesetStr, category, rarity, q, afterName, afterId, limit, ownerId)
-                .stream()
-                .map(e -> new Item(
-                        e.getId(),
-                        e.getRuleset(),
-                        e.getSlug(),
-                        e.getNameEn(),
-                        e.getName(),
-                        e.getItemCategory(),
-                        e.getItemType(),
-                        e.getRarity(),
-                        e.isAttunement(),
-                        e.getCost(),
-                        e.getWeight(),
-                        e.getDescription(),
-                        e.getSource(),
-                        e.getOwnerId()
-                ))
+    public Optional<Feat> findFeatById(UUID id) {
+        return featRepository.findById(id).map(FeatJpaEntity::toDomain);
+    }
+
+    @Override
+    public Optional<Subclass> findSubclassById(UUID id) {
+        return subclassRepository.findById(id).map(SubclassJpaEntity::toDomain);
+    }
+
+    @Override
+    public List<Subclass> findSubclassesByArchetypeId(UUID archetypeId, Ruleset ruleset, UUID ownerId) {
+        return subclassRepository.findAccessibleSubclasses(archetypeId, ruleset, ownerId).stream()
+                .map(SubclassJpaEntity::toDomain)
                 .toList();
+    }
+
+    @Override
+    public List<Feat> findArchetypeFeats(UUID archetypeId, int unlockLevel) {
+        List<ArchetypeFeatJpaEntity> links = archetypeFeatRepository.findByArchetypeIdAndUnlockLevel(archetypeId, unlockLevel);
+        List<Feat> result = new ArrayList<>();
+        for (ArchetypeFeatJpaEntity link : links) {
+            featRepository.findById(link.getFeatId()).ifPresent(f -> result.add(f.toDomain()));
+        }
+        return result;
+    }
+
+    @Override
+    public List<Feat> findSubclassFeats(UUID subclassId, int unlockLevel) {
+        List<SubclassFeatJpaEntity> links = subclassFeatRepository.findBySubclassIdAndUnlockLevel(subclassId, unlockLevel);
+        List<Feat> result = new ArrayList<>();
+        for (SubclassFeatJpaEntity link : links) {
+            featRepository.findById(link.getFeatId()).ifPresent(f -> result.add(f.toDomain()));
+        }
+        return result;
+    }
+
+    @Override
+    public List<Feat> findAllFeatsForArchetype(UUID archetypeId) {
+        List<ArchetypeFeatJpaEntity> links = archetypeFeatRepository.findByArchetypeIdOrderByUnlockLevelAsc(archetypeId);
+        List<Feat> result = new ArrayList<>();
+        for (ArchetypeFeatJpaEntity link : links) {
+            featRepository.findById(link.getFeatId()).ifPresent(f -> result.add(f.toDomain()));
+        }
+        return result;
+    }
+
+    @Override
+    public List<SpellJpaEntity> findSpellsWithCursor(Ruleset ruleset, List<Integer> levels, List<String> schools, String q, String afterName, UUID afterId, int limit, UUID ownerId) {
+        String rulesetStr = ruleset != null ? ruleset.name() : null;
+        String levelsStr = (levels != null && !levels.isEmpty()) ? levels.stream().map(String::valueOf).collect(Collectors.joining(",")) : null;
+        String schoolsStr = (schools != null && !schools.isEmpty()) ? String.join(",", schools) : null;
+        return spellRepository.findSpellsWithCursor(rulesetStr, levelsStr, schoolsStr, q, afterName, afterId, limit, ownerId);
+    }
+
+    @Override
+    public List<FeatJpaEntity> findFeatsWithCursor(Ruleset ruleset, List<String> featTypes, String q, String afterName, UUID afterId, int limit, UUID ownerId) {
+        String rulesetStr = ruleset != null ? ruleset.name() : null;
+        String featTypesStr = (featTypes != null && !featTypes.isEmpty()) ? String.join(",", featTypes) : null;
+        return featRepository.findFeatsWithCursor(rulesetStr, featTypesStr, q, afterName, afterId, limit, ownerId);
+    }
+
+    @Override
+    public List<Item> findItemsWithCursor(Ruleset ruleset, List<String> categories, List<String> rarities, String q, String afterName, UUID afterId, int limit, UUID ownerId) {
+        String rulesetStr = ruleset != null ? ruleset.name() : null;
+        String categoriesStr = (categories != null && !categories.isEmpty()) ? String.join(",", categories) : null;
+        String raritiesStr = (rarities != null && !rarities.isEmpty()) ? String.join(",", rarities) : null;
+        return itemRepository.findItemsWithCursor(rulesetStr, categoriesStr, raritiesStr, q, afterName, afterId, limit, ownerId)
+                .stream().map(ItemJpaEntity::toDomain).toList();
     }
 
     @Override
     public List<Archetype> findArchetypesWithCursor(Ruleset ruleset, String q, String afterName, UUID afterId, int limit, UUID ownerId) {
-        String rulesetStr = (ruleset != null) ? ruleset.name() : null;
+        String rulesetStr = ruleset != null ? ruleset.name() : null;
         return archetypeRepository.findArchetypesWithCursor(rulesetStr, q, afterName, afterId, limit, ownerId)
-                .stream()
-                .map(ArchetypeJpaEntity::toDomain)
-                .toList();
+                .stream().map(ArchetypeJpaEntity::toDomain).toList();
     }
 
     @Override
     public List<Lineage> findLineagesWithCursor(Ruleset ruleset, String q, String afterName, UUID afterId, int limit, UUID ownerId) {
-        String rulesetStr = (ruleset != null) ? ruleset.name() : null;
+        String rulesetStr = ruleset != null ? ruleset.name() : null;
         return lineageRepository.findLineagesWithCursor(rulesetStr, q, afterName, afterId, limit, ownerId)
-                .stream()
-                .map(LineageJpaEntity::toDomain)
-                .toList();
+                .stream().map(LineageJpaEntity::toDomain).toList();
     }
 
     @Override
@@ -150,6 +206,7 @@ public class ReferenceDataPersistenceAdapter implements ReferenceDataRepository 
         entity.setDescription(spell.getDescription());
         entity.setSource(spell.getSource());
         entity.setOwnerId(spell.getOwnerId());
+        entity.setMechanicalProperties(spell.getMechanicalProperties());
 
         SpellJpaEntity saved = spellRepository.save(entity);
         return new Spell(
@@ -166,72 +223,23 @@ public class ReferenceDataPersistenceAdapter implements ReferenceDataRepository 
                 saved.getDuration(),
                 saved.getDescription(),
                 saved.getSource(),
-                saved.getOwnerId()
+                saved.getOwnerId(),
+                saved.getMechanicalProperties()
         );
     }
 
     @Override
     public Feat saveFeat(Feat feat) {
-        FeatJpaEntity entity = new FeatJpaEntity();
-        entity.setId(feat.getId());
-        entity.setRuleset(feat.getRuleset());
-        entity.setSlug(feat.getSlug());
-        entity.setNameEn(feat.getNameEn());
-        entity.setName(feat.getName());
-        entity.setPrerequisites(feat.getPrerequisites());
-        entity.setDescription(feat.getDescription());
-        entity.setSource(feat.getSource());
-        entity.setOwnerId(feat.getOwnerId());
-
+        FeatJpaEntity entity = FeatJpaEntity.fromDomain(feat);
         FeatJpaEntity saved = featRepository.save(entity);
-        return new Feat(
-                saved.getId(),
-                saved.getRuleset(),
-                saved.getSlug(),
-                saved.getNameEn(),
-                saved.getName(),
-                saved.getPrerequisites(),
-                saved.getDescription(),
-                saved.getSource(),
-                saved.getOwnerId()
-        );
+        return saved.toDomain();
     }
 
     @Override
     public Item saveItem(Item item) {
-        ItemJpaEntity entity = new ItemJpaEntity();
-        entity.setId(item.getId());
-        entity.setRuleset(item.getRuleset());
-        entity.setSlug(item.getSlug());
-        entity.setNameEn(item.getNameEn());
-        entity.setName(item.getName());
-        entity.setItemCategory(item.getItemCategory());
-        entity.setItemType(item.getItemType());
-        entity.setRarity(item.getRarity());
-        entity.setAttunement(item.isAttunement());
-        entity.setCost(item.getCost());
-        entity.setWeight(item.getWeight());
-        entity.setDescription(item.getDescription());
-        entity.setSource(item.getSource());
-        entity.setOwnerId(item.getOwnerId());
-
+        ItemJpaEntity entity = ItemJpaEntity.fromDomain(item);
         ItemJpaEntity saved = itemRepository.save(entity);
-        return new Item(
-                saved.getId(),
-                saved.getRuleset(),
-                saved.getSlug(),
-                saved.getNameEn(),
-                saved.getName(),
-                saved.getItemCategory(),
-                saved.getItemType(),
-                saved.getRarity(),
-                saved.isAttunement(),
-                saved.getCost(),
-                saved.getWeight(),
-                saved.getDescription(),
-                saved.getSource(),
-                saved.getOwnerId()
-        );
+        return saved.toDomain();
     }
 
     @Override
@@ -246,5 +254,50 @@ public class ReferenceDataPersistenceAdapter implements ReferenceDataRepository 
         LineageJpaEntity entity = LineageJpaEntity.fromDomain(lineage);
         LineageJpaEntity saved = lineageRepository.save(entity);
         return saved.toDomain();
+    }
+
+    @Override
+    public Subclass saveSubclass(Subclass subclass) {
+        SubclassJpaEntity entity = SubclassJpaEntity.fromDomain(subclass);
+        SubclassJpaEntity saved = subclassRepository.save(entity);
+        return saved.toDomain();
+    }
+
+    @Override
+    public void saveArchetypeFeatLink(UUID archetypeId, UUID featId, int unlockLevel) {
+        ArchetypeFeatJpaEntity link = new ArchetypeFeatJpaEntity(UUID.randomUUID(), archetypeId, featId, unlockLevel);
+        archetypeFeatRepository.save(link);
+    }
+
+    @Override
+    public void saveSubclassFeatLink(UUID subclassId, UUID featId, int unlockLevel) {
+        SubclassFeatJpaEntity link = new SubclassFeatJpaEntity(UUID.randomUUID(), subclassId, featId, unlockLevel);
+        subclassFeatRepository.save(link);
+    }
+
+    @Override
+    public void saveLineageFeatLink(UUID lineageId, UUID featId, int unlockLevel) {
+        LineageFeatJpaEntity link = new LineageFeatJpaEntity(lineageId, featId, unlockLevel);
+        lineageFeatRepository.save(link);
+    }
+
+    @Override
+    public List<Feat> findLineageFeats(UUID lineageId, int unlockLevel) {
+        List<LineageFeatJpaEntity> links = lineageFeatRepository.findByLineageIdAndUnlockLevel(lineageId, unlockLevel);
+        List<Feat> result = new ArrayList<>();
+        for (LineageFeatJpaEntity link : links) {
+            featRepository.findById(link.getFeatId()).ifPresent(f -> result.add(f.toDomain()));
+        }
+        return result;
+    }
+
+    @Override
+    public List<Feat> findAllFeatsForLineage(UUID lineageId) {
+        List<LineageFeatJpaEntity> links = lineageFeatRepository.findByLineageId(lineageId);
+        List<Feat> result = new ArrayList<>();
+        for (LineageFeatJpaEntity link : links) {
+            featRepository.findById(link.getFeatId()).ifPresent(f -> result.add(f.toDomain()));
+        }
+        return result;
     }
 }

@@ -37,6 +37,21 @@ public record CreateHomebrewSpellRequest(
 
         @NotBlank(message = "Description cannot be blank")
         @Size(max = 4000, message = "Description cannot exceed 4000 characters")
-        String description
+        String description,
+
+        String mechanicalProperties
 ) {
+    public CreateHomebrewSpellRequest(
+            String name,
+            String nameEn,
+            Integer level,
+            String school,
+            String castingTime,
+            String rangeArea,
+            String components,
+            String duration,
+            String description
+    ) {
+        this(name, nameEn, level, school, castingTime, rangeArea, components, duration, description, "{}");
+    }
 }

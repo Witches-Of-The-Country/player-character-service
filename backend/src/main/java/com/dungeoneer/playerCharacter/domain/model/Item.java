@@ -21,6 +21,7 @@ public class Item {
     private final String description;
     private final String source;
     private final UUID ownerId;
+    private final ItemMechanics mechanicalProperties;
 
     public Item(
             UUID id,
@@ -36,7 +37,8 @@ public class Item {
             String weight,
             String description,
             String source,
-            UUID ownerId
+            UUID ownerId,
+            ItemMechanics mechanicalProperties
     ) {
         if (id == null) {
             throw new CharacterValidationException("Item id cannot be null");
@@ -71,6 +73,42 @@ public class Item {
         this.description = description != null ? description.trim() : "";
         this.source = source != null ? source.trim() : "SRD";
         this.ownerId = ownerId;
+        this.mechanicalProperties = mechanicalProperties != null ? mechanicalProperties : new EmptyItemMechanics();
+    }
+
+    public Item(
+            UUID id,
+            Ruleset ruleset,
+            String slug,
+            String nameEn,
+            String name,
+            String itemCategory,
+            String itemType,
+            String rarity,
+            boolean attunement,
+            String cost,
+            String weight,
+            String description,
+            String source,
+            UUID ownerId
+    ) {
+        this(
+                id,
+                ruleset,
+                slug,
+                nameEn,
+                name,
+                itemCategory,
+                itemType,
+                rarity,
+                attunement,
+                cost,
+                weight,
+                description,
+                source,
+                ownerId,
+                new EmptyItemMechanics()
+        );
     }
 
     public UUID getId() {
@@ -127,6 +165,10 @@ public class Item {
 
     public UUID getOwnerId() {
         return ownerId;
+    }
+
+    public ItemMechanics getMechanicalProperties() {
+        return mechanicalProperties;
     }
 
     @Override

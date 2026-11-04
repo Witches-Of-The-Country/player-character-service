@@ -11,22 +11,34 @@ import com.dungeoneer.playerCharacter.adapter.in.web.dto.RollHpRequest;
 import com.dungeoneer.playerCharacter.adapter.in.web.dto.UpdateCharacterNoteRequest;
 import com.dungeoneer.playerCharacter.adapter.in.web.dto.UpdateCharacterRequest;
 import com.dungeoneer.playerCharacter.adapter.in.web.mapper.PlayerCharacterWebMapper;
+import com.dungeoneer.playerCharacter.application.dto.AddCharacterItemCommand;
+import com.dungeoneer.playerCharacter.application.dto.AddExperienceCommand;
 import com.dungeoneer.playerCharacter.application.dto.CharacterNoteResult;
 import com.dungeoneer.playerCharacter.application.dto.CharacterSheetResult;
 import com.dungeoneer.playerCharacter.application.dto.CharacterSummaryResult;
+import com.dungeoneer.playerCharacter.application.dto.LevelUpCommand;
+import com.dungeoneer.playerCharacter.application.dto.RestCommand;
 import com.dungeoneer.playerCharacter.application.dto.RollAbilityScoresResult;
 import com.dungeoneer.playerCharacter.application.dto.RollHitPointsCommand;
 import com.dungeoneer.playerCharacter.application.dto.RollHitPointsResult;
+import com.dungeoneer.playerCharacter.application.dto.UpdateCharacterItemCommand;
+import com.dungeoneer.playerCharacter.application.dto.UpdateCurrencyRequest;
+import com.dungeoneer.playerCharacter.application.dto.UseConsumableResult;
 import com.dungeoneer.playerCharacter.application.port.in.AddCharacterNoteUseCase;
+import com.dungeoneer.playerCharacter.application.port.in.AddExperienceUseCase;
 import com.dungeoneer.playerCharacter.application.port.in.CreateCharacterUseCase;
 import com.dungeoneer.playerCharacter.application.port.in.DeleteCharacterUseCase;
 import com.dungeoneer.playerCharacter.application.port.in.GetCharacterUseCase;
+import com.dungeoneer.playerCharacter.application.port.in.LevelUpUseCase;
 import com.dungeoneer.playerCharacter.application.port.in.ListCharacterNotesUseCase;
 import com.dungeoneer.playerCharacter.application.port.in.ListCharactersUseCase;
+import com.dungeoneer.playerCharacter.application.port.in.ManageInventoryUseCase;
+import com.dungeoneer.playerCharacter.application.port.in.RestUseCase;
 import com.dungeoneer.playerCharacter.application.port.in.RollAbilityScoresUseCase;
 import com.dungeoneer.playerCharacter.application.port.in.RollHitPointsUseCase;
 import com.dungeoneer.playerCharacter.application.port.in.UpdateCharacterNoteUseCase;
 import com.dungeoneer.playerCharacter.application.port.in.UpdateCharacterUseCase;
+import com.dungeoneer.playerCharacter.application.port.in.UseConsumableUseCase;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -60,6 +72,11 @@ public class PlayerCharacterController {
     private final AddCharacterNoteUseCase addCharacterNoteUseCase;
     private final ListCharacterNotesUseCase listCharacterNotesUseCase;
     private final UpdateCharacterNoteUseCase updateCharacterNoteUseCase;
+    private final AddExperienceUseCase addExperienceUseCase;
+    private final LevelUpUseCase levelUpUseCase;
+    private final ManageInventoryUseCase manageInventoryUseCase;
+    private final UseConsumableUseCase useConsumableUseCase;
+    private final RestUseCase restUseCase;
 
     public PlayerCharacterController(
             CreateCharacterUseCase createCharacterUseCase,
@@ -71,7 +88,12 @@ public class PlayerCharacterController {
             RollHitPointsUseCase rollHitPointsUseCase,
             AddCharacterNoteUseCase addCharacterNoteUseCase,
             ListCharacterNotesUseCase listCharacterNotesUseCase,
-            UpdateCharacterNoteUseCase updateCharacterNoteUseCase
+            UpdateCharacterNoteUseCase updateCharacterNoteUseCase,
+            AddExperienceUseCase addExperienceUseCase,
+            LevelUpUseCase levelUpUseCase,
+            ManageInventoryUseCase manageInventoryUseCase,
+            UseConsumableUseCase useConsumableUseCase,
+            RestUseCase restUseCase
     ) {
         this.createCharacterUseCase = createCharacterUseCase;
         this.getCharacterUseCase = getCharacterUseCase;
@@ -83,6 +105,11 @@ public class PlayerCharacterController {
         this.addCharacterNoteUseCase = addCharacterNoteUseCase;
         this.listCharacterNotesUseCase = listCharacterNotesUseCase;
         this.updateCharacterNoteUseCase = updateCharacterNoteUseCase;
+        this.addExperienceUseCase = addExperienceUseCase;
+        this.levelUpUseCase = levelUpUseCase;
+        this.manageInventoryUseCase = manageInventoryUseCase;
+        this.useConsumableUseCase = useConsumableUseCase;
+        this.restUseCase = restUseCase;
     }
 
     @PostMapping("/ability-rolls")
@@ -227,5 +254,96 @@ public class PlayerCharacterController {
                 .map(PlayerCharacterWebMapper::toResponse)
                 .toList();
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{id}/xp")
+    public ResponseEntity<CharacterSheetResponse> addExperience(
+            @RequestHeader("X-User-Id") UUID userId,
+            @PathVariable("id") UUID id,
+            @Valid @RequestBody AddExperienceCommand command
+    ) {
+        CharacterSheetResult result = addExperienceUseCase.addExperience(id, userId, command);
+        return ResponseEntity.ok(CharacterSheetResponse.fromResult(result));
+    }
+
+    @PostMapping("/{id}/level-up")
+    public ResponseEntity<CharacterSheetResponse> levelUp(
+            @RequestHeader("X-User-Id") UUID userId,
+            @PathVariable("id") UUID id,
+            @Valid @RequestBody LevelUpCommand command
+    ) {
+        CharacterSheetResult result = levelUpUseCase.levelUp(id, userId, command);
+        return ResponseEntity.ok(CharacterSheetResponse.fromResult(result));
+    }
+
+    @PostMapping("/{id}/rest")
+    public ResponseEntity<CharacterSheetResponse> takeRest(
+            @RequestHeader("X-User-Id") UUID userId,
+            @PathVariable("id") UUID id,
+            @Valid @RequestBody RestCommand command
+    ) {
+        CharacterSheetResult result = restUseCase.takeRest(id, userId, command);
+        return ResponseEntity.ok(CharacterSheetResponse.fromResult(result));
+    }
+
+    @PostMapping("/{id}/items")
+    public ResponseEntity<CharacterSheetResponse> addItem(
+            @RequestHeader("X-User-Id") UUID userId,
+            @PathVariable("id") UUID id,
+            @Valid @RequestBody AddCharacterItemCommand command
+    ) {
+        CharacterSheetResult result = manageInventoryUseCase.addItem(id, userId, command);
+        return ResponseEntity.ok(CharacterSheetResponse.fromResult(result));
+    }
+
+    @PatchMapping("/{id}/items/{itemId}")
+    public ResponseEntity<CharacterSheetResponse> updateItem(
+            @RequestHeader("X-User-Id") UUID userId,
+            @PathVariable("id") UUID id,
+            @PathVariable("itemId") UUID itemId,
+            @Valid @RequestBody UpdateCharacterItemCommand command
+    ) {
+        CharacterSheetResult result = manageInventoryUseCase.updateItem(id, userId, itemId, command);
+        return ResponseEntity.ok(CharacterSheetResponse.fromResult(result));
+    }
+
+    @DeleteMapping("/{id}/items/{itemId}")
+    public ResponseEntity<CharacterSheetResponse> removeItem(
+            @RequestHeader("X-User-Id") UUID userId,
+            @PathVariable("id") UUID id,
+            @PathVariable("itemId") UUID itemId
+    ) {
+        CharacterSheetResult result = manageInventoryUseCase.removeItem(id, userId, itemId);
+        return ResponseEntity.ok(CharacterSheetResponse.fromResult(result));
+    }
+
+    @PostMapping("/{id}/items/{itemId}/use")
+    public ResponseEntity<UseConsumableResult> useConsumable(
+            @RequestHeader("X-User-Id") UUID userId,
+            @PathVariable("id") UUID id,
+            @PathVariable("itemId") UUID itemId
+    ) {
+        UseConsumableResult result = useConsumableUseCase.useConsumable(id, userId, itemId);
+        return ResponseEntity.ok(result);
+    }
+
+    @PostMapping("/{id}/feats/{featId}/use")
+    public ResponseEntity<CharacterSheetResponse> useFeat(
+            @RequestHeader("X-User-Id") UUID userId,
+            @PathVariable("id") UUID id,
+            @PathVariable("featId") UUID featId
+    ) {
+        CharacterSheetResult result = restUseCase.useFeat(id, userId, featId);
+        return ResponseEntity.ok(CharacterSheetResponse.fromResult(result));
+    }
+
+    @PutMapping("/{id}/currency")
+    public ResponseEntity<CharacterSheetResponse> updateCurrency(
+            @RequestHeader("X-User-Id") UUID userId,
+            @PathVariable("id") UUID id,
+            @Valid @RequestBody UpdateCurrencyRequest request
+    ) {
+        CharacterSheetResult result = manageInventoryUseCase.updateCurrency(id, userId, request);
+        return ResponseEntity.ok(CharacterSheetResponse.fromResult(result));
     }
 }
