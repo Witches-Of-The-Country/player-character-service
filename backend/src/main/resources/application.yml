@@ -1,1 +1,14 @@
-spring.application.name=backend
+spring:
+  application:
+    name: backend
+
+springdoc:
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+    persist-authorization: true
+    urls:
+      - name: "Player Character Service"
+        url: /v3/api-docs
+      - name: "Auth Service"
+        url: http://localhost:8082/v3/api-docs

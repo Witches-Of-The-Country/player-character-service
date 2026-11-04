@@ -1,0 +1,10 @@
+package com.dungeoneer.playerCharacter.application.port.out;
+
+import com.dungeoneer.playerCharacter.domain.model.PlayerCharacter;
+
+import java.util.Optional;
+import java.util.UUID;
+
+public interface PlayerCharacterRepository extends PlayerCharacterRepositoryPort {
+    Optional<PlayerCharacter> findById(UUID id);
+}

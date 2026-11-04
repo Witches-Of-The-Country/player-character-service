@@ -1,0 +1,10 @@
+[
+  {
+    "ruleset": "SRD_2014",
+    "slug": "grappler-2014",
+    "name_en": "Grappler",
+    "name": "Imobilizador",
+    "prerequisites": "Força 13 ou superior",
+    "description": "Você desenvolveu as habilidades necessárias para se agarrar com eficácia no combate corpo a corpo. Você tem vantagem em jogadas de ataque contra uma criatura agarrada por você e pode tentar imobilizá-la usando uma ação."
+  }
+]

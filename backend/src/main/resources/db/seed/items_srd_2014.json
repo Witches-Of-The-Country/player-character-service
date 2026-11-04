@@ -1,0 +1,54 @@
+[
+  {
+    "ruleset": "SRD_2014",
+    "slug": "longsword-2014",
+    "name_en": "Longsword",
+    "name": "Espada Longa",
+    "item_category": "WEAPON",
+    "item_type": "Arma Marcial Corpo a Corpo",
+    "rarity": "NONE",
+    "attunement": false,
+    "cost": "15 po",
+    "weight": "1,5 kg",
+    "description": "Uma espada de lâmina reta versátil de gume duplo. Causa 1d8 de dano cortante com uma mão, ou 1d10 se empunhada com as duas mãos (versátil)."
+  },
+  {
+    "ruleset": "SRD_2014",
+    "slug": "chain-mail-2014",
+    "name_en": "Chain Mail",
+    "name": "Cota de Malha",
+    "item_category": "ARMOR",
+    "item_type": "Armadura Pesada",
+    "rarity": "NONE",
+    "attunement": false,
+    "cost": "75 po",
+    "weight": "25 kg",
+    "description": "Feita de anéis de metal entrelaçados. Fornece CA 16 fixa, exige Força 13 e impõe desvantagem em testes de Furtividade."
+  },
+  {
+    "ruleset": "SRD_2014",
+    "slug": "potion-of-healing-2014",
+    "name_en": "Potion of Healing",
+    "name": "Poção de Cura",
+    "item_category": "MAGIC",
+    "item_type": "Poção",
+    "rarity": "COMMON",
+    "attunement": false,
+    "cost": "50 po",
+    "weight": "0,2 kg",
+    "description": "Um líquido vermelho borbulhante. Beber ou ministrar esta poção recupera 2d4 + 2 pontos de vida."
+  },
+  {
+    "ruleset": "SRD_2014",
+    "slug": "boots-of-elvenkind-2014",
+    "name_en": "Boots of Elvenkind",
+    "name": "Botas Élficas",
+    "item_category": "MAGIC",
+    "item_type": "Item Maravilhoso",
+    "rarity": "UNCOMMON",
+    "attunement": false,
+    "cost": "500 po",
+    "weight": "0,5 kg",
+    "description": "Enquanto você estiver calçando estas botas, seus passos não produzem som algum e você tem vantagem em testes de Destreza (Furtividade) que dependam de silêncio."
+  }
+]
