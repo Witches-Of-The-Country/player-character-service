@@ -3,6 +3,7 @@ package com.dungeoneer.core.web;
 import com.dungeoneer.playerCharacter.domain.exception.CharacterNotFoundException;
 import com.dungeoneer.playerCharacter.domain.exception.CharacterValidationException;
 import com.dungeoneer.playerCharacter.domain.exception.InvalidRollTokenException;
+import com.dungeoneer.playerCharacter.domain.exception.RestValidationException;
 import com.dungeoneer.playerCharacter.domain.exception.RollConflictException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -41,6 +42,14 @@ public class GlobalExceptionHandler {
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
         problemDetail.setTitle("Validation Error");
         problemDetail.setType(URI.create("https://dungeoneer.app/errors/validation"));
+        return problemDetail;
+    }
+
+    @ExceptionHandler(RestValidationException.class)
+    public ProblemDetail handleRestValidationExceptions(RestValidationException ex) {
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+        problemDetail.setTitle("Bad Request");
+        problemDetail.setType(URI.create("https://dungeoneer.app/errors/bad-request"));
         return problemDetail;
     }
 

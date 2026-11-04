@@ -30,6 +30,11 @@ public class PlayerCharacterPersistenceAdapter implements PlayerCharacterReposit
     @Override
     public PlayerCharacter save(PlayerCharacter character) {
         PlayerCharacterJpaEntity entity = PlayerCharacterJpaEntity.fromDomain(character);
+        repository.findById(character.getId()).ifPresent(existing -> {
+            if (existing.getAbilityScores() != null && entity.getAbilityScores() != null) {
+                entity.getAbilityScores().setId(existing.getAbilityScores().getId());
+            }
+        });
         PlayerCharacterJpaEntity saved = repository.save(entity);
         return saved.toDomain();
     }

@@ -6,6 +6,7 @@ import com.dungeoneer.playerCharacter.application.port.in.RestUseCase;
 import com.dungeoneer.playerCharacter.application.port.out.PlayerCharacterRepositoryPort;
 import com.dungeoneer.playerCharacter.application.port.out.ReferenceDataRepository;
 import com.dungeoneer.playerCharacter.domain.exception.CharacterValidationException;
+import com.dungeoneer.playerCharacter.domain.exception.RestValidationException;
 import com.dungeoneer.playerCharacter.domain.model.Archetype;
 import com.dungeoneer.playerCharacter.domain.model.CharacterFeat;
 import com.dungeoneer.playerCharacter.domain.model.ClassProgression;
@@ -115,10 +116,10 @@ public class RestService implements RestUseCase {
                 for (RestCommand.HitDiceSpendRequest spendReq : command.hitDiceSpends()) {
                     ClassProgression cp = progressionMap.get(spendReq.classProgressionId());
                     if (cp == null) {
-                        throw new CharacterValidationException("Class progression not found: " + spendReq.classProgressionId());
+                        throw new RestValidationException("Class progression not found: " + spendReq.classProgressionId());
                     }
                     if (spendReq.count() > cp.getAvailableHitDice()) {
-                        throw new CharacterValidationException(
+                        throw new RestValidationException(
                                 "Cannot spend " + spendReq.count() + " Hit Dice. Only " + cp.getAvailableHitDice() + " available for class progression " + cp.getId()
                         );
                     }

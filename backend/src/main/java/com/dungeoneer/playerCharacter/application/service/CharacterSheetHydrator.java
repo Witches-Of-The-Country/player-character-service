@@ -72,16 +72,24 @@ public class CharacterSheetHydrator {
 
         List<CharacterClassSummaryDto> classes = new ArrayList<>();
         for (com.dungeoneer.playerCharacter.domain.model.ClassProgression cp : character.getClassProgressions()) {
-            String cName = referenceDataRepository.findArchetypeById(cp.getArchetypeId())
-                    .map(Archetype::getName)
-                    .orElse("Unknown");
+            Archetype arch = referenceDataRepository.findArchetypeById(cp.getArchetypeId()).orElse(null);
+            String cName = arch != null ? arch.getName() : "Unknown";
+            String hitDie = arch != null && arch.getHitDice() != null ? arch.getHitDice().name() : "D8";
             String scName = null;
             if (cp.getSubclassId() != null) {
                 scName = referenceDataRepository.findSubclassById(cp.getSubclassId())
                         .map(Subclass::getName)
                         .orElse(null);
             }
-            classes.add(new CharacterClassSummaryDto(cName, scName, cp.getClassLevel()));
+            classes.add(new CharacterClassSummaryDto(
+                    cp.getId(),
+                    cName,
+                    scName,
+                    cp.getClassLevel(),
+                    hitDie,
+                    cp.getHitDiceSpent(),
+                    cp.getAvailableHitDice()
+            ));
         }
 
         return toSheetResult(character, archetype, lineage, background, itemMap, featMap, classes);
@@ -333,6 +341,7 @@ public class CharacterSheetHydrator {
                 CurrencyPouchDto.fromDomain(character.getCurrencyPouch()),
                 character.getAvatarUrl(),
                 classes,
+                character.getExhaustion(),
                 character.getCreatedAt(),
                 character.getUpdatedAt()
         );

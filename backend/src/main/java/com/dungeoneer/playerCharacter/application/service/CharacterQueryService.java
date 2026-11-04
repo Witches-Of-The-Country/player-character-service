@@ -58,16 +58,24 @@ public class CharacterQueryService implements GetCharacterUseCase, ListCharacter
             List<CharacterClassSummaryDto> classes = new ArrayList<>();
 
             for (ClassProgression cp : c.getClassProgressions()) {
-                String cName = referenceDataRepository.findArchetypeById(cp.getArchetypeId())
-                        .map(Archetype::getName)
-                        .orElse("Unknown");
+                Archetype arch = referenceDataRepository.findArchetypeById(cp.getArchetypeId()).orElse(null);
+                String cName = arch != null ? arch.getName() : "Unknown";
+                String hitDie = arch != null && arch.getHitDice() != null ? arch.getHitDice().name() : "D8";
                 String scName = null;
                 if (cp.getSubclassId() != null) {
                     scName = referenceDataRepository.findSubclassById(cp.getSubclassId())
                             .map(Subclass::getName)
                             .orElse(null);
                 }
-                classes.add(new CharacterClassSummaryDto(cName, scName, cp.getClassLevel()));
+                classes.add(new CharacterClassSummaryDto(
+                        cp.getId(),
+                        cName,
+                        scName,
+                        cp.getClassLevel(),
+                        hitDie,
+                        cp.getHitDiceSpent(),
+                        cp.getAvailableHitDice()
+                ));
             }
 
             if (!classes.isEmpty()) {
