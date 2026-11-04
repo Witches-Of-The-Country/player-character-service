@@ -15,6 +15,7 @@ import com.dungeoneer.playerCharacter.domain.model.MechanicalEffects;
 import com.dungeoneer.playerCharacter.domain.model.PlayerCharacter;
 import com.dungeoneer.playerCharacter.domain.model.RestType;
 import com.dungeoneer.playerCharacter.domain.model.RulesEngine;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,6 +41,7 @@ public class RestService implements RestUseCase {
     private final CharacterSheetHydrator sheetHydrator;
     private final DiceRoller diceRoller;
 
+    @Autowired
     public RestService(
             PlayerCharacterRepositoryPort characterRepository,
             ReferenceDataRepository referenceDataRepository,
