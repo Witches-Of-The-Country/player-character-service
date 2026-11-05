@@ -16,7 +16,13 @@ public interface SpringDataLineageRepository extends JpaRepository<LineageJpaEnt
         SELECT * FROM player_character.lineages l
         WHERE (CAST(:ruleset AS VARCHAR) IS NULL OR l.ruleset = CAST(:ruleset AS VARCHAR))
           AND (l.owner_id IS NULL OR (CAST(:ownerId AS UUID) IS NOT NULL AND l.owner_id = CAST(:ownerId AS UUID)))
-          AND (CAST(:q AS VARCHAR) IS NULL OR CAST(:q AS VARCHAR) = '' OR to_tsvector('portuguese', coalesce(l.name, '') || ' ' || coalesce(l.description, '')) @@ plainto_tsquery('portuguese', CAST(:q AS VARCHAR)))
+          AND (
+            CAST(:q AS VARCHAR) IS NULL
+            OR TRIM(CAST(:q AS VARCHAR)) = ''
+            OR translate(lower(coalesce(l.name, '') || ' ' || coalesce(l.description, '')), 'áàâãäéèêëíìîïóòôõöúùûüçñ', 'aaaaaeeeeiiiiooooouuuucn')
+               LIKE '%' || replace(translate(lower(TRIM(CAST(:q AS VARCHAR))), 'áàâãäéèêëíìîïóòôõöúùûüçñ', 'aaaaaeeeeiiiiooooouuuucn'), ' ', '%') || '%'
+            OR to_tsvector('portuguese', coalesce(l.name, '') || ' ' || coalesce(l.description, '')) @@ plainto_tsquery('portuguese', CAST(:q AS VARCHAR))
+          )
           AND (CAST(:afterName AS VARCHAR) IS NULL OR l.name > CAST(:afterName AS VARCHAR) OR (l.name = CAST(:afterName AS VARCHAR) AND l.id > CAST(:afterId AS UUID)))
         ORDER BY l.name ASC, l.id ASC
         LIMIT :limit

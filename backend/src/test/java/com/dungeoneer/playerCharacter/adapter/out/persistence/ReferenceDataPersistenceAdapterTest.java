@@ -107,4 +107,55 @@ class ReferenceDataPersistenceAdapterTest {
         assertThat(commonItems).isNotEmpty();
         assertThat(commonItems).allMatch(i -> i.getRarity() == null || List.of("NONE", "COMMON", "COMUM").contains(i.getRarity().toUpperCase()));
     }
+
+    @Test
+    @DisplayName("Spec 005 - TR-01 & TR-02: should match partial prefix, unaccented, English name and whitespace boundary across compendiums")
+    void shouldFindItemsAndReferenceDataWithPrefixAndUnaccentedQueries() {
+        // TR-01: Partial prefix "esp" matching "Espada"
+        var espItems = adapter.findItemsWithCursor(null, null, null, "esp", null, null, 10, null);
+        assertThat(espItems).isNotEmpty();
+        assertThat(espItems).anyMatch(i -> i.getName().toLowerCase().contains("espada"));
+
+        // TR-01: Partial prefix "arm" matching "Armadura"
+        var armItems = adapter.findItemsWithCursor(null, null, null, "arm", null, null, 10, null);
+        assertThat(armItems).isNotEmpty();
+        assertThat(armItems).anyMatch(i -> i.getName().toLowerCase().contains("armadura"));
+
+        // TR-02: Unaccented query "pocao" matching accented "Poção"
+        var pocaoItems = adapter.findItemsWithCursor(null, null, null, "pocao", null, null, 10, null);
+        assertThat(pocaoItems).isNotEmpty();
+        assertThat(pocaoItems).anyMatch(i -> i.getName().toLowerCase().contains("poção"));
+
+        // Criterion 3: English name "longsword" matching "Espada Longa" (name_en = "Longsword")
+        var englishItems = adapter.findItemsWithCursor(null, null, null, "longsword", null, null, 10, null);
+        assertThat(englishItems).isNotEmpty();
+        assertThat(englishItems).anyMatch(i -> "longsword".equalsIgnoreCase(i.getNameEn()) || i.getName().toLowerCase().contains("espada longa"));
+
+        // TE-01: Empty string or whitespace queries should return results without errors
+        var emptyItems = adapter.findItemsWithCursor(null, null, null, "", null, null, 10, null);
+        assertThat(emptyItems).isNotEmpty();
+
+        var whitespaceItems = adapter.findItemsWithCursor(null, null, null, "   ", null, null, 10, null);
+        assertThat(whitespaceItems).isNotEmpty();
+
+        // Spells: unaccented "bencao" matching "Bênção"
+        var bencaoSpells = adapter.findSpellsWithCursor(null, null, null, "bencao", null, null, 10, null);
+        assertThat(bencaoSpells).isNotEmpty();
+        assertThat(bencaoSpells).anyMatch(s -> s.getName().toLowerCase().contains("bênção"));
+
+        // Spells: partial prefix "cur" matching "Curar"
+        var curSpells = adapter.findSpellsWithCursor(null, null, null, "cur", null, null, 10, null);
+        assertThat(curSpells).isNotEmpty();
+        assertThat(curSpells).anyMatch(s -> s.getName().toLowerCase().contains("curar"));
+
+        // Archetypes: unaccented "barb" matching "Bárbaro"
+        var barbClasses = adapter.findArchetypesWithCursor(null, "barb", null, null, 10, null);
+        assertThat(barbClasses).isNotEmpty();
+        assertThat(barbClasses).anyMatch(a -> a.getName().toLowerCase().contains("bárbaro") || a.getName().toLowerCase().contains("barbarian"));
+
+        // Lineages: unaccented "ana" matching "Anão"
+        var anaoLineages = adapter.findLineagesWithCursor(null, "ana", null, null, 10, null);
+        assertThat(anaoLineages).isNotEmpty();
+        assertThat(anaoLineages).anyMatch(l -> l.getName().toLowerCase().contains("anão") || l.getName().toLowerCase().contains("dwarf"));
+    }
 }

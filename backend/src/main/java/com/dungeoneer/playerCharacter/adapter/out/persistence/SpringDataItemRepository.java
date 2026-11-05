@@ -44,7 +44,13 @@ public interface SpringDataItemRepository extends JpaRepository<ItemJpaEntity, U
                  OR UPPER(i.rarity) = r
             )
           )
-          AND (CAST(:q AS VARCHAR) IS NULL OR CAST(:q AS VARCHAR) = '' OR to_tsvector('portuguese', coalesce(i.name, '') || ' ' || coalesce(i.name_en, '') || ' ' || coalesce(i.description, '')) @@ plainto_tsquery('portuguese', CAST(:q AS VARCHAR)))
+          AND (
+            CAST(:q AS VARCHAR) IS NULL
+            OR TRIM(CAST(:q AS VARCHAR)) = ''
+            OR translate(lower(coalesce(i.name, '') || ' ' || coalesce(i.name_en, '') || ' ' || coalesce(i.description, '') || ' ' || coalesce(i.item_type, '') || ' ' || coalesce(i.item_category, '')), 'áàâãäéèêëíìîïóòôõöúùûüçñ', 'aaaaaeeeeiiiiooooouuuucn')
+               LIKE '%' || replace(translate(lower(TRIM(CAST(:q AS VARCHAR))), 'áàâãäéèêëíìîïóòôõöúùûüçñ', 'aaaaaeeeeiiiiooooouuuucn'), ' ', '%') || '%'
+            OR to_tsvector('portuguese', coalesce(i.name, '') || ' ' || coalesce(i.name_en, '') || ' ' || coalesce(i.description, '')) @@ plainto_tsquery('portuguese', CAST(:q AS VARCHAR))
+          )
           AND (CAST(:afterName AS VARCHAR) IS NULL OR i.name > CAST(:afterName AS VARCHAR) OR (i.name = CAST(:afterName AS VARCHAR) AND i.id > CAST(:afterId AS UUID)))
         ORDER BY i.name ASC, i.id ASC
         LIMIT :limit

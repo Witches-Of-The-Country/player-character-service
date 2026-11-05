@@ -23,7 +23,13 @@ public interface SpringDataSpellRepository extends JpaRepository<SpellJpaEntity,
             OR CAST(:schoolsStr AS VARCHAR) = '' 
             OR LOWER(s.school) = ANY(string_to_array(LOWER(CAST(:schoolsStr AS VARCHAR)), ','))
           )
-          AND (CAST(:q AS VARCHAR) IS NULL OR CAST(:q AS VARCHAR) = '' OR to_tsvector('portuguese', coalesce(s.name, '') || ' ' || coalesce(s.name_en, '') || ' ' || coalesce(s.description, '')) @@ plainto_tsquery('portuguese', CAST(:q AS VARCHAR)))
+          AND (
+            CAST(:q AS VARCHAR) IS NULL
+            OR TRIM(CAST(:q AS VARCHAR)) = ''
+            OR translate(lower(coalesce(s.name, '') || ' ' || coalesce(s.name_en, '') || ' ' || coalesce(s.description, '') || ' ' || coalesce(s.school, '')), 'áàâãäéèêëíìîïóòôõöúùûüçñ', 'aaaaaeeeeiiiiooooouuuucn')
+               LIKE '%' || replace(translate(lower(TRIM(CAST(:q AS VARCHAR))), 'áàâãäéèêëíìîïóòôõöúùûüçñ', 'aaaaaeeeeiiiiooooouuuucn'), ' ', '%') || '%'
+            OR to_tsvector('portuguese', coalesce(s.name, '') || ' ' || coalesce(s.name_en, '') || ' ' || coalesce(s.description, '')) @@ plainto_tsquery('portuguese', CAST(:q AS VARCHAR))
+          )
           AND (CAST(:afterName AS VARCHAR) IS NULL OR s.name > CAST(:afterName AS VARCHAR) OR (s.name = CAST(:afterName AS VARCHAR) AND s.id > CAST(:afterId AS UUID)))
         ORDER BY s.name ASC, s.id ASC
         LIMIT :limit
