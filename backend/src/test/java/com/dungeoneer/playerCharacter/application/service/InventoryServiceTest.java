@@ -182,4 +182,102 @@ class InventoryServiceTest {
         // 150 cp + 20 sp (200 cp) + 5 gp (500 cp) = 850 cp -> consolidated: 8 gp, 5 sp
         verify(characterRepository).save(argThat(c -> c.getCurrencyPouch().toTotalCopper() == 850L));
     }
+
+    @Test
+    @DisplayName("Should auto-unequip previous armor in CHEST when equipping a second armor")
+    void shouldAutoUnequipPreviousArmorInChestWhenEquippingSecondArmor() {
+        UUID armor1Id = UUID.randomUUID();
+        UUID armor2Id = UUID.randomUUID();
+        Item armor1 = new Item(armor1Id, Ruleset.SRD_2024, "leather-armor", "Leather Armor", "Armadura de Couro", "ARMOR", "Armor", "Common", false, "10 gp", "10 lb", "Light Armor", "SRD", null, new ArmorMechanics(ArmorCategory.LIGHT, 11, 0, 0, false));
+        Item armor2 = new Item(armor2Id, Ruleset.SRD_2024, "chain-mail", "Chain Mail", "Cota de Malha", "ARMOR", "Armor", "Common", false, "75 gp", "55 lb", "Heavy Armor", "SRD", null, new ArmorMechanics(ArmorCategory.HEAVY, 16, 0, 13, true));
+
+        UUID charItem1Id = UUID.randomUUID();
+        UUID charItem2Id = UUID.randomUUID();
+        CharacterItem charItem1 = new CharacterItem(charItem1Id, characterId, armor1Id, 1, true, false, EquipmentSlot.CHEST);
+        CharacterItem charItem2 = new CharacterItem(charItem2Id, characterId, armor2Id, 1, false, false, null);
+
+        when(characterRepository.findByIdAndUserId(characterId, userId)).thenReturn(Optional.of(character));
+        when(characterRepository.findCharacterItemByIdAndCharacterId(charItem2Id, characterId)).thenReturn(Optional.of(charItem2));
+        when(referenceDataRepository.findItemById(armor2Id)).thenReturn(Optional.of(armor2));
+
+        when(characterRepository.findItemsByCharacterId(characterId)).thenReturn(List.of(charItem1, charItem2));
+        when(sheetHydrator.hydrate(any(PlayerCharacter.class))).thenReturn(mock(CharacterSheetResult.class));
+
+        inventoryService.updateItem(characterId, userId, charItem2Id, new UpdateCharacterItemCommand(true, null, false, 1));
+
+        verify(characterRepository).saveCharacterItem(argThat(ci -> ci.getId().equals(charItem1Id) && !ci.isEquipped() && ci.getEquippedSlot() == null));
+        verify(characterRepository).saveCharacterItem(argThat(ci -> ci.getId().equals(charItem2Id) && ci.isEquipped() && ci.getEquippedSlot() == EquipmentSlot.CHEST));
+    }
+
+    @Test
+    @DisplayName("Should auto-unequip shield in LEFT_HAND when equipping a TWO_HANDED weapon")
+    void shouldAutoUnequipShieldWhenEquippingTwoHandedWeapon() {
+        UUID shieldItemId = UUID.randomUUID();
+        UUID greatswordItemId = UUID.randomUUID();
+        Item shield = new Item(shieldItemId, Ruleset.SRD_2024, "shield", "Shield", "Escudo", "ARMOR", "Shield", "Common", false, "10 gp", "6 lb", "Shield", "SRD", null, new ArmorMechanics(ArmorCategory.SHIELD, 2, 0, 0, false));
+        Item greatsword = new Item(greatswordItemId, Ruleset.SRD_2024, "greatsword", "Greatsword", "Espada Grande", "WEAPON", "Weapon", "Common", false, "50 gp", "6 lb", "Two-handed weapon", "SRD", null, new WeaponMechanics(List.of(new DamageRoll("2d6", DamageType.SLASHING)), null, 0, List.of(WeaponProperty.TWO_HANDED, WeaponProperty.HEAVY)));
+
+        UUID charShieldId = UUID.randomUUID();
+        UUID charWepId = UUID.randomUUID();
+        CharacterItem charShield = new CharacterItem(charShieldId, characterId, shieldItemId, 1, true, false, EquipmentSlot.LEFT_HAND);
+        CharacterItem charWep = new CharacterItem(charWepId, characterId, greatswordItemId, 1, false, false, null);
+
+        when(characterRepository.findByIdAndUserId(characterId, userId)).thenReturn(Optional.of(character));
+        when(characterRepository.findCharacterItemByIdAndCharacterId(charWepId, characterId)).thenReturn(Optional.of(charWep));
+        when(referenceDataRepository.findItemById(greatswordItemId)).thenReturn(Optional.of(greatsword));
+        when(characterRepository.findItemsByCharacterId(characterId)).thenReturn(List.of(charShield, charWep));
+        when(sheetHydrator.hydrate(any(PlayerCharacter.class))).thenReturn(mock(CharacterSheetResult.class));
+
+        inventoryService.updateItem(characterId, userId, charWepId, new UpdateCharacterItemCommand(true, null, false, 1));
+
+        verify(characterRepository).saveCharacterItem(argThat(ci -> ci.getId().equals(charShieldId) && !ci.isEquipped()));
+        verify(characterRepository).saveCharacterItem(argThat(ci -> ci.getId().equals(charWepId) && ci.isEquipped() && ci.getEquippedSlot() == EquipmentSlot.RIGHT_HAND));
+    }
+
+    @Test
+    @DisplayName("Should auto-unequip TWO_HANDED weapon when equipping a shield in LEFT_HAND")
+    void shouldAutoUnequipTwoHandedWeaponWhenEquippingShieldInLeftHand() {
+        UUID shieldItemId = UUID.randomUUID();
+        UUID greatswordItemId = UUID.randomUUID();
+        Item shield = new Item(shieldItemId, Ruleset.SRD_2024, "shield", "Shield", "Escudo", "ARMOR", "Shield", "Common", false, "10 gp", "6 lb", "Shield", "SRD", null, new ArmorMechanics(ArmorCategory.SHIELD, 2, 0, 0, false));
+        Item greatsword = new Item(greatswordItemId, Ruleset.SRD_2024, "greatsword", "Greatsword", "Espada Grande", "WEAPON", "Weapon", "Common", false, "50 gp", "6 lb", "Two-handed weapon", "SRD", null, new WeaponMechanics(List.of(new DamageRoll("2d6", DamageType.SLASHING)), null, 0, List.of(WeaponProperty.TWO_HANDED, WeaponProperty.HEAVY)));
+
+        UUID charShieldId = UUID.randomUUID();
+        UUID charWepId = UUID.randomUUID();
+        CharacterItem charShield = new CharacterItem(charShieldId, characterId, shieldItemId, 1, false, false, null);
+        CharacterItem charWep = new CharacterItem(charWepId, characterId, greatswordItemId, 1, true, false, EquipmentSlot.RIGHT_HAND);
+
+        when(characterRepository.findByIdAndUserId(characterId, userId)).thenReturn(Optional.of(character));
+        when(characterRepository.findCharacterItemByIdAndCharacterId(charShieldId, characterId)).thenReturn(Optional.of(charShield));
+        when(referenceDataRepository.findItemById(shieldItemId)).thenReturn(Optional.of(shield));
+        when(referenceDataRepository.findItemById(greatswordItemId)).thenReturn(Optional.of(greatsword));
+        when(characterRepository.findItemsByCharacterId(characterId)).thenReturn(List.of(charShield, charWep));
+        when(sheetHydrator.hydrate(any(PlayerCharacter.class))).thenReturn(mock(CharacterSheetResult.class));
+
+        inventoryService.updateItem(characterId, userId, charShieldId, new UpdateCharacterItemCommand(true, EquipmentSlot.LEFT_HAND, false, 1));
+
+        verify(characterRepository).saveCharacterItem(argThat(ci -> ci.getId().equals(charWepId) && !ci.isEquipped()));
+        verify(characterRepository).saveCharacterItem(argThat(ci -> ci.getId().equals(charShieldId) && ci.isEquipped() && ci.getEquippedSlot() == EquipmentSlot.LEFT_HAND));
+    }
+
+    @Test
+    @DisplayName("Should reject equipping armor in non-CHEST slot")
+    void shouldRejectArmorInNonChestSlot() {
+        UUID armorId = UUID.randomUUID();
+        Item armor = new Item(armorId, Ruleset.SRD_2024, "chain-mail", "Chain Mail", "Cota de Malha", "ARMOR", "Armor", "Common", false, "75 gp", "55 lb", "Heavy Armor", "SRD", null, new ArmorMechanics(ArmorCategory.HEAVY, 16, 0, 13, true));
+        UUID charItemId = UUID.randomUUID();
+        CharacterItem charItem = new CharacterItem(charItemId, characterId, armorId, 1, false, false, null);
+
+        when(characterRepository.findByIdAndUserId(characterId, userId)).thenReturn(Optional.of(character));
+        when(characterRepository.findCharacterItemByIdAndCharacterId(charItemId, characterId)).thenReturn(Optional.of(charItem));
+        when(referenceDataRepository.findItemById(armorId)).thenReturn(Optional.of(armor));
+
+        assertThatThrownBy(() -> inventoryService.updateItem(
+                characterId,
+                userId,
+                charItemId,
+                new UpdateCharacterItemCommand(true, EquipmentSlot.GLOVES, false, 1)
+        )).isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("Armor can only be equipped in CHEST slot");
+    }
 }

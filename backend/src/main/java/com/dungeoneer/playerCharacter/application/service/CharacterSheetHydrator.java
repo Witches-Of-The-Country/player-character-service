@@ -16,6 +16,7 @@ import com.dungeoneer.playerCharacter.domain.model.CharacterFeat;
 import com.dungeoneer.playerCharacter.domain.model.CharacterItem;
 import com.dungeoneer.playerCharacter.domain.model.DamageRoll;
 import com.dungeoneer.playerCharacter.domain.model.DamageType;
+import com.dungeoneer.playerCharacter.domain.model.EquipmentSlot;
 import com.dungeoneer.playerCharacter.domain.model.Feat;
 import com.dungeoneer.playerCharacter.domain.model.FeatChargeCalculator;
 import com.dungeoneer.playerCharacter.domain.model.Item;
@@ -180,9 +181,13 @@ public class CharacterSheetHydrator {
             if (item != null && charItem.isEquipped()) {
                 if (item.getMechanicalProperties() instanceof ArmorMechanics arm) {
                     if (arm.armorCategory() == ArmorCategory.SHIELD) {
-                        equippedShield = arm;
+                        if (charItem.getEquippedSlot() == EquipmentSlot.LEFT_HAND || charItem.getEquippedSlot() == EquipmentSlot.RIGHT_HAND || charItem.getEquippedSlot() == null) {
+                            equippedShield = arm;
+                        }
                     } else {
-                        equippedArmor = arm;
+                        if (charItem.getEquippedSlot() == EquipmentSlot.CHEST || charItem.getEquippedSlot() == null) {
+                            equippedArmor = arm;
+                        }
                     }
                 } else if (item.getMechanicalProperties() instanceof WeaponMechanics wep) {
                     equippedWeapons.add(new WeaponItemEntry(item, wep));

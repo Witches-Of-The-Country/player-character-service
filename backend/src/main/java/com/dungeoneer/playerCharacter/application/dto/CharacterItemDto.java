@@ -1,6 +1,7 @@
 package com.dungeoneer.playerCharacter.application.dto;
 
 import com.dungeoneer.playerCharacter.domain.model.CharacterItem;
+import com.dungeoneer.playerCharacter.domain.model.EquipmentSlot;
 import com.dungeoneer.playerCharacter.domain.model.Item;
 
 import java.util.UUID;
@@ -17,6 +18,7 @@ public record CharacterItemDto(
         String weight,
         int quantity,
         boolean equipped,
+        EquipmentSlot equippedSlot,
         boolean attuned,
         Object mechanicalProperties,
         String description,
@@ -39,7 +41,7 @@ public record CharacterItemDto(
             boolean attuned,
             Object mechanicalProperties
     ) {
-        this(id, characterId, itemId, name, itemCategory, itemType, rarity, requiresAttunement, weight, quantity, equipped, attuned, mechanicalProperties, null, null, null, null);
+        this(id, characterId, itemId, name, itemCategory, itemType, rarity, requiresAttunement, weight, quantity, equipped, null, attuned, mechanicalProperties, null, null, null, null);
     }
 
     public static CharacterItemDto fromDomain(CharacterItem charItem, Item item) {
@@ -55,6 +57,7 @@ public record CharacterItemDto(
                 item != null ? item.getWeight() : "0 kg",
                 charItem.getQuantity(),
                 charItem.isEquipped(),
+                charItem.getEquippedSlot(),
                 charItem.isAttuned(),
                 item != null ? item.getMechanicalProperties() : null,
                 item != null ? item.getDescription() : "",

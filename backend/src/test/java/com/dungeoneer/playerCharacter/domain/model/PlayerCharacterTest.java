@@ -451,5 +451,86 @@ class PlayerCharacterTest {
 
         PlayerCharacter withAvatar = withPouch.withAvatarUrl("https://example.com/avatar.png");
         assertEquals(2, withAvatar.getExhaustion());
+
+    }
+
+    @Test
+    @DisplayName("Should absorb partial damage with temporary hit points")
+    void shouldAbsorbPartialDamageWithTempHp() {
+        PlayerCharacter character = PlayerCharacter.createNew(
+                "Hero",
+                1,
+                10,
+                Ruleset.SRD_2024,
+                AbilityScoreMethod.STANDARD_ARRAY,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                createValidAbilityScores()
+        ).withTempHp(5);
+
+        PlayerCharacter damaged = character.takeDamage(3);
+        assertEquals(10, damaged.getHitPointsCurrent());
+        assertEquals(2, damaged.getHitPointsTemp());
+    }
+
+    @Test
+    @DisplayName("Should absorb overflow damage across temporary HP and current HP")
+    void shouldAbsorbOverflowDamageAcrossTempAndCurrentHp() {
+        PlayerCharacter character = PlayerCharacter.createNew(
+                "Hero",
+                1,
+                10,
+                Ruleset.SRD_2024,
+                AbilityScoreMethod.STANDARD_ARRAY,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                createValidAbilityScores()
+        ).withTempHp(5);
+
+        PlayerCharacter damaged = character.takeDamage(8);
+        assertEquals(7, damaged.getHitPointsCurrent());
+        assertEquals(0, damaged.getHitPointsTemp());
+    }
+
+    @Test
+    @DisplayName("Should absorb damage with temporary HP when current HP is zero")
+    void shouldAbsorbDamageWithTempHpWhenCurrentHpIsZero() {
+        PlayerCharacter character = PlayerCharacter.createNew(
+                "Hero",
+                1,
+                10,
+                Ruleset.SRD_2024,
+                AbilityScoreMethod.STANDARD_ARRAY,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                createValidAbilityScores()
+        ).withCurrentHp(0).withTempHp(5);
+
+        PlayerCharacter damaged = character.takeDamage(3);
+        assertEquals(0, damaged.getHitPointsCurrent());
+        assertEquals(2, damaged.getHitPointsTemp());
+    }
+
+    @Test
+    @DisplayName("Should ignore zero or negative damage amounts")
+    void shouldIgnoreZeroOrNegativeDamage() {
+        PlayerCharacter character = PlayerCharacter.createNew(
+                "Hero",
+                1,
+                10,
+                Ruleset.SRD_2024,
+                AbilityScoreMethod.STANDARD_ARRAY,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                createValidAbilityScores()
+        ).withTempHp(5);
+
+        assertSame(character, character.takeDamage(0));
+        assertSame(character, character.takeDamage(-5));
+
     }
 }

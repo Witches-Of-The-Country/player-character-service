@@ -868,6 +868,49 @@ public class PlayerCharacter {
         );
     }
 
+    public PlayerCharacter takeDamage(int amount) {
+        if (amount <= 0) {
+            return this;
+        }
+        int absorbedByTemp = Math.min(this.hitPointsTemp, amount);
+        int newTempHp = this.hitPointsTemp - absorbedByTemp;
+        int remainingDamage = amount - absorbedByTemp;
+        int newCurrentHp = Math.max(0, this.hitPointsCurrent - remainingDamage);
+
+        return new PlayerCharacter(
+                this.id,
+                this.name,
+                this.level,
+                newCurrentHp,
+                this.hitPointsMax,
+                newTempHp,
+                this.armorClass,
+                this.initiativeBonus,
+                this.speed,
+                this.proficiencyBonus,
+                this.ruleset,
+                this.abilityScoreMethod,
+                this.lineageId,
+                this.backgroundId,
+                this.userId,
+                this.abilityScores,
+                this.notes,
+                this.hpCalculationMethod,
+                this.hasPendingLevelChoices,
+                this.classProgressions,
+                this.skillProficiencies,
+                this.experiencePoints,
+                this.campaignId,
+                this.items,
+                this.feats,
+                this.currencyPouch,
+                this.avatarUrl,
+                this.exhaustion,
+                this.createdAt,
+                Instant.now()
+        );
+    }
+
     public PlayerCharacter withTempHp(int tempHp) {
         validateHitPoints(this.hitPointsCurrent, this.hitPointsMax, tempHp);
         return new PlayerCharacter(

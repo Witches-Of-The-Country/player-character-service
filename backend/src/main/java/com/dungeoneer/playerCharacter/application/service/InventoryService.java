@@ -131,9 +131,59 @@ public class InventoryService implements ManageInventoryUseCase, UseConsumableUs
             }
         }
 
+        EquipmentSlot targetSlot = null;
+        if (newEquipped) {
+            List<CharacterItem> existingItems = characterRepository.findItemsByCharacterId(characterId);
+            targetSlot = resolveSlotForItem(item, command.equippedSlot(), existingItems);
+            validateSlotCompatibility(item, targetSlot);
+
+            Set<UUID> unequippedIds = new HashSet<>();
+
+            // 1. Auto-unequip any other item currently in targetSlot
+            for (CharacterItem other : existingItems) {
+                if (!other.getId().equals(characterItemId) && other.isEquipped() && targetSlot.equals(other.getEquippedSlot())) {
+                    characterRepository.saveCharacterItem(other.withEquipped(false, null));
+                    unequippedIds.add(other.getId());
+                }
+            }
+
+            // 2. If equipping body armor, ensure no other body armor is equipped
+            if (isBodyArmor(item)) {
+                for (CharacterItem other : existingItems) {
+                    if (!other.getId().equals(characterItemId) && !unequippedIds.contains(other.getId()) && other.isEquipped()) {
+                        Item otherRef = referenceDataRepository.findItemById(other.getItemId()).orElse(null);
+                        if (otherRef != null && isBodyArmor(otherRef)) {
+                            characterRepository.saveCharacterItem(other.withEquipped(false, null));
+                            unequippedIds.add(other.getId());
+                        }
+                    }
+                }
+            }
+
+            // 3. Two-handed weapon checks
+            if (isTwoHandedWeapon(item)) {
+                for (CharacterItem other : existingItems) {
+                    if (!other.getId().equals(characterItemId) && !unequippedIds.contains(other.getId()) && other.isEquipped() && EquipmentSlot.LEFT_HAND.equals(other.getEquippedSlot())) {
+                        characterRepository.saveCharacterItem(other.withEquipped(false, null));
+                        unequippedIds.add(other.getId());
+                    }
+                }
+            } else if (targetSlot == EquipmentSlot.LEFT_HAND) {
+                for (CharacterItem other : existingItems) {
+                    if (!other.getId().equals(characterItemId) && !unequippedIds.contains(other.getId()) && other.isEquipped() && EquipmentSlot.RIGHT_HAND.equals(other.getEquippedSlot())) {
+                        Item otherRef = referenceDataRepository.findItemById(other.getItemId()).orElse(null);
+                        if (otherRef != null && isTwoHandedWeapon(otherRef)) {
+                            characterRepository.saveCharacterItem(other.withEquipped(false, null));
+                            unequippedIds.add(other.getId());
+                        }
+                    }
+                }
+            }
+        }
+
         CharacterItem updated = characterItem
                 .withQuantity(newQuantity)
-                .withEquipped(newEquipped)
+                .withEquipped(newEquipped, newEquipped ? targetSlot : null)
                 .withAttuned(newAttuned);
 
         characterRepository.saveCharacterItem(updated);
@@ -237,5 +287,88 @@ public class InventoryService implements ManageInventoryUseCase, UseConsumableUs
     private PlayerCharacter getCharacter(UUID characterId, UUID userId) {
         return characterRepository.findByIdAndUserId(characterId, userId)
                 .orElseThrow(() -> new NoSuchElementException("Character not found: " + characterId));
+    }
+
+    private EquipmentSlot resolveSlotForItem(Item item, EquipmentSlot requestedSlot, List<CharacterItem> existingItems) {
+        if (requestedSlot != null) {
+            return requestedSlot;
+        }
+        if (isShield(item)) {
+            return EquipmentSlot.LEFT_HAND;
+        }
+        if (isBodyArmor(item)) {
+            return EquipmentSlot.CHEST;
+        }
+        if (item.getMechanicalProperties() instanceof WeaponMechanics) {
+            return EquipmentSlot.RIGHT_HAND;
+        }
+        if (isRing(item)) {
+            boolean ring1Taken = existingItems.stream()
+                    .anyMatch(ci -> ci.isEquipped() && EquipmentSlot.RING_1.equals(ci.getEquippedSlot()));
+            if (!ring1Taken) {
+                return EquipmentSlot.RING_1;
+            }
+            return EquipmentSlot.RING_2;
+        }
+
+        String name = item.getName() != null ? item.getName().toLowerCase() : "";
+        if (name.contains("bota") || name.contains("boot")) return EquipmentSlot.BOOTS;
+        if (name.contains("luva") || name.contains("manopla") || name.contains("gauntlet") || name.contains("bracer")) return EquipmentSlot.GLOVES;
+        if (name.contains("capacete") || name.contains("tiara") || name.contains("helm") || name.contains("diadema") || name.contains("headband")) return EquipmentSlot.HELMET;
+        if (name.contains("calça") || name.contains("calca") || name.contains("perneira")) return EquipmentSlot.PANTS;
+        if (name.contains("capa") || name.contains("manto") || name.contains("cloak") || name.contains("cape")) return EquipmentSlot.CLOAK;
+        if (name.contains("colar") || name.contains("amuleto") || name.contains("medalhão") || name.contains("medalhao") || name.contains("amulet") || name.contains("necklace") || name.contains("periapt")) return EquipmentSlot.NECKLACE;
+
+        return EquipmentSlot.CHEST;
+    }
+
+    private void validateSlotCompatibility(Item item, EquipmentSlot slot) {
+        if (isBodyArmor(item) && slot != EquipmentSlot.CHEST) {
+            throw new IllegalArgumentException("Armor can only be equipped in CHEST slot");
+        }
+        if (isRing(item) && slot != EquipmentSlot.RING_1 && slot != EquipmentSlot.RING_2) {
+            throw new IllegalArgumentException("Ring can only be equipped in RING_1 or RING_2 slot");
+        }
+        if (isShield(item) && slot != EquipmentSlot.LEFT_HAND && slot != EquipmentSlot.RIGHT_HAND) {
+            throw new IllegalArgumentException("Shield can only be equipped in hand slots");
+        }
+        if (item.getMechanicalProperties() instanceof WeaponMechanics wep) {
+            if (slot != EquipmentSlot.RIGHT_HAND && slot != EquipmentSlot.LEFT_HAND) {
+                throw new IllegalArgumentException("Weapon can only be equipped in hand slots");
+            }
+            if (wep.properties().contains(WeaponProperty.TWO_HANDED) && slot != EquipmentSlot.RIGHT_HAND) {
+                throw new IllegalArgumentException("Two-handed weapon must be equipped in RIGHT_HAND");
+            }
+        }
+    }
+
+    private boolean isBodyArmor(Item item) {
+        if (item.getMechanicalProperties() instanceof ArmorMechanics arm) {
+            return arm.armorCategory() != ArmorCategory.SHIELD;
+        }
+        String cat = item.getItemCategory() != null ? item.getItemCategory().toUpperCase() : "";
+        return cat.equals("ARMOR") && !isShield(item);
+    }
+
+    private boolean isShield(Item item) {
+        if (item.getMechanicalProperties() instanceof ArmorMechanics arm) {
+            return arm.armorCategory() == ArmorCategory.SHIELD;
+        }
+        String name = item.getName() != null ? item.getName().toLowerCase() : "";
+        String type = item.getItemType() != null ? item.getItemType().toLowerCase() : "";
+        return name.contains("escudo") || name.contains("shield") || type.contains("escudo");
+    }
+
+    private boolean isTwoHandedWeapon(Item item) {
+        if (item.getMechanicalProperties() instanceof WeaponMechanics wep) {
+            return wep.properties().contains(WeaponProperty.TWO_HANDED);
+        }
+        return false;
+    }
+
+    private boolean isRing(Item item) {
+        String cat = item.getItemCategory() != null ? item.getItemCategory().toUpperCase() : "";
+        String name = item.getName() != null ? item.getName().toLowerCase() : "";
+        return cat.equals("RING") || name.contains("anel") || name.contains("ring");
     }
 }

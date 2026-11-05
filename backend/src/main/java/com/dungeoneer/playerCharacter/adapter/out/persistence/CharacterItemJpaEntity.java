@@ -1,8 +1,11 @@
 package com.dungeoneer.playerCharacter.adapter.out.persistence;
 
 import com.dungeoneer.playerCharacter.domain.model.CharacterItem;
+import com.dungeoneer.playerCharacter.domain.model.EquipmentSlot;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
@@ -35,6 +38,10 @@ public class CharacterItemJpaEntity {
     @Column(name = "is_equipped", nullable = false)
     private boolean isEquipped = false;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "equipped_slot", length = 30)
+    private EquipmentSlot equippedSlot;
+
     @Column(name = "is_attuned", nullable = false)
     private boolean isAttuned = false;
 
@@ -55,6 +62,7 @@ public class CharacterItemJpaEntity {
             UUID itemId,
             int quantity,
             boolean isEquipped,
+            EquipmentSlot equippedSlot,
             boolean isAttuned
     ) {
         this.id = id != null ? id : UUID.randomUUID();
@@ -62,7 +70,19 @@ public class CharacterItemJpaEntity {
         this.itemId = itemId;
         this.quantity = quantity;
         this.isEquipped = isEquipped;
+        this.equippedSlot = isEquipped ? equippedSlot : null;
         this.isAttuned = isAttuned;
+    }
+
+    public CharacterItemJpaEntity(
+            UUID id,
+            PlayerCharacterJpaEntity character,
+            UUID itemId,
+            int quantity,
+            boolean isEquipped,
+            boolean isAttuned
+    ) {
+        this(id, character, itemId, quantity, isEquipped, null, isAttuned);
     }
 
     public static CharacterItemJpaEntity fromDomain(CharacterItem item, PlayerCharacterJpaEntity character) {
@@ -72,6 +92,7 @@ public class CharacterItemJpaEntity {
                 item.getItemId(),
                 item.getQuantity(),
                 item.isEquipped(),
+                item.getEquippedSlot(),
                 item.isAttuned()
         );
     }
@@ -83,7 +104,8 @@ public class CharacterItemJpaEntity {
                 this.itemId,
                 this.quantity,
                 this.isEquipped,
-                this.isAttuned
+                this.isAttuned,
+                this.equippedSlot
         );
     }
 
@@ -117,6 +139,17 @@ public class CharacterItemJpaEntity {
 
     public void setEquipped(boolean equipped) {
         isEquipped = equipped;
+        if (!equipped) {
+            this.equippedSlot = null;
+        }
+    }
+
+    public EquipmentSlot getEquippedSlot() {
+        return equippedSlot;
+    }
+
+    public void setEquippedSlot(EquipmentSlot equippedSlot) {
+        this.equippedSlot = equippedSlot;
     }
 
     public boolean isAttuned() {
