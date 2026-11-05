@@ -18,6 +18,7 @@ import com.dungeoneer.playerCharacter.application.dto.SpellDto;
 import com.dungeoneer.playerCharacter.application.dto.SubclassDto;
 import com.dungeoneer.playerCharacter.application.port.out.ReferenceDataRepository;
 import com.dungeoneer.playerCharacter.domain.exception.CharacterValidationException;
+import com.dungeoneer.playerCharacter.domain.exception.UnauthorizedActionException;
 import com.dungeoneer.playerCharacter.domain.model.Archetype;
 import com.dungeoneer.playerCharacter.domain.model.Feat;
 import com.dungeoneer.playerCharacter.domain.model.HitDiceEnum;
@@ -553,5 +554,85 @@ class HomebrewServiceTest {
         assertThatThrownBy(() -> homebrewService.createFeat(ownerId, request))
                 .isInstanceOf(CharacterValidationException.class)
                 .hasMessageContaining("recuperadas no descanso curto deve ser maior que zero");
+    }
+
+    @Test
+    @DisplayName("SEC-HIGH-01: updateSpell should reject update when user is not the owner (IDOR)")
+    void shouldRejectUpdatingSpellWhenUserIsNotOwner() {
+        UUID spellId = UUID.randomUUID();
+        UUID realOwner = UUID.randomUUID();
+        UUID attackerId = UUID.randomUUID();
+
+        Spell existing = new Spell(
+                spellId, Ruleset.HOMEBREW, "magia-antiga", "Old Spell", "Magia Antiga",
+                1, "Evocação", "1 ação", "9m", "V", "Instantânea", "Desc", "HOMEBREW", realOwner, null
+        );
+        when(repository.findSpellById(spellId)).thenReturn(Optional.of(existing));
+
+        CreateHomebrewSpellRequest updateRequest = new CreateHomebrewSpellRequest(
+                "Magia Hackeada", "Hacked Spell", 1, "Evocação", "1 ação", "9m", "V", "Instantânea", "Nova Desc", null
+        );
+
+        assertThatThrownBy(() -> homebrewService.updateSpell(spellId, attackerId, updateRequest))
+                .isInstanceOf(UnauthorizedActionException.class)
+                .hasMessageContaining("You are not authorized to modify this homebrew spell");
+    }
+
+    @Test
+    @DisplayName("SEC-HIGH-01: updateFeat should reject update when user is not the owner (IDOR)")
+    void shouldRejectUpdatingFeatWhenUserIsNotOwner() {
+        UUID featId = UUID.randomUUID();
+        UUID realOwner = UUID.randomUUID();
+        UUID attackerId = UUID.randomUUID();
+
+        Feat existing = new Feat(
+                featId, Ruleset.HOMEBREW, "talento-antigo", "Old Feat", "Talento Antigo",
+                null, "Desc", "HOMEBREW", realOwner, com.dungeoneer.playerCharacter.domain.model.FeatType.GENERAL, MechanicalEffects.empty()
+        );
+        when(repository.findFeatById(featId)).thenReturn(Optional.of(existing));
+
+        CreateHomebrewFeatRequest updateRequest = new CreateHomebrewFeatRequest(
+                "Talento Hackeado", "Hacked Feat", null, "Desc", com.dungeoneer.playerCharacter.domain.model.FeatType.GENERAL, null
+        );
+
+        assertThatThrownBy(() -> homebrewService.updateFeat(featId, attackerId, updateRequest))
+                .isInstanceOf(UnauthorizedActionException.class)
+                .hasMessageContaining("You are not authorized to modify this homebrew feat");
+    }
+
+    @Test
+    @DisplayName("SEC-HIGH-01: updateItem should reject update when user is not the owner (IDOR)")
+    void shouldRejectUpdatingItemWhenUserIsNotOwner() {
+        UUID itemId = UUID.randomUUID();
+        UUID realOwner = UUID.randomUUID();
+        UUID attackerId = UUID.randomUUID();
+
+        Item existing = new Item(
+                itemId, Ruleset.HOMEBREW, "item-antigo", "Old Item", "Item Antigo",
+                "WEAPON", "Adaga", "COMMON", false, "10 po", "1 kg", "Desc", "HOMEBREW", realOwner, null
+        );
+        when(repository.findItemById(itemId)).thenReturn(Optional.of(existing));
+
+        CreateHomebrewItemRequest updateRequest = new CreateHomebrewItemRequest(
+                "Item Hackeado", "Hacked Item", "WEAPON", "Adaga", "COMMON", false, "10 po", "1 kg", "Desc", null
+        );
+
+        assertThatThrownBy(() -> homebrewService.updateItem(itemId, attackerId, updateRequest))
+                .isInstanceOf(UnauthorizedActionException.class)
+                .hasMessageContaining("You are not authorized to modify this homebrew item");
+    }
+
+    @Test
+    @DisplayName("SEC-HIGH-01: updateSpell should reject update when userId is null")
+    void shouldRejectUpdatingSpellWhenUserIdIsNull() {
+        UUID spellId = UUID.randomUUID();
+
+        CreateHomebrewSpellRequest updateRequest = new CreateHomebrewSpellRequest(
+                "Magia Sem Auth", "No Auth Spell", 1, "Evocação", "1 ação", "9m", "V", "Instantânea", "Desc", null
+        );
+
+        assertThatThrownBy(() -> homebrewService.updateSpell(spellId, null, updateRequest))
+                .isInstanceOf(UnauthorizedActionException.class)
+                .hasMessageContaining("User authentication required to modify homebrew spell");
     }
 }

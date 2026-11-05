@@ -15,6 +15,7 @@ import com.dungeoneer.playerCharacter.application.dto.SubclassDto;
 import com.dungeoneer.playerCharacter.application.port.in.CreateHomebrewUseCase;
 import com.dungeoneer.playerCharacter.application.port.out.ReferenceDataRepository;
 import com.dungeoneer.playerCharacter.domain.exception.CharacterValidationException;
+import com.dungeoneer.playerCharacter.domain.exception.UnauthorizedActionException;
 import com.dungeoneer.playerCharacter.domain.model.Archetype;
 import com.dungeoneer.playerCharacter.domain.model.ChargeRecoveryType;
 import com.dungeoneer.playerCharacter.domain.model.ChargeType;
@@ -404,6 +405,9 @@ public class HomebrewService implements CreateHomebrewUseCase {
 
     @Override
     public SpellDto updateSpell(UUID spellId, UUID ownerId, CreateHomebrewSpellRequest request) {
+        if (ownerId == null) {
+            throw new UnauthorizedActionException("User authentication required to modify homebrew spell");
+        }
         if (spellId == null) {
             throw new CharacterValidationException("Spell id is required for update");
         }
@@ -417,6 +421,7 @@ public class HomebrewService implements CreateHomebrewUseCase {
         if (existing.getRuleset() != Ruleset.HOMEBREW) {
             throw new CharacterValidationException("Official SRD spells cannot be modified");
         }
+        verifyOwnership(ownerId, existing.getOwnerId(), "spell");
 
         String nameEn = (request.nameEn() != null && !request.nameEn().isBlank()) ? request.nameEn() : existing.getNameEn();
 
@@ -444,6 +449,9 @@ public class HomebrewService implements CreateHomebrewUseCase {
 
     @Override
     public FeatDto updateFeat(UUID featId, UUID ownerId, CreateHomebrewFeatRequest request) {
+        if (ownerId == null) {
+            throw new UnauthorizedActionException("User authentication required to modify homebrew feat");
+        }
         if (featId == null) {
             throw new CharacterValidationException("Feat id is required for update");
         }
@@ -457,6 +465,7 @@ public class HomebrewService implements CreateHomebrewUseCase {
         if (existing.getRuleset() != Ruleset.HOMEBREW) {
             throw new CharacterValidationException("Official SRD feats cannot be modified");
         }
+        verifyOwnership(ownerId, existing.getOwnerId(), "feat");
 
         String nameEn = (request.nameEn() != null && !request.nameEn().isBlank()) ? request.nameEn() : existing.getNameEn();
 
@@ -480,6 +489,9 @@ public class HomebrewService implements CreateHomebrewUseCase {
 
     @Override
     public ItemDto updateItem(UUID itemId, UUID ownerId, CreateHomebrewItemRequest request) {
+        if (ownerId == null) {
+            throw new UnauthorizedActionException("User authentication required to modify homebrew item");
+        }
         if (itemId == null) {
             throw new CharacterValidationException("Item id is required for update");
         }
@@ -493,6 +505,7 @@ public class HomebrewService implements CreateHomebrewUseCase {
         if (existing.getRuleset() != Ruleset.HOMEBREW) {
             throw new CharacterValidationException("Official SRD items cannot be modified");
         }
+        verifyOwnership(ownerId, existing.getOwnerId(), "item");
 
         String nameEn = (request.nameEn() != null && !request.nameEn().isBlank()) ? request.nameEn() : existing.getNameEn();
         String rarity = (request.rarity() != null && !request.rarity().isBlank()) ? request.rarity().toUpperCase() : existing.getRarity();
@@ -521,6 +534,9 @@ public class HomebrewService implements CreateHomebrewUseCase {
 
     @Override
     public ArchetypeDto updateArchetype(UUID archetypeId, UUID ownerId, CreateHomebrewArchetypeRequest request) {
+        if (ownerId == null) {
+            throw new UnauthorizedActionException("User authentication required to modify homebrew archetype");
+        }
         if (archetypeId == null) {
             throw new CharacterValidationException("Archetype id is required for update");
         }
@@ -534,6 +550,7 @@ public class HomebrewService implements CreateHomebrewUseCase {
         if (existing.getRuleset() != Ruleset.HOMEBREW) {
             throw new CharacterValidationException("Official SRD archetypes cannot be modified");
         }
+        verifyOwnership(ownerId, existing.getOwnerId(), "archetype");
 
         HitDiceEnum hitDice;
         try {
@@ -584,6 +601,9 @@ public class HomebrewService implements CreateHomebrewUseCase {
 
     @Override
     public LineageDto updateLineage(UUID lineageId, UUID ownerId, CreateHomebrewLineageRequest request) {
+        if (ownerId == null) {
+            throw new UnauthorizedActionException("User authentication required to modify homebrew lineage");
+        }
         if (lineageId == null) {
             throw new CharacterValidationException("Lineage id is required for update");
         }
@@ -597,6 +617,7 @@ public class HomebrewService implements CreateHomebrewUseCase {
         if (existing.getRuleset() != Ruleset.HOMEBREW) {
             throw new CharacterValidationException("Official SRD lineages cannot be modified");
         }
+        verifyOwnership(ownerId, existing.getOwnerId(), "lineage");
 
         Lineage updated = new Lineage(
                 existing.getId(),
@@ -617,6 +638,9 @@ public class HomebrewService implements CreateHomebrewUseCase {
 
     @Override
     public SubclassDto updateSubclass(UUID subclassId, UUID ownerId, CreateHomebrewSubclassRequest request) {
+        if (ownerId == null) {
+            throw new UnauthorizedActionException("User authentication required to modify homebrew subclass");
+        }
         if (subclassId == null) {
             throw new CharacterValidationException("Subclass id is required for update");
         }
@@ -630,6 +654,7 @@ public class HomebrewService implements CreateHomebrewUseCase {
         if (existing.getRuleset() != Ruleset.HOMEBREW) {
             throw new CharacterValidationException("Official SRD subclasses cannot be modified");
         }
+        verifyOwnership(ownerId, existing.getOwnerId(), "subclass");
 
         UUID archetypeId = request.archetypeId() != null ? request.archetypeId() : existing.getArchetypeId();
         String nameEn = (request.nameEn() != null && !request.nameEn().isBlank()) ? request.nameEn() : existing.getNameEn();
@@ -648,6 +673,15 @@ public class HomebrewService implements CreateHomebrewUseCase {
 
         Subclass saved = repository.saveSubclass(updated);
         return SubclassDto.fromDomain(saved);
+    }
+
+    private void verifyOwnership(UUID ownerId, UUID existingOwnerId, String resourceType) {
+        if (ownerId == null) {
+            throw new UnauthorizedActionException("User authentication required to modify homebrew " + resourceType);
+        }
+        if (existingOwnerId == null || !existingOwnerId.equals(ownerId)) {
+            throw new UnauthorizedActionException("You are not authorized to modify this homebrew " + resourceType);
+        }
     }
 
     private String toSlug(String input) {

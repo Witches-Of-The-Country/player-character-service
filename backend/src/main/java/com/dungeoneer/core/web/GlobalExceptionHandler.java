@@ -5,6 +5,9 @@ import com.dungeoneer.playerCharacter.domain.exception.CharacterValidationExcept
 import com.dungeoneer.playerCharacter.domain.exception.InvalidRollTokenException;
 import com.dungeoneer.playerCharacter.domain.exception.RestValidationException;
 import com.dungeoneer.playerCharacter.domain.exception.RollConflictException;
+import com.dungeoneer.playerCharacter.domain.exception.UnauthorizedActionException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -20,6 +23,8 @@ import java.net.URI;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(jakarta.validation.ConstraintViolationException.class)
     public ProblemDetail handleConstraintViolationException(jakarta.validation.ConstraintViolationException ex) {
@@ -130,11 +135,23 @@ public class GlobalExceptionHandler {
         return problemDetail;
     }
 
+    @ExceptionHandler(UnauthorizedActionException.class)
+    public ProblemDetail handleUnauthorizedActionException(UnauthorizedActionException ex, HttpServletRequest request) {
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
+        problemDetail.setTitle("Forbidden");
+        problemDetail.setType(URI.create("https://dungeoneer.app/errors/forbidden"));
+        if (request != null) {
+            problemDetail.setInstance(URI.create(request.getRequestURI()));
+        }
+        return problemDetail;
+    }
+
     @ExceptionHandler(Exception.class)
     public ProblemDetail handleGenericException(Exception ex, HttpServletRequest request) {
-        String detailMessage = ex.getMessage() != null && !ex.getMessage().isBlank()
-                ? "Erro interno no servidor: " + ex.getMessage()
-                : "Ocorreu um erro interno inesperado ao processar a requisição.";
+        log.error("Unhandled internal server error: ", ex);
+        String detailMessage = "Ocorreu um erro interno inesperado ao processar a requisição.";
+
+
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR, detailMessage);
         problemDetail.setTitle("Erro Interno do Servidor");
         problemDetail.setType(URI.create("https://dungeoneer.app/errors/internal-error"));

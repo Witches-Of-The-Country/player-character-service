@@ -23,7 +23,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.dungeoneer.core.config.SecurityConfig;
 
 @WebMvcTest(controllers = DummyController.class)
-@Import({SecurityConfig.class, GlobalExceptionHandler.class})
+@Import({SecurityConfig.class, com.dungeoneer.core.config.InternalGatewaySecretFilter.class, GlobalExceptionHandler.class})
 class GlobalExceptionHandlerTest {
 
     @Autowired
@@ -103,8 +103,20 @@ class GlobalExceptionHandlerTest {
                 .andExpect(jsonPath("$.type").value("https://dungeoneer.app/errors/internal-error"))
                 .andExpect(jsonPath("$.title").value("Erro Interno do Servidor"))
                 .andExpect(jsonPath("$.status").value(500))
-                .andExpect(jsonPath("$.detail").value("Erro interno no servidor: Unexpected internal failure"))
+                .andExpect(jsonPath("$.detail").value("Ocorreu um erro interno inesperado ao processar a requisição."))
                 .andExpect(jsonPath("$.instance").value("/dummy/generic-error"));
+    }
+
+    @Test
+    void whenUnauthorizedActionException_thenReturns403ProblemDetail() throws Exception {
+        mockMvc.perform(get("/dummy/unauthorized-action"))
+                .andExpect(status().isForbidden())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").value("https://dungeoneer.app/errors/forbidden"))
+                .andExpect(jsonPath("$.title").value("Forbidden"))
+                .andExpect(jsonPath("$.status").value(403))
+                .andExpect(jsonPath("$.detail").value("You are not authorized to modify this resource"))
+                .andExpect(jsonPath("$.instance").value("/dummy/unauthorized-action"));
     }
 }
 
@@ -135,6 +147,11 @@ class DummyController {
     @GetMapping("/dummy/generic-error")
     public void genericErrorEndpoint() {
         throw new RuntimeException("Unexpected internal failure");
+    }
+
+    @GetMapping("/dummy/unauthorized-action")
+    public void unauthorizedActionEndpoint() {
+        throw new com.dungeoneer.playerCharacter.domain.exception.UnauthorizedActionException("You are not authorized to modify this resource");
     }
 }
 

@@ -252,7 +252,7 @@ public class ReferenceDataController {
     @PutMapping("/spells/{id}")
     public ResponseEntity<SpellDto> updateSpell(
             @PathVariable UUID id,
-            @RequestHeader(value = "X-User-Id", required = false) UUID userId,
+            @RequestHeader(value = "X-User-Id", required = true) UUID userId,
             @Valid @RequestBody CreateHomebrewSpellRequest request
     ) {
         return ResponseEntity.ok(createHomebrewUseCase.updateSpell(id, userId, request));
@@ -261,7 +261,7 @@ public class ReferenceDataController {
     @PutMapping("/feats/{id}")
     public ResponseEntity<FeatDto> updateFeat(
             @PathVariable UUID id,
-            @RequestHeader(value = "X-User-Id", required = false) UUID userId,
+            @RequestHeader(value = "X-User-Id", required = true) UUID userId,
             @Valid @RequestBody CreateHomebrewFeatRequest request
     ) {
         return ResponseEntity.ok(createHomebrewUseCase.updateFeat(id, userId, request));
@@ -270,7 +270,7 @@ public class ReferenceDataController {
     @PutMapping("/items/{id}")
     public ResponseEntity<ItemDto> updateItem(
             @PathVariable UUID id,
-            @RequestHeader(value = "X-User-Id", required = false) UUID userId,
+            @RequestHeader(value = "X-User-Id", required = true) UUID userId,
             @Valid @RequestBody CreateHomebrewItemRequest request
     ) {
         return ResponseEntity.ok(createHomebrewUseCase.updateItem(id, userId, request));
@@ -279,7 +279,7 @@ public class ReferenceDataController {
     @PutMapping("/classes/{id}")
     public ResponseEntity<ArchetypeDto> updateArchetype(
             @PathVariable UUID id,
-            @RequestHeader(value = "X-User-Id", required = false) UUID userId,
+            @RequestHeader(value = "X-User-Id", required = true) UUID userId,
             @Valid @RequestBody CreateHomebrewArchetypeRequest request
     ) {
         return ResponseEntity.ok(createHomebrewUseCase.updateArchetype(id, userId, request));
@@ -288,7 +288,7 @@ public class ReferenceDataController {
     @PutMapping("/lineages/{id}")
     public ResponseEntity<LineageDto> updateLineage(
             @PathVariable UUID id,
-            @RequestHeader(value = "X-User-Id", required = false) UUID userId,
+            @RequestHeader(value = "X-User-Id", required = true) UUID userId,
             @Valid @RequestBody CreateHomebrewLineageRequest request
     ) {
         return ResponseEntity.ok(createHomebrewUseCase.updateLineage(id, userId, request));
@@ -297,7 +297,7 @@ public class ReferenceDataController {
     @PutMapping("/subclasses/{id}")
     public ResponseEntity<SubclassDto> updateSubclass(
             @PathVariable UUID id,
-            @RequestHeader(value = "X-User-Id", required = false) UUID userId,
+            @RequestHeader(value = "X-User-Id", required = true) UUID userId,
             @Valid @RequestBody CreateHomebrewSubclassRequest request
     ) {
         return ResponseEntity.ok(createHomebrewUseCase.updateSubclass(id, userId, request));

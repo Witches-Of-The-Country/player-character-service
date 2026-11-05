@@ -2,6 +2,10 @@ spring:
   application:
     name: backend
 
+internal:
+  gateway:
+    secret: ${INTERNAL_GATEWAY_SECRET:}
+
 springdoc:
   swagger-ui:
     enabled: true
