@@ -35,6 +35,85 @@ class CurrencyPouchTest {
     }
 
     @Test
+    @DisplayName("should preserve unaffected denominations without auto-consolidation on exact deduction")
+    void shouldPreserveUnaffectedDenominationsOnExactDeduction() {
+        // Acceptance Criterion 1: 100 CP, 20 SP, 10 EP, 10 GP, 2 PP buying 5 GP (500 CP)
+        CurrencyPouch pouch = new CurrencyPouch(100, 20, 10, 10, 2);
+        CurrencyPouch cost = new CurrencyPouch(0, 0, 0, 5, 0);
+
+        CurrencyPouch remaining = pouch.deductWithConversion(cost);
+
+        assertThat(remaining.cp()).isEqualTo(100);
+        assertThat(remaining.sp()).isEqualTo(20);
+        assertThat(remaining.ep()).isEqualTo(10);
+        assertThat(remaining.gp()).isEqualTo(5);
+        assertThat(remaining.pp()).isEqualTo(2);
+        assertThat(remaining.toTotalCopper()).isEqualTo(pouch.toTotalCopper() - 500L);
+    }
+
+    @Test
+    @DisplayName("should break single smallest higher coin and return change without consolidating untouched coins")
+    void shouldBreakSingleSmallestHigherCoinAndReturnChange() {
+        // Acceptance Criterion 2: 0 SP, 5 GP buying 5 SP (50 CP)
+        CurrencyPouch pouch = new CurrencyPouch(0, 0, 0, 5, 0);
+        CurrencyPouch cost = new CurrencyPouch(0, 5, 0, 0, 0);
+
+        CurrencyPouch remaining = pouch.deductWithConversion(cost);
+
+        assertThat(remaining.cp()).isEqualTo(0);
+        assertThat(remaining.sp()).isEqualTo(5);
+        assertThat(remaining.ep()).isEqualTo(0);
+        assertThat(remaining.gp()).isEqualTo(4);
+        assertThat(remaining.pp()).isEqualTo(0);
+    }
+
+    @Test
+    @DisplayName("should break higher coin preserving electrum when higher coin covers cost")
+    void shouldPreserveElectrumWhenBreakingHigherCoin() {
+        // Player has 10 EP (500 CP) and 1 GP (100 CP), buys item costing 60 CP (6 SP)
+        // 1 GP (100 CP) covers the 60 CP cost by itself; 10 EP must remain untouched
+        CurrencyPouch pouch = new CurrencyPouch(0, 0, 10, 1, 0);
+
+        CurrencyPouch remaining = pouch.deductWithConversion(60L);
+
+        assertThat(remaining.ep()).isEqualTo(10);
+        assertThat(remaining.gp()).isEqualTo(0);
+        assertThat(remaining.sp()).isEqualTo(4);
+        assertThat(remaining.cp()).isEqualTo(0);
+        assertThat(remaining.toTotalCopper()).isEqualTo(600L - 60L);
+    }
+
+    @Test
+    @DisplayName("should break platinum coin and return standard change in gold and silver")
+    void shouldBreakPlatinumCoinAndReturnStandardChange() {
+        // Player has 1 PP (1000 CP), buys item costing 50 CP (5 SP)
+        CurrencyPouch pouch = new CurrencyPouch(0, 0, 0, 0, 1);
+
+        CurrencyPouch remaining = pouch.deductWithConversion(50L);
+
+        assertThat(remaining.pp()).isEqualTo(0);
+        assertThat(remaining.gp()).isEqualTo(9);
+        assertThat(remaining.sp()).isEqualTo(5);
+        assertThat(remaining.cp()).isEqualTo(0);
+        assertThat(remaining.toTotalCopper()).isEqualTo(950L);
+    }
+
+    @Test
+    @DisplayName("should pay composite cost across multiple coins when no single coin suffices")
+    void shouldPayCompositeCostAcrossMultipleCoins() {
+        // Player has 2 GP (200 CP), buys item costing 150 CP (1.5 GP)
+        // 1 GP paid whole (100 CP), remaining 50 CP breaks the second 1 GP -> leaves 5 SP
+        CurrencyPouch pouch = new CurrencyPouch(0, 0, 0, 2, 0);
+
+        CurrencyPouch remaining = pouch.deductWithConversion(150L);
+
+        assertThat(remaining.gp()).isEqualTo(0);
+        assertThat(remaining.sp()).isEqualTo(5);
+        assertThat(remaining.cp()).isEqualTo(0);
+        assertThat(remaining.toTotalCopper()).isEqualTo(50L);
+    }
+
+    @Test
     @DisplayName("should throw exception when funds are insufficient")
     void shouldThrowWhenInsufficientFunds() {
         // 4 Silver Pieces (40 CP) vs 1 Gold Piece (100 CP)

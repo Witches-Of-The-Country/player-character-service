@@ -154,6 +154,33 @@ class InventoryServiceTest {
         verify(characterRepository).saveCharacterItem(any(CharacterItem.class));
     }
 
+@Test
+    @DisplayName("Should preserve untouched denominations including electrum when purchasing item")
+    void shouldPreserveUntouchedDenominationsWhenPurchasingItem() {
+        // Character has 100 CP, 20 SP, 10 EP, 100 GP, 2 PP
+        PlayerCharacter mixedPouchCharacter = character.withCurrencyPouch(new CurrencyPouch(100, 20, 10, 100, 2));
+        when(characterRepository.findByIdAndUserId(characterId, userId)).thenReturn(Optional.of(mixedPouchCharacter));
+        when(referenceDataRepository.findItemById(itemId)).thenReturn(Optional.of(potionItem)); // costs 50 gp
+        when(characterRepository.findItemsByCharacterId(characterId)).thenReturn(List.of());
+        when(sheetHydrator.hydrate(any(PlayerCharacter.class))).thenReturn(mock(CharacterSheetResult.class));
+
+        CharacterSheetResult result = inventoryService.addItem(
+                characterId,
+                userId,
+                new AddCharacterItemCommand(itemId, 1, true)
+        );
+
+        assertThat(result).isNotNull();
+        verify(characterRepository).save(argThat(c -> {
+            CurrencyPouch p = c.getCurrencyPouch();
+            return p.cp() == 100
+                    && p.sp() == 20
+                    && p.ep() == 10
+                    && p.gp() == 50
+                    && p.pp() == 2;
+        }));
+    }
+
     @Test
     @DisplayName("Should fail when purchasing item without sufficient funds")
     void shouldFailWhenPurchasingItemWithoutFunds() {
