@@ -101,7 +101,8 @@ public class RestService implements RestUseCase {
             characterToSave = characterToSave.withExhaustion(newExhaustion);
 
             // 4. Recover feat charges configured for long rest
-            recoverFeats(characterId, character, RestType.LONG, proficiencyBonus);
+            List<CharacterFeat> updatedFeats = recoverFeats(characterId, character, RestType.LONG, proficiencyBonus);
+            characterToSave = characterToSave.withFeats(updatedFeats);
 
             // 5. Restore spell slots: all restored (when modeled in entity)
 
@@ -153,7 +154,8 @@ public class RestService implements RestUseCase {
             characterToSave = characterToSave.withCurrentHp(newHp);
 
             // Recover feat charges configured for short rest
-            recoverFeats(characterId, character, RestType.SHORT, proficiencyBonus);
+            List<CharacterFeat> updatedFeats = recoverFeats(characterId, character, RestType.SHORT, proficiencyBonus);
+            characterToSave = characterToSave.withFeats(updatedFeats);
         }
 
         characterRepository.save(characterToSave);
@@ -205,8 +207,9 @@ public class RestService implements RestUseCase {
         return sheetHydrator.hydrate(fresh);
     }
 
-    private void recoverFeats(UUID characterId, PlayerCharacter character, RestType restType, int proficiencyBonus) {
+    private List<CharacterFeat> recoverFeats(UUID characterId, PlayerCharacter character, RestType restType, int proficiencyBonus) {
         List<CharacterFeat> feats = characterRepository.findFeatsByCharacterId(characterId);
+        List<CharacterFeat> updatedFeats = new ArrayList<>();
         for (CharacterFeat feat : feats) {
             Feat featDef = referenceDataRepository != null
                     ? referenceDataRepository.findFeatById(feat.getFeatId()).orElse(null)
@@ -239,8 +242,12 @@ public class RestService implements RestUseCase {
                         character.getRuleset()
                 );
                 characterRepository.saveCharacterFeat(recovered);
+                updatedFeats.add(recovered);
+            } else {
+                updatedFeats.add(workingFeat);
             }
         }
+        return updatedFeats;
     }
 
     private PlayerCharacter getCharacter(UUID characterId, UUID userId) {

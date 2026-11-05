@@ -12,6 +12,7 @@ import com.dungeoneer.playerCharacter.domain.model.ItemMechanics;
 import com.dungeoneer.playerCharacter.domain.model.Ruleset;
 import com.dungeoneer.playerCharacter.domain.model.WeaponMechanics;
 import com.dungeoneer.playerCharacter.domain.model.WeaponProperty;
+import com.dungeoneer.playerCharacter.domain.model.WondrousMechanics;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -29,7 +30,9 @@ import org.hibernate.type.SqlTypes;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Entity
@@ -185,6 +188,8 @@ public class ItemJpaEntity {
                 node.put("type", "ARMOR");
             } else if (mechanics instanceof ConsumableMechanics) {
                 node.put("type", "CONSUMABLE");
+            } else if (mechanics instanceof WondrousMechanics) {
+                node.put("type", "WONDROUS");
             }
             return OBJECT_MAPPER.writeValueAsString(node);
         } catch (Exception e) {
@@ -207,6 +212,8 @@ public class ItemJpaEntity {
                 type = "ARMOR";
             } else if (node.has("effectType")) {
                 type = "CONSUMABLE";
+            } else if (node.has("abilityOverrides") || node.has("abilityBonuses") || node.has("acBonus") || node.has("savingThrowBonus")) {
+                type = "WONDROUS";
             }
 
             if (type == null) {
@@ -274,6 +281,22 @@ public class ItemJpaEntity {
                         : null;
                 String desc = node.has("effectDescription") ? node.get("effectDescription").asText() : "";
                 return new ConsumableMechanics(effectType, formula, desc);
+            } else if ("WONDROUS".equalsIgnoreCase(type)) {
+                Map<String, Integer> abilityBonuses = new LinkedHashMap<>();
+                if (node.has("abilityBonuses") && node.get("abilityBonuses").isObject()) {
+                    node.get("abilityBonuses").fields().forEachRemaining(entry ->
+                            abilityBonuses.put(entry.getKey().toUpperCase(), entry.getValue().asInt(0))
+                    );
+                }
+                Map<String, Integer> abilityOverrides = new LinkedHashMap<>();
+                if (node.has("abilityOverrides") && node.get("abilityOverrides").isObject()) {
+                    node.get("abilityOverrides").fields().forEachRemaining(entry ->
+                            abilityOverrides.put(entry.getKey().toUpperCase(), entry.getValue().asInt(10))
+                    );
+                }
+                int acBonus = node.has("acBonus") ? node.get("acBonus").asInt(0) : 0;
+                int savingThrowBonus = node.has("savingThrowBonus") ? node.get("savingThrowBonus").asInt(0) : 0;
+                return new WondrousMechanics(abilityBonuses, abilityOverrides, acBonus, savingThrowBonus);
             }
         } catch (Exception e) {
             // fallback

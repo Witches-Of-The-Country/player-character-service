@@ -29,6 +29,7 @@ import com.dungeoneer.playerCharacter.domain.model.Srd2014RulesEngine;
 import com.dungeoneer.playerCharacter.domain.model.Srd2024RulesEngine;
 import com.dungeoneer.playerCharacter.domain.model.WeaponMechanics;
 import com.dungeoneer.playerCharacter.domain.model.WeaponProperty;
+import com.dungeoneer.playerCharacter.domain.model.WondrousMechanics;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -149,14 +150,28 @@ public class CharacterSheetHydrator {
             Map<UUID, Feat> featMap,
             List<CharacterClassSummaryDto> classes
     ) {
-        Map<String, Integer> savingThrows = calculateSavingThrows(character, archetype);
-        Map<String, Integer> skills = calculateSkills(character, background);
-
         List<CharacterItemDto> inventory = new ArrayList<>();
         List<CharacterActionDto> actions = new ArrayList<>();
         ArmorMechanics equippedArmor = null;
         ArmorMechanics equippedShield = null;
         int passiveAcBonus = 0;
+        int passiveSaveBonus = 0;
+
+        int strBonus = 0;
+        int dexBonus = 0;
+        int conBonus = 0;
+        int intBonus = 0;
+        int wisBonus = 0;
+        int chaBonus = 0;
+
+        int strOverride = 0;
+        int dexOverride = 0;
+        int conOverride = 0;
+        int intOverride = 0;
+        int wisOverride = 0;
+        int chaOverride = 0;
+
+        List<WeaponItemEntry> equippedWeapons = new ArrayList<>();
 
         for (CharacterItem charItem : character.getItems()) {
             Item item = itemMap.get(charItem.getItemId());
@@ -170,10 +185,63 @@ public class CharacterSheetHydrator {
                         equippedArmor = arm;
                     }
                 } else if (item.getMechanicalProperties() instanceof WeaponMechanics wep) {
-                    actions.add(buildWeaponAction(character, item, wep));
+                    equippedWeapons.add(new WeaponItemEntry(item, wep));
+                } else if (item.getMechanicalProperties() instanceof WondrousMechanics wond) {
+                    boolean isActive = !item.isAttunement() || charItem.isAttuned();
+                    if (isActive) {
+                        passiveAcBonus += wond.acBonus();
+                        passiveSaveBonus += wond.savingThrowBonus();
+                        if (wond.abilityBonuses() != null) {
+                            for (Map.Entry<String, Integer> entry : wond.abilityBonuses().entrySet()) {
+                                String ab = Srd2014RulesEngine.normalizeAbility(entry.getKey());
+                                int val = entry.getValue() != null ? entry.getValue() : 0;
+                                switch (ab) {
+                                    case "STRENGTH" -> strBonus += val;
+                                    case "DEXTERITY" -> dexBonus += val;
+                                    case "CONSTITUTION" -> conBonus += val;
+                                    case "INTELLIGENCE" -> intBonus += val;
+                                    case "WISDOM" -> wisBonus += val;
+                                    case "CHARISMA" -> chaBonus += val;
+                                }
+                            }
+                        }
+                        if (wond.abilityOverrides() != null) {
+                            for (Map.Entry<String, Integer> entry : wond.abilityOverrides().entrySet()) {
+                                String ab = Srd2014RulesEngine.normalizeAbility(entry.getKey());
+                                int val = entry.getValue() != null ? entry.getValue() : 0;
+                                switch (ab) {
+                                    case "STRENGTH" -> strOverride = Math.max(strOverride, val);
+                                    case "DEXTERITY" -> dexOverride = Math.max(dexOverride, val);
+                                    case "CONSTITUTION" -> conOverride = Math.max(conOverride, val);
+                                    case "INTELLIGENCE" -> intOverride = Math.max(intOverride, val);
+                                    case "WISDOM" -> wisOverride = Math.max(wisOverride, val);
+                                    case "CHARISMA" -> chaOverride = Math.max(chaOverride, val);
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
+
+        AbilityScores baseScores = character.getAbilityScores();
+        AbilityScores effectiveScores = baseScores;
+        if (baseScores != null) {
+            int effStr = Math.min(30, Math.max(1, Math.max(baseScores.getStrength() + strBonus, strOverride)));
+            int effDex = Math.min(30, Math.max(1, Math.max(baseScores.getDexterity() + dexBonus, dexOverride)));
+            int effCon = Math.min(30, Math.max(1, Math.max(baseScores.getConstitution() + conBonus, conOverride)));
+            int effInt = Math.min(30, Math.max(1, Math.max(baseScores.getIntelligence() + intBonus, intOverride)));
+            int effWis = Math.min(30, Math.max(1, Math.max(baseScores.getWisdom() + wisBonus, wisOverride)));
+            int effCha = Math.min(30, Math.max(1, Math.max(baseScores.getCharisma() + chaBonus, chaOverride)));
+            effectiveScores = new AbilityScores(effStr, effDex, effCon, effInt, effWis, effCha);
+        }
+
+        for (WeaponItemEntry wepEntry : equippedWeapons) {
+            actions.add(buildWeaponAction(character, effectiveScores, wepEntry.item(), wepEntry.mechanics()));
+        }
+
+        Map<String, Integer> savingThrows = calculateSavingThrows(character, effectiveScores, archetype, passiveSaveBonus);
+        Map<String, Integer> skills = calculateSkills(character, effectiveScores, background);
 
         List<CharacterFeatDto> feats = new ArrayList<>();
         boolean hasBarbUnarmored = false;
@@ -189,7 +257,7 @@ public class CharacterSheetHydrator {
                 if (feat.getMechanicalEffects() != null) {
                     Integer computedMax = FeatChargeCalculator.calculateMaxCharges(
                             feat.getMechanicalEffects(),
-                            character.getAbilityScores(),
+                            effectiveScores,
                             character.getProficiencyBonus(),
                             character.getLevel()
                     );
@@ -228,7 +296,7 @@ public class CharacterSheetHydrator {
                 String normalized = feat.getName().toUpperCase();
 
                 if (normalized.contains("ATAQUE DESCUIDADO") || normalized.contains("RECKLESS ATTACK")) {
-                    int strMod = character.getAbilityScores() != null ? character.getAbilityScores().getStrengthModifier() : 0;
+                    int strMod = effectiveScores != null ? effectiveScores.getStrengthModifier() : 0;
                     int attackBonus = strMod + character.getProficiencyBonus();
                     actions.add(new CharacterActionDto(
                             charFeat.getId(),
@@ -299,14 +367,14 @@ public class CharacterSheetHydrator {
 
         RulesEngine engine = character.getRuleset() == Ruleset.SRD_2024 ? new Srd2024RulesEngine() : new Srd2014RulesEngine();
         int calculatedAc = engine.calculateArmorClass(
-                character.getAbilityScores().getDexterityModifier(),
+                effectiveScores.getDexterityModifier(),
                 equippedArmor,
                 equippedShield,
                 passiveAcBonus,
                 hasBarbUnarmored,
-                character.getAbilityScores().getConstitutionModifier(),
+                effectiveScores.getConstitutionModifier(),
                 hasMonkUnarmored,
-                character.getAbilityScores().getWisdomModifier()
+                effectiveScores.getWisdomModifier()
         );
 
         return new CharacterSheetResult(
@@ -326,7 +394,7 @@ public class CharacterSheetHydrator {
                 character.getHpCalculationMethod(),
                 character.isHasPendingLevelChoices(),
                 character.getNotes(),
-                character.getAbilityScores(),
+                effectiveScores,
                 lineage,
                 background,
                 archetype,
@@ -347,11 +415,14 @@ public class CharacterSheetHydrator {
         );
     }
 
-    private static CharacterActionDto buildWeaponAction(PlayerCharacter character, Item item, WeaponMechanics wep) {
+    private record WeaponItemEntry(Item item, WeaponMechanics mechanics) {
+    }
+
+    private static CharacterActionDto buildWeaponAction(PlayerCharacter character, AbilityScores effectiveScores, Item item, WeaponMechanics wep) {
         boolean isAmmunition = wep.properties() != null && wep.properties().contains(WeaponProperty.AMMUNITION);
         boolean isFinesse = wep.properties() != null && wep.properties().contains(WeaponProperty.FINESSE);
-        int strMod = character.getAbilityScores() != null ? character.getAbilityScores().getStrengthModifier() : 0;
-        int dexMod = character.getAbilityScores() != null ? character.getAbilityScores().getDexterityModifier() : 0;
+        int strMod = effectiveScores != null ? effectiveScores.getStrengthModifier() : 0;
+        int dexMod = effectiveScores != null ? effectiveScores.getDexterityModifier() : 0;
         int attackMod = isAmmunition ? dexMod : (isFinesse ? Math.max(strMod, dexMod) : strMod);
         int attackBonus = attackMod + character.getProficiencyBonus() + wep.magicBonus();
         int damageBonus = attackMod + wep.magicBonus();
@@ -393,9 +464,8 @@ public class CharacterSheetHydrator {
         );
     }
 
-    private static Map<String, Integer> calculateSavingThrows(PlayerCharacter character, Archetype archetype) {
+    private static Map<String, Integer> calculateSavingThrows(PlayerCharacter character, AbilityScores scores, Archetype archetype, int passiveSaveBonus) {
         Map<String, Integer> result = new LinkedHashMap<>();
-        AbilityScores scores = character.getAbilityScores();
         int prof = character.getProficiencyBonus();
 
         Set<String> proficientAbilities = new HashSet<>();
@@ -407,19 +477,18 @@ public class CharacterSheetHydrator {
             );
         }
 
-        result.put("STRENGTH", scores.getStrengthModifier() + (proficientAbilities.contains("STRENGTH") ? prof : 0));
-        result.put("DEXTERITY", scores.getDexterityModifier() + (proficientAbilities.contains("DEXTERITY") ? prof : 0));
-        result.put("CONSTITUTION", scores.getConstitutionModifier() + (proficientAbilities.contains("CONSTITUTION") ? prof : 0));
-        result.put("INTELLIGENCE", scores.getIntelligenceModifier() + (proficientAbilities.contains("INTELLIGENCE") ? prof : 0));
-        result.put("WISDOM", scores.getWisdomModifier() + (proficientAbilities.contains("WISDOM") ? prof : 0));
-        result.put("CHARISMA", scores.getCharismaModifier() + (proficientAbilities.contains("CHARISMA") ? prof : 0));
+        result.put("STRENGTH", scores.getStrengthModifier() + (proficientAbilities.contains("STRENGTH") ? prof : 0) + passiveSaveBonus);
+        result.put("DEXTERITY", scores.getDexterityModifier() + (proficientAbilities.contains("DEXTERITY") ? prof : 0) + passiveSaveBonus);
+        result.put("CONSTITUTION", scores.getConstitutionModifier() + (proficientAbilities.contains("CONSTITUTION") ? prof : 0) + passiveSaveBonus);
+        result.put("INTELLIGENCE", scores.getIntelligenceModifier() + (proficientAbilities.contains("INTELLIGENCE") ? prof : 0) + passiveSaveBonus);
+        result.put("WISDOM", scores.getWisdomModifier() + (proficientAbilities.contains("WISDOM") ? prof : 0) + passiveSaveBonus);
+        result.put("CHARISMA", scores.getCharismaModifier() + (proficientAbilities.contains("CHARISMA") ? prof : 0) + passiveSaveBonus);
 
         return result;
     }
 
-    private static Map<String, Integer> calculateSkills(PlayerCharacter character, Background background) {
+    private static Map<String, Integer> calculateSkills(PlayerCharacter character, AbilityScores scores, Background background) {
         Map<String, Integer> result = new LinkedHashMap<>();
-        AbilityScores scores = character.getAbilityScores();
         int prof = character.getProficiencyBonus();
 
         Set<String> characterSkills = new HashSet<>();

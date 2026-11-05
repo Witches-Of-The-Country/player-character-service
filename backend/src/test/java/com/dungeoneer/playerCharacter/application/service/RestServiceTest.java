@@ -257,6 +257,8 @@ class RestServiceTest {
         ArgumentCaptor<CharacterFeat> featCaptor = ArgumentCaptor.forClass(CharacterFeat.class);
         verify(characterRepository).saveCharacterFeat(featCaptor.capture());
         assertEquals(3, featCaptor.getValue().getCurrentCharges());
+        assertEquals(1, saved.getFeats().size());
+        assertEquals(3, saved.getFeats().get(0).getCurrentCharges());
     }
 
     @Test
@@ -344,5 +346,10 @@ class RestServiceTest {
         ArgumentCaptor<CharacterFeat> featCaptor = ArgumentCaptor.forClass(CharacterFeat.class);
         verify(characterRepository).saveCharacterFeat(featCaptor.capture());
         assertEquals(2, featCaptor.getValue().getCurrentCharges());
+
+        ArgumentCaptor<PlayerCharacter> charCaptor = ArgumentCaptor.forClass(PlayerCharacter.class);
+        verify(characterRepository).save(charCaptor.capture());
+        assertEquals(1, charCaptor.getValue().getFeats().size());
+        assertEquals(2, charCaptor.getValue().getFeats().get(0).getCurrentCharges());
     }
 }

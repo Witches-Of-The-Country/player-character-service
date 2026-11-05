@@ -134,4 +134,30 @@ class FeatJpaEntityTest {
         assertEquals(1, deserialized.prerequisiteRules().size());
         assertEquals("LEVEL", deserialized.prerequisiteRules().get(0).type());
     }
+
+    @Test
+    @DisplayName("TE-02: Should normalize legacy maxUses and rechargeOn JSON keys")
+    void shouldNormalizeLegacyMaxUsesAndRechargeOn() {
+        String legacyJson = """
+        {
+            "grantsAction": true,
+            "actionType": "ACTION",
+            "actionName": "Canalizar Divindade",
+            "maxUses": 2,
+            "rechargeOn": "SHORT_REST"
+        }
+        """;
+
+        MechanicalEffects effects = FeatJpaEntity.deserializeEffects(legacyJson);
+
+        assertNotNull(effects);
+        assertEquals("Canalizar Divindade", effects.actionName());
+        assertEquals("ACTION", effects.actionType());
+        assertEquals(2, effects.usesPerRest());
+        assertEquals(2, effects.fixedMaxCharges());
+        assertEquals(com.dungeoneer.playerCharacter.domain.model.ChargeType.FIXED, effects.maxChargesType());
+        assertEquals(RestType.SHORT, effects.restType());
+        assertEquals(com.dungeoneer.playerCharacter.domain.model.ChargeRecoveryType.ALL, effects.shortRestRecoveryType());
+        assertEquals(com.dungeoneer.playerCharacter.domain.model.ChargeRecoveryType.ALL, effects.longRestRecoveryType());
+    }
 }

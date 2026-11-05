@@ -94,4 +94,24 @@ class ItemMechanicsTest {
                 new ConsumableMechanics(null, "1d4", "")
         );
     }
+
+    @Test
+    @DisplayName("Should validate wondrous mechanics with overrides, bonuses, AC and save bonuses")
+    void shouldValidateWondrousMechanics() {
+        WondrousMechanics gauntlets = new WondrousMechanics(
+                java.util.Map.of("CON", 2),
+                java.util.Map.of("STR", 19),
+                1,
+                1
+        );
+
+        assertEquals(2, gauntlets.abilityBonuses().get("CON"));
+        assertEquals(19, gauntlets.abilityOverrides().get("STR"));
+        assertEquals(1, gauntlets.acBonus());
+        assertEquals(1, gauntlets.savingThrowBonus());
+
+        assertThrows(CharacterValidationException.class, () ->
+                new WondrousMechanics(java.util.Map.of(), java.util.Map.of("STR", 35), 0, 0)
+        );
+    }
 }

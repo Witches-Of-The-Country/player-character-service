@@ -1,5 +1,7 @@
 package com.dungeoneer.playerCharacter.adapter.out.persistence;
 
+import com.dungeoneer.playerCharacter.domain.model.ChargeRecoveryType;
+import com.dungeoneer.playerCharacter.domain.model.ChargeType;
 import com.dungeoneer.playerCharacter.domain.model.Feat;
 import com.dungeoneer.playerCharacter.domain.model.FeatType;
 import com.dungeoneer.playerCharacter.domain.model.MechanicalEffects;
@@ -7,8 +9,10 @@ import com.dungeoneer.playerCharacter.domain.model.RestType;
 import com.dungeoneer.playerCharacter.domain.model.Ruleset;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -161,6 +165,47 @@ public class FeatJpaEntity {
             return MechanicalEffects.empty();
         }
         try {
+            JsonNode root = OBJECT_MAPPER.readTree(json);
+            if (root != null && root.isObject()) {
+                ObjectNode obj = (ObjectNode) root;
+                if (obj.has("maxUses") && !obj.get("maxUses").isNull()) {
+                    int maxUses = obj.get("maxUses").asInt(0);
+                    if (!obj.has("usesPerRest") || obj.get("usesPerRest").isNull()) {
+                        obj.put("usesPerRest", maxUses);
+                    }
+                    if (!obj.has("fixedMaxCharges") || obj.get("fixedMaxCharges").isNull()) {
+                        obj.put("fixedMaxCharges", maxUses);
+                    }
+                    if (!obj.has("maxChargesType") || obj.get("maxChargesType").isNull()) {
+                        obj.put("maxChargesType", ChargeType.FIXED.name());
+                    }
+                }
+                if (obj.has("rechargeOn") && !obj.get("rechargeOn").isNull()) {
+                    String rechargeOn = obj.get("rechargeOn").asText("").trim().toUpperCase();
+                    if (rechargeOn.startsWith("SHORT")) {
+                        if (!obj.has("restType") || obj.get("restType").isNull()) {
+                            obj.put("restType", RestType.SHORT.name());
+                        }
+                        if (!obj.has("shortRestRecoveryType") || obj.get("shortRestRecoveryType").isNull()) {
+                            obj.put("shortRestRecoveryType", ChargeRecoveryType.ALL.name());
+                        }
+                        if (!obj.has("longRestRecoveryType") || obj.get("longRestRecoveryType").isNull()) {
+                            obj.put("longRestRecoveryType", ChargeRecoveryType.ALL.name());
+                        }
+                    } else if (rechargeOn.startsWith("LONG")) {
+                        if (!obj.has("restType") || obj.get("restType").isNull()) {
+                            obj.put("restType", RestType.LONG.name());
+                        }
+                        if (!obj.has("shortRestRecoveryType") || obj.get("shortRestRecoveryType").isNull()) {
+                            obj.put("shortRestRecoveryType", ChargeRecoveryType.NONE.name());
+                        }
+                        if (!obj.has("longRestRecoveryType") || obj.get("longRestRecoveryType").isNull()) {
+                            obj.put("longRestRecoveryType", ChargeRecoveryType.ALL.name());
+                        }
+                    }
+                }
+                return OBJECT_MAPPER.treeToValue(obj, MechanicalEffects.class);
+            }
             return OBJECT_MAPPER.readValue(json, MechanicalEffects.class);
         } catch (Exception e) {
             return MechanicalEffects.empty();
