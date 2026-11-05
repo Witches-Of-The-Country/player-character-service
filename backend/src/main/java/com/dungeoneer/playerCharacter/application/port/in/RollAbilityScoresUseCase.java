@@ -6,4 +6,5 @@ import java.util.UUID;
 
 public interface RollAbilityScoresUseCase {
     RollAbilityScoresResult rollAbilityScores(UUID userId);
+    RollAbilityScoresResult rollAbilityScores(UUID userId, boolean forceNew);
 }

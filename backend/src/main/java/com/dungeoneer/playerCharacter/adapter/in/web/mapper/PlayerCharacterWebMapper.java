@@ -22,6 +22,7 @@ import com.dungeoneer.playerCharacter.application.dto.RollHitPointsResult;
 import com.dungeoneer.playerCharacter.application.dto.UpdateCharacterCommand;
 import com.dungeoneer.playerCharacter.application.dto.UpdateCharacterNoteCommand;
 import com.dungeoneer.playerCharacter.domain.model.AbilityScoreMethod;
+import com.dungeoneer.playerCharacter.domain.model.AbilityScores;
 import com.dungeoneer.playerCharacter.domain.model.HpCalculationMethod;
 import com.dungeoneer.playerCharacter.domain.model.PlayerCharacter;
 import com.dungeoneer.playerCharacter.domain.model.Ruleset;
@@ -131,6 +132,7 @@ public final class PlayerCharacterWebMapper {
                 result.avatarUrl(),
                 result.classes(),
                 result.exhaustion(),
+                result.allowAbilityReroll(),
                 result.createdAt(),
                 result.updatedAt()
         );
@@ -249,6 +251,17 @@ public final class PlayerCharacterWebMapper {
                 result.title(),
                 result.body(),
                 result.createdAt()
+        );
+    }
+
+    public static AbilityScores toAbilityScores(java.util.Map<String, Integer> map) {
+        return new AbilityScores(
+                getAbilityScore(map, "strength"),
+                getAbilityScore(map, "dexterity"),
+                getAbilityScore(map, "constitution"),
+                getAbilityScore(map, "intelligence"),
+                getAbilityScore(map, "wisdom"),
+                getAbilityScore(map, "charisma")
         );
     }
 

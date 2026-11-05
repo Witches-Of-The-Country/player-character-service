@@ -110,6 +110,8 @@ class PlayerCharacterControllerTest {
     private com.dungeoneer.playerCharacter.application.port.in.UseConsumableUseCase useConsumableUseCase;
     @MockitoBean
     private com.dungeoneer.playerCharacter.application.port.in.RestUseCase restUseCase;
+    @MockitoBean
+    private com.dungeoneer.playerCharacter.application.port.in.RerollCharacterAbilityScoresUseCase rerollCharacterAbilityScoresUseCase;
 
     private CharacterSheetResult createMockSheet(UUID characterId, UUID userId, String name) {
         return new CharacterSheetResult(
@@ -609,5 +611,42 @@ class PlayerCharacterControllerTest {
                 .andExpect(jsonPath("$.title").value("Bad Request"))
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("Class progression not found")));
+    }
+
+    @Test
+    @DisplayName("POST /api/characters/{id}/reroll-ability-scores calls reroll use case and returns 200")
+    void shouldRerollAbilityScoresSuccessfully() throws Exception {
+        UUID userId = UUID.randomUUID();
+        UUID characterId = UUID.randomUUID();
+        CharacterSheetResult mockSheet = createMockSheet(characterId, userId, "Rerolled Hero");
+
+        when(rerollCharacterAbilityScoresUseCase.rerollAbilityScores(eq(characterId), eq(userId), any()))
+                .thenReturn(mockSheet);
+
+        mockMvc.perform(post("/api/characters/" + characterId + "/reroll-ability-scores")
+                        .header("X-User-Id", userId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(characterId.toString()))
+                .andExpect(jsonPath("$.name").value("Rerolled Hero"));
+    }
+
+    @Test
+    @DisplayName("PATCH /api/characters/{id}/reroll-permission updates permission and returns 200")
+    void shouldUpdateRerollPermissionSuccessfully() throws Exception {
+        UUID userId = UUID.randomUUID();
+        UUID characterId = UUID.randomUUID();
+        CharacterSheetResult mockSheet = createMockSheet(characterId, userId, "Hero");
+
+        when(rerollCharacterAbilityScoresUseCase.updateRerollPermission(eq(characterId), eq(userId), eq(true)))
+                .thenReturn(mockSheet);
+
+        mockMvc.perform(patch("/api/characters/" + characterId + "/reroll-permission")
+                        .header("X-User-Id", userId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"allowAbilityReroll\": true}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(characterId.toString()));
     }
 }

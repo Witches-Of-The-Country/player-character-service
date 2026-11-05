@@ -10,6 +10,11 @@ import com.dungeoneer.playerCharacter.adapter.in.web.dto.HpRollResponse;
 import com.dungeoneer.playerCharacter.adapter.in.web.dto.RollHpRequest;
 import com.dungeoneer.playerCharacter.adapter.in.web.dto.UpdateCharacterNoteRequest;
 import com.dungeoneer.playerCharacter.adapter.in.web.dto.UpdateCharacterRequest;
+import com.dungeoneer.playerCharacter.adapter.in.web.dto.RerollAbilityScoresRequest;
+import com.dungeoneer.playerCharacter.adapter.in.web.dto.UpdateRerollPermissionRequest;
+import com.dungeoneer.playerCharacter.application.port.in.RerollCharacterAbilityScoresUseCase;
+import com.dungeoneer.playerCharacter.domain.model.AbilityScores;
+import org.springframework.web.bind.annotation.RequestParam;
 import com.dungeoneer.playerCharacter.adapter.in.web.mapper.PlayerCharacterWebMapper;
 import com.dungeoneer.playerCharacter.application.dto.AddCharacterItemCommand;
 import com.dungeoneer.playerCharacter.application.dto.AddExperienceCommand;
@@ -77,6 +82,7 @@ public class PlayerCharacterController {
     private final ManageInventoryUseCase manageInventoryUseCase;
     private final UseConsumableUseCase useConsumableUseCase;
     private final RestUseCase restUseCase;
+    private final RerollCharacterAbilityScoresUseCase rerollCharacterAbilityScoresUseCase;
 
     public PlayerCharacterController(
             CreateCharacterUseCase createCharacterUseCase,
@@ -93,7 +99,8 @@ public class PlayerCharacterController {
             LevelUpUseCase levelUpUseCase,
             ManageInventoryUseCase manageInventoryUseCase,
             UseConsumableUseCase useConsumableUseCase,
-            RestUseCase restUseCase
+            RestUseCase restUseCase,
+            RerollCharacterAbilityScoresUseCase rerollCharacterAbilityScoresUseCase
     ) {
         this.createCharacterUseCase = createCharacterUseCase;
         this.getCharacterUseCase = getCharacterUseCase;
@@ -110,13 +117,17 @@ public class PlayerCharacterController {
         this.manageInventoryUseCase = manageInventoryUseCase;
         this.useConsumableUseCase = useConsumableUseCase;
         this.restUseCase = restUseCase;
+        this.rerollCharacterAbilityScoresUseCase = rerollCharacterAbilityScoresUseCase;
     }
 
     @PostMapping("/ability-rolls")
     public ResponseEntity<AbilityRollResponse> rollAbilityScores(
-            @RequestHeader("X-User-Id") UUID userId
+            @RequestHeader("X-User-Id") UUID userId,
+            @RequestParam(value = "forceNew", defaultValue = "false") boolean forceNew
     ) {
-        RollAbilityScoresResult result = rollAbilityScoresUseCase.rollAbilityScores(userId);
+        RollAbilityScoresResult result = forceNew
+                ? rollAbilityScoresUseCase.rollAbilityScores(userId, true)
+                : rollAbilityScoresUseCase.rollAbilityScores(userId);
         AbilityRollResponse response = PlayerCharacterWebMapper.toResponse(result);
 
         HttpStatus status = result.isNew() ? HttpStatus.CREATED : HttpStatus.OK;
@@ -345,5 +356,29 @@ public class PlayerCharacterController {
     ) {
         CharacterSheetResult result = manageInventoryUseCase.updateCurrency(id, userId, request);
         return ResponseEntity.ok(CharacterSheetResponse.fromResult(result));
+    }
+
+    @PostMapping("/{id}/reroll-ability-scores")
+    public ResponseEntity<CharacterSheetResponse> rerollAbilityScores(
+            @PathVariable("id") UUID characterId,
+            @RequestHeader("X-User-Id") UUID userId,
+            @RequestBody(required = false) RerollAbilityScoresRequest request
+    ) {
+        AbilityScores customScores = null;
+        if (request != null && request.abilityScores() != null && !request.abilityScores().isEmpty()) {
+            customScores = PlayerCharacterWebMapper.toAbilityScores(request.abilityScores());
+        }
+        CharacterSheetResult result = rerollCharacterAbilityScoresUseCase.rerollAbilityScores(characterId, userId, customScores);
+        return ResponseEntity.ok(PlayerCharacterWebMapper.toResponse(result));
+    }
+
+    @PatchMapping("/{id}/reroll-permission")
+    public ResponseEntity<CharacterSheetResponse> updateRerollPermission(
+            @PathVariable("id") UUID characterId,
+            @RequestHeader("X-User-Id") UUID userId,
+            @Valid @RequestBody UpdateRerollPermissionRequest request
+    ) {
+        CharacterSheetResult result = rerollCharacterAbilityScoresUseCase.updateRerollPermission(characterId, userId, request.allowAbilityReroll());
+        return ResponseEntity.ok(PlayerCharacterWebMapper.toResponse(result));
     }
 }

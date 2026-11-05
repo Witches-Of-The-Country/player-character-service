@@ -415,6 +415,7 @@ public class CharacterSheetHydrator {
                 character.getAvatarUrl(),
                 classes,
                 character.getExhaustion(),
+                character.isAllowAbilityReroll(),
                 character.getCreatedAt(),
                 character.getUpdatedAt()
         );

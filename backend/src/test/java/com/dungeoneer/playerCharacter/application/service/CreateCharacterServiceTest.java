@@ -621,4 +621,59 @@ class CreateCharacterServiceTest {
                 .isInstanceOf(CharacterValidationException.class)
                 .hasMessageContaining("Pré-requisito do talento não atendido");
     }
+
+    @Test
+    @DisplayName("TR-01: Should reject character creation when originFeatId has FeatType != ORIGIN")
+    void shouldRejectNonOriginFeatAsOriginFeat() {
+        UUID generalFeatId = UUID.randomUUID();
+        Feat generalFeat = new Feat(
+                generalFeatId,
+                Ruleset.SRD_2024,
+                "general-feat",
+                "General Feat",
+                "Talento Geral",
+                null,
+                "A general feat",
+                "SRD",
+                null,
+                FeatType.GENERAL,
+                new MechanicalEffects(
+                        Map.of(), 0, 0, 0, 0, List.of(),
+                        null, null, null, null, RestType.NONE,
+                        null, false, null, List.of()
+                )
+        );
+
+        when(referenceDataRepository.findArchetypeById(archetypeId)).thenReturn(Optional.of(archetype));
+        when(referenceDataRepository.findLineageById(lineageId)).thenReturn(Optional.of(lineage));
+        when(referenceDataRepository.findBackgroundById(backgroundId)).thenReturn(Optional.of(background));
+        when(referenceDataRepository.findFeatById(generalFeatId)).thenReturn(Optional.of(generalFeat));
+
+        CreateCharacterCommand command = new CreateCharacterCommand(
+                userId,
+                "Invalid Feat Hero",
+                1,
+                Ruleset.SRD_2024,
+                lineageId,
+                backgroundId,
+                archetypeId,
+                null,
+                AbilityScoreMethod.STANDARD_ARRAY,
+                15, 14, 13, 12, 10, 8,
+                Map.of("STRENGTH", 2, "CONSTITUTION", 1),
+                null,
+                HpCalculationMethod.MAX,
+                null,
+                List.of(),
+                "Notes",
+                List.of(),
+                List.of("Athletics"),
+                generalFeatId,
+                null
+        );
+
+        assertThatThrownBy(() -> service.createCharacter(command))
+                .isInstanceOf(CharacterValidationException.class)
+                .hasMessageContaining("is not an ORIGIN feat");
+    }
 }

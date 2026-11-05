@@ -48,6 +48,7 @@ public class PlayerCharacter {
     private final CurrencyPouch currencyPouch;
     private final String avatarUrl;
     private final int exhaustion;
+    private final boolean allowAbilityReroll;
     private final Instant createdAt;
     private final Instant updatedAt;
 
@@ -80,6 +81,7 @@ public class PlayerCharacter {
             CurrencyPouch currencyPouch,
             String avatarUrl,
             int exhaustion,
+            boolean allowAbilityReroll,
             Instant createdAt,
             Instant updatedAt
     ) {
@@ -144,8 +146,76 @@ public class PlayerCharacter {
         this.currencyPouch = currencyPouch != null ? currencyPouch : CurrencyPouch.empty();
         this.avatarUrl = avatarUrl != null && !avatarUrl.isBlank() ? avatarUrl.trim() : null;
         this.exhaustion = exhaustion;
+        this.allowAbilityReroll = allowAbilityReroll;
         this.createdAt = createdAt != null ? createdAt : Instant.now();
         this.updatedAt = updatedAt != null ? updatedAt : Instant.now();
+    }
+
+    public PlayerCharacter(
+            UUID id,
+            String name,
+            int level,
+            int hitPointsCurrent,
+            int hitPointsMax,
+            int hitPointsTemp,
+            int armorClass,
+            int initiativeBonus,
+            int speed,
+            int proficiencyBonus,
+            Ruleset ruleset,
+            AbilityScoreMethod abilityScoreMethod,
+            UUID lineageId,
+            UUID backgroundId,
+            UUID userId,
+            AbilityScores abilityScores,
+            String notes,
+            HpCalculationMethod hpCalculationMethod,
+            boolean hasPendingLevelChoices,
+            List<ClassProgression> classProgressions,
+            List<String> skillProficiencies,
+            int experiencePoints,
+            UUID campaignId,
+            List<CharacterItem> items,
+            List<CharacterFeat> feats,
+            CurrencyPouch currencyPouch,
+            String avatarUrl,
+            int exhaustion,
+            Instant createdAt,
+            Instant updatedAt
+    ) {
+        this(
+                id,
+                name,
+                level,
+                hitPointsCurrent,
+                hitPointsMax,
+                hitPointsTemp,
+                armorClass,
+                initiativeBonus,
+                speed,
+                proficiencyBonus,
+                ruleset,
+                abilityScoreMethod,
+                lineageId,
+                backgroundId,
+                userId,
+                abilityScores,
+                notes,
+                hpCalculationMethod,
+                hasPendingLevelChoices,
+                classProgressions,
+                skillProficiencies,
+                experiencePoints,
+                campaignId,
+                items,
+                feats,
+                currencyPouch,
+                avatarUrl,
+                exhaustion,
+                false,
+                createdAt,
+                updatedAt
+        );
     }
 
     public PlayerCharacter(
@@ -1241,6 +1311,100 @@ public class PlayerCharacter {
 
     public boolean isDeadFromExhaustion() {
         return this.exhaustion >= MAX_EXHAUSTION;
+    }
+
+    public boolean isAllowAbilityReroll() {
+        return allowAbilityReroll;
+    }
+
+    public PlayerCharacter withAllowAbilityReroll(boolean allow) {
+        return new PlayerCharacter(
+                this.id,
+                this.name,
+                this.level,
+                this.hitPointsCurrent,
+                this.hitPointsMax,
+                this.hitPointsTemp,
+                this.armorClass,
+                this.initiativeBonus,
+                this.speed,
+                this.proficiencyBonus,
+                this.ruleset,
+                this.abilityScoreMethod,
+                this.lineageId,
+                this.backgroundId,
+                this.userId,
+                this.abilityScores,
+                this.notes,
+                this.hpCalculationMethod,
+                this.hasPendingLevelChoices,
+                this.classProgressions,
+                this.skillProficiencies,
+                this.experiencePoints,
+                this.campaignId,
+                this.items,
+                this.feats,
+                this.currencyPouch,
+                this.avatarUrl,
+                this.exhaustion,
+                allow,
+                this.createdAt,
+                Instant.now()
+        );
+    }
+
+    public PlayerCharacter updateAbilityScores(AbilityScores newScores) {
+        if (newScores == null) {
+            throw new CharacterValidationException("AbilityScores cannot be null.");
+        }
+        int oldConMod = this.abilityScores != null ? this.abilityScores.getConstitutionModifier() : 0;
+        int newConMod = newScores.getConstitutionModifier();
+        int deltaConMod = newConMod - oldConMod;
+        int deltaHp = deltaConMod * this.level;
+        int newHpMax = Math.max(1, this.hitPointsMax + deltaHp);
+        int newHpCurrent = deltaHp >= 0
+                ? this.hitPointsCurrent + deltaHp
+                : Math.min(newHpMax, this.hitPointsCurrent);
+
+        int oldDexMod = this.abilityScores != null ? this.abilityScores.getDexterityModifier() : 0;
+        int newDexMod = newScores.getDexterityModifier();
+        int deltaDexMod = newDexMod - oldDexMod;
+        int newAc = Math.max(1, this.armorClass + deltaDexMod);
+        int newInit = newDexMod;
+
+        return new PlayerCharacter(
+                this.id,
+                this.name,
+                this.level,
+                newHpCurrent,
+                newHpMax,
+                this.hitPointsTemp,
+                newAc,
+                newInit,
+                this.speed,
+                this.proficiencyBonus,
+                this.ruleset,
+                this.abilityScoreMethod,
+                this.lineageId,
+                this.backgroundId,
+                this.userId,
+                newScores,
+                this.notes,
+                this.hpCalculationMethod,
+                this.hasPendingLevelChoices,
+                this.classProgressions,
+                this.skillProficiencies,
+                this.experiencePoints,
+                this.campaignId,
+                this.items,
+                this.feats,
+                this.currencyPouch,
+                this.avatarUrl,
+                this.exhaustion,
+                false,
+                this.createdAt,
+                Instant.now()
+        );
     }
 
     public PlayerCharacter withClassProgressions(List<ClassProgression> newProgressions) {

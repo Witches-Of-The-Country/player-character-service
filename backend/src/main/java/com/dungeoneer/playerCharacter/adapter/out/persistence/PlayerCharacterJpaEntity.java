@@ -132,6 +132,9 @@ public class PlayerCharacterJpaEntity {
     @Column(name = "exhaustion", nullable = false)
     private int exhaustion = 0;
 
+    @Column(name = "allow_ability_reroll", nullable = false)
+    private boolean allowAbilityReroll = false;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -223,6 +226,7 @@ public class PlayerCharacterJpaEntity {
         entity.setCampaignId(character.getCampaignId());
         entity.setAvatarUrl(character.getAvatarUrl());
         entity.setExhaustion(character.getExhaustion());
+        entity.setAllowAbilityReroll(character.isAllowAbilityReroll());
         entity.setCreatedAt(character.getCreatedAt());
         entity.setUpdatedAt(character.getUpdatedAt());
 
@@ -316,9 +320,18 @@ public class PlayerCharacterJpaEntity {
                 pouch,
                 this.avatarUrl,
                 this.exhaustion,
+                this.allowAbilityReroll,
                 this.createdAt,
                 this.updatedAt
         );
+    }
+
+    public boolean isAllowAbilityReroll() {
+        return allowAbilityReroll;
+    }
+
+    public void setAllowAbilityReroll(boolean allowAbilityReroll) {
+        this.allowAbilityReroll = allowAbilityReroll;
     }
 
     public UUID getId() {

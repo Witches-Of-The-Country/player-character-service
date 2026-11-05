@@ -43,21 +43,28 @@ public class RollService implements RollAbilityScoresUseCase, RollHitPointsUseCa
 
     @Override
     public RollAbilityScoresResult rollAbilityScores(UUID userId) {
+        return rollAbilityScores(userId, false);
+    }
+
+    @Override
+    public RollAbilityScoresResult rollAbilityScores(UUID userId, boolean forceNew) {
         if (userId == null) {
             throw new CharacterValidationException("UserId is required.");
         }
 
-        Optional<AbilityRoll> existing = abilityRollRepository.findUnusedByUserId(userId);
-        if (existing.isPresent()) {
-            AbilityRoll roll = existing.get();
-            return new RollAbilityScoresResult(
-                    roll.getId(),
-                    roll.getUserId(),
-                    roll.getRolledScores(),
-                    roll.getDiceBreakdownJson(),
-                    false,
-                    roll.getCreatedAt()
-            );
+        if (!forceNew) {
+            Optional<AbilityRoll> existing = abilityRollRepository.findUnusedByUserId(userId);
+            if (existing.isPresent()) {
+                AbilityRoll roll = existing.get();
+                return new RollAbilityScoresResult(
+                        roll.getId(),
+                        roll.getUserId(),
+                        roll.getRolledScores(),
+                        roll.getDiceBreakdownJson(),
+                        false,
+                        roll.getCreatedAt()
+                );
+            }
         }
 
         List<Integer> finalScores = new ArrayList<>();

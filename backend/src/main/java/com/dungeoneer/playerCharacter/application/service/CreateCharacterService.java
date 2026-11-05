@@ -23,6 +23,7 @@ import com.dungeoneer.playerCharacter.domain.model.CurrencyPouch;
 import com.dungeoneer.playerCharacter.domain.model.Feat;
 import com.dungeoneer.playerCharacter.domain.model.FeatChargeCalculator;
 import com.dungeoneer.playerCharacter.domain.model.FeatPrerequisite;
+import com.dungeoneer.playerCharacter.domain.model.FeatType;
 import com.dungeoneer.playerCharacter.domain.model.HpCalculationMethod;
 import com.dungeoneer.playerCharacter.domain.model.HpRoll;
 import com.dungeoneer.playerCharacter.domain.model.Lineage;
@@ -144,12 +145,13 @@ public class CreateCharacterService implements CreateCharacterUseCase {
             initialFeats.addAll(level1LineageFeats);
         }
         if (command.originFeatId() != null) {
-            var featOpt = referenceDataRepository.findFeatById(command.originFeatId());
-            if (featOpt.isPresent()) {
-                Feat f = featOpt.get();
-                validateFeatPrerequisites(f, finalScores, command.level() != null ? command.level() : 1, List.of(archetype.getId()), lineage.getId(), initialFeats);
-                initialFeats.add(f);
+            Feat f = referenceDataRepository.findFeatById(command.originFeatId())
+                    .orElseThrow(() -> new CharacterValidationException("Feat not found: " + command.originFeatId()));
+            if (f.getFeatType() != FeatType.ORIGIN) {
+                throw new CharacterValidationException("Feat " + f.getName() + " is not an ORIGIN feat.");
             }
+            validateFeatPrerequisites(f, finalScores, command.level() != null ? command.level() : 1, List.of(archetype.getId()), lineage.getId(), initialFeats);
+            initialFeats.add(f);
         }
 
         int initialHpPerLevelBonus = 0;
