@@ -14,5 +14,6 @@ public enum EquipmentSlot {
     CLOAK,
     RING_1,
     RING_2,
-    NECKLACE
+    NECKLACE,
+    TRINKET
 }

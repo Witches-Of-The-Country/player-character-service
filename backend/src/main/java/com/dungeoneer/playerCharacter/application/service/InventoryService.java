@@ -318,6 +318,7 @@ public class InventoryService implements ManageInventoryUseCase, UseConsumableUs
         if (name.contains("calça") || name.contains("calca") || name.contains("perneira")) return EquipmentSlot.PANTS;
         if (name.contains("capa") || name.contains("manto") || name.contains("cloak") || name.contains("cape")) return EquipmentSlot.CLOAK;
         if (name.contains("colar") || name.contains("amuleto") || name.contains("medalhão") || name.contains("medalhao") || name.contains("amulet") || name.contains("necklace") || name.contains("periapt")) return EquipmentSlot.NECKLACE;
+        if (name.contains("cinto") || name.contains("cinturão") || name.contains("cinturao") || name.contains("faixa") || name.contains("belt") || name.contains("girdle") || name.contains("charm") || name.contains("talismã") || name.contains("talisma") || name.contains("talisman") || name.contains("trinket") || name.contains("berloque")) return EquipmentSlot.TRINKET;
 
         return EquipmentSlot.CHEST;
     }

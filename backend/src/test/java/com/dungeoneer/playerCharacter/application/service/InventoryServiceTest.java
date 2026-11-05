@@ -280,4 +280,48 @@ class InventoryServiceTest {
         )).isInstanceOf(IllegalArgumentException.class)
           .hasMessageContaining("Armor can only be equipped in CHEST slot");
     }
+
+    @Test
+    @DisplayName("Should infer and equip belt in TRINKET slot")
+    void shouldInferAndEquipBeltInTrinketSlot() {
+        UUID beltId = UUID.randomUUID();
+        Item belt = new Item(beltId, Ruleset.SRD_2024, "belt-of-giant-strength", "Belt of Giant Strength", "Cinto de Força do Gigante", "WONDROUS", "Wondrous Item", "Rare", true, "5000 gp", "1 lb", "Belt", "SRD", null, null);
+        UUID charItemId = UUID.randomUUID();
+        CharacterItem charItem = new CharacterItem(charItemId, characterId, beltId, 1, false, false, null);
+
+        when(characterRepository.findByIdAndUserId(characterId, userId)).thenReturn(Optional.of(character));
+        when(characterRepository.findCharacterItemByIdAndCharacterId(charItemId, characterId)).thenReturn(Optional.of(charItem));
+        when(referenceDataRepository.findItemById(beltId)).thenReturn(Optional.of(belt));
+        when(characterRepository.findItemsByCharacterId(characterId)).thenReturn(List.of(charItem));
+        when(sheetHydrator.hydrate(any(PlayerCharacter.class))).thenReturn(mock(CharacterSheetResult.class));
+
+        inventoryService.updateItem(characterId, userId, charItemId, new UpdateCharacterItemCommand(true, null, false, 1));
+
+        verify(characterRepository).saveCharacterItem(argThat(ci -> ci.getId().equals(charItemId) && ci.isEquipped() && ci.getEquippedSlot() == EquipmentSlot.TRINKET));
+    }
+
+    @Test
+    @DisplayName("Should auto-unequip previous occupant of TRINKET slot when equipping another trinket")
+    void shouldAutoUnequipPreviousTrinketWhenEquippingSecondTrinket() {
+        UUID belt1Id = UUID.randomUUID();
+        UUID charmId = UUID.randomUUID();
+        Item belt = new Item(belt1Id, Ruleset.SRD_2024, "belt-of-giant-strength", "Belt of Giant Strength", "Cinto de Força do Gigante", "WONDROUS", "Wondrous Item", "Rare", true, "5000 gp", "1 lb", "Belt", "SRD", null, null);
+        Item charm = new Item(charmId, Ruleset.SRD_2024, "luck-charm", "Luck Charm", "Amuleto da Sorte", "WONDROUS", "Wondrous Item", "Uncommon", false, "500 gp", "0.5 lb", "Charm", "SRD", null, null);
+
+        UUID charBeltId = UUID.randomUUID();
+        UUID charCharmId = UUID.randomUUID();
+        CharacterItem charBelt = new CharacterItem(charBeltId, characterId, belt1Id, 1, true, false, EquipmentSlot.TRINKET);
+        CharacterItem charCharm = new CharacterItem(charCharmId, characterId, charmId, 1, false, false, null);
+
+        when(characterRepository.findByIdAndUserId(characterId, userId)).thenReturn(Optional.of(character));
+        when(characterRepository.findCharacterItemByIdAndCharacterId(charCharmId, characterId)).thenReturn(Optional.of(charCharm));
+        when(referenceDataRepository.findItemById(charmId)).thenReturn(Optional.of(charm));
+        when(characterRepository.findItemsByCharacterId(characterId)).thenReturn(List.of(charBelt, charCharm));
+        when(sheetHydrator.hydrate(any(PlayerCharacter.class))).thenReturn(mock(CharacterSheetResult.class));
+
+        inventoryService.updateItem(characterId, userId, charCharmId, new UpdateCharacterItemCommand(true, EquipmentSlot.TRINKET, false, 1));
+
+        verify(characterRepository).saveCharacterItem(argThat(ci -> ci.getId().equals(charBeltId) && !ci.isEquipped()));
+        verify(characterRepository).saveCharacterItem(argThat(ci -> ci.getId().equals(charCharmId) && ci.isEquipped() && ci.getEquippedSlot() == EquipmentSlot.TRINKET));
+    }
 }
