@@ -37,6 +37,11 @@ public class AbilityRollPersistenceAdapter implements AbilityRollRepositoryPort 
     }
 
     @Override
+    public void invalidateUnusedByUserId(UUID userId) {
+        repository.markAllUnusedAsUsedForUser(userId);
+    }
+
+    @Override
     public Optional<AbilityRoll> findById(UUID id) {
         return repository.findById(id).map(AbilityRollJpaEntity::toDomain);
     }

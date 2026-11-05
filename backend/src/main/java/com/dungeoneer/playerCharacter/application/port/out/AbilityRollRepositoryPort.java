@@ -13,5 +13,7 @@ public interface AbilityRollRepositoryPort {
 
     void markAsUsed(UUID id);
 
+    void invalidateUnusedByUserId(UUID userId);
+
     Optional<AbilityRoll> findById(UUID id);
 }

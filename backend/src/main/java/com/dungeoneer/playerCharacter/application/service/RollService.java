@@ -65,6 +65,8 @@ public class RollService implements RollAbilityScoresUseCase, RollHitPointsUseCa
                         roll.getCreatedAt()
                 );
             }
+        } else {
+            abilityRollRepository.invalidateUnusedByUserId(userId);
         }
 
         List<Integer> finalScores = new ArrayList<>();

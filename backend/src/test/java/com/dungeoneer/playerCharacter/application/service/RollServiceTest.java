@@ -84,6 +84,18 @@ class RollServiceTest {
     }
 
     @Test
+    @DisplayName("Should invalidate existing unused roll and generate new one when forceNew is true")
+    void shouldInvalidateUnusedAndGenerateNewWhenForceNewIsTrue() {
+        when(abilityRollRepository.save(any(AbilityRoll.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        RollAbilityScoresResult result = service.rollAbilityScores(userId, true);
+
+        assertThat(result.isNew()).isTrue();
+        verify(abilityRollRepository).invalidateUnusedByUserId(userId);
+        verify(abilityRollRepository).save(any(AbilityRoll.class));
+    }
+
+    @Test
     @DisplayName("TP-02: Generates new HP roll for target level when none exists")
     void shouldGenerateNewHpRollWhenNoneExists() {
         Archetype archetype = new Archetype(
