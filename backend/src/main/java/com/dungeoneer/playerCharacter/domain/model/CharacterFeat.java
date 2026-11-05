@@ -129,6 +129,17 @@ public class CharacterFeat {
             int proficiencyBonus,
             int characterLevel
     ) {
+        return recoverCharges(restType, effects, abilityScores, proficiencyBonus, characterLevel, null);
+    }
+
+    public CharacterFeat recoverCharges(
+            RestType restType,
+            MechanicalEffects effects,
+            AbilityScores abilityScores,
+            int proficiencyBonus,
+            int characterLevel,
+            Ruleset ruleset
+    ) {
         if (this.maxCharges == null || restType == null || restType == RestType.NONE) {
             return this;
         }
@@ -140,7 +151,8 @@ public class CharacterFeat {
                 this.maxCharges,
                 abilityScores,
                 proficiencyBonus,
-                characterLevel
+                characterLevel,
+                ruleset
         );
         return withCurrentCharges(current + recovered);
     }

@@ -146,6 +146,42 @@ class FeatChargeCalculatorTest {
     }
 
     @Test
+    @DisplayName("TP-03 Ruleset Recovery: SRD_2024 Rage recovers 1 charge on Short Rest and ALL on Long Rest")
+    void shouldRecoverRageAccordingToRuleset() {
+        // Explicit 2024 configuration
+        MechanicalEffects rage2024 = new MechanicalEffects(
+                Map.of(), 0, 0, 0, 0, List.of(), "Fúria", "BONUS_ACTION", null, 2, RestType.LONG,
+                null, false, null, List.of(), null,
+                ChargeType.FIXED, null, 2,
+                ChargeRecoveryType.FIXED, 1,
+                ChargeRecoveryType.ALL, null
+        );
+
+        // Short rest with 0/2 charges -> recovers 1
+        assertEquals(1, FeatChargeCalculator.calculateRecoveryAmount(
+                RestType.SHORT, rage2024, 0, 2, standardScores, 2, 1, Ruleset.SRD_2024
+        ));
+
+        // Long rest with 0/2 charges -> recovers 2
+        assertEquals(2, FeatChargeCalculator.calculateRecoveryAmount(
+                RestType.LONG, rage2024, 0, 2, standardScores, 2, 1, Ruleset.SRD_2024
+        ));
+
+        // Legacy 2024 feat without shortRestRecoveryType populated
+        MechanicalEffects legacyRage2024 = new MechanicalEffects(
+                Map.of(), 0, 0, 0, 0, List.of(), "Fúria", "BONUS_ACTION", null, 2, RestType.LONG
+        );
+        assertEquals(1, FeatChargeCalculator.calculateRecoveryAmount(
+                RestType.SHORT, legacyRage2024, 0, 2, standardScores, 2, 1, Ruleset.SRD_2024
+        ));
+
+        // 2014 Rage does not recover on short rest
+        assertEquals(0, FeatChargeCalculator.calculateRecoveryAmount(
+                RestType.SHORT, legacyRage2024, 0, 2, standardScores, 2, 1, Ruleset.SRD_2014
+        ));
+    }
+
+    @Test
     @DisplayName("TE-02: Recovery attempting to exceed max charges is clamped to max")
     void shouldClampRecoveryToNotExceedMaxCharges() {
         // Short rest recovery fixed 3, but current is 4 and max is 5 (missing 1)

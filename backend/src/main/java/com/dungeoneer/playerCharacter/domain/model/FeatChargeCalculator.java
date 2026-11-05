@@ -45,11 +45,33 @@ public final class FeatChargeCalculator {
             int proficiencyBonus,
             int characterLevel
     ) {
+        return calculateRecoveryAmount(
+                restType,
+                effects,
+                currentCharges,
+                maxCharges,
+                abilityScores,
+                proficiencyBonus,
+                characterLevel,
+                null
+        );
+    }
+
+    public static int calculateRecoveryAmount(
+            RestType restType,
+            MechanicalEffects effects,
+            int currentCharges,
+            int maxCharges,
+            AbilityScores abilityScores,
+            int proficiencyBonus,
+            int characterLevel,
+            Ruleset ruleset
+    ) {
         if (restType == null || restType == RestType.NONE || maxCharges <= 0) {
             return 0;
         }
 
-        ChargeRecoveryType recoveryType = resolveRecoveryType(restType, effects);
+        ChargeRecoveryType recoveryType = resolveRecoveryType(restType, effects, ruleset);
         int rawAmount = switch (recoveryType) {
             case NONE -> 0;
             case ALL -> maxCharges;
@@ -57,6 +79,9 @@ public final class FeatChargeCalculator {
                 Integer fixed = (restType == RestType.SHORT)
                         ? (effects != null ? effects.shortRestRecoveryFixed() : null)
                         : (effects != null ? effects.longRestRecoveryFixed() : null);
+                if (fixed == null && restType == RestType.SHORT) {
+                    fixed = 1;
+                }
                 yield fixed != null ? Math.max(0, fixed) : 0;
             }
             case MODIFIER -> {
@@ -73,7 +98,7 @@ public final class FeatChargeCalculator {
         return Math.min(missing, rawAmount);
     }
 
-    private static ChargeRecoveryType resolveRecoveryType(RestType restType, MechanicalEffects effects) {
+    private static ChargeRecoveryType resolveRecoveryType(RestType restType, MechanicalEffects effects, Ruleset ruleset) {
         if (restType == RestType.SHORT) {
             if (effects != null && effects.shortRestRecoveryType() != null) {
                 return effects.shortRestRecoveryType();
@@ -81,6 +106,10 @@ public final class FeatChargeCalculator {
             if (effects != null && effects.restType() == RestType.SHORT
                     && (effects.usesPerRest() != null || effects.maxChargesType() != null)) {
                 return ChargeRecoveryType.ALL;
+            }
+            if (ruleset == Ruleset.SRD_2024 && effects != null && effects.actionName() != null
+                    && (effects.actionName().equalsIgnoreCase("Fúria") || effects.actionName().equalsIgnoreCase("Rage"))) {
+                return ChargeRecoveryType.FIXED;
             }
             return ChargeRecoveryType.NONE;
         }

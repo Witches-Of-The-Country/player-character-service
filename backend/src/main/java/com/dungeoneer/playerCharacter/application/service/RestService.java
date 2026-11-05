@@ -11,6 +11,7 @@ import com.dungeoneer.playerCharacter.domain.model.Archetype;
 import com.dungeoneer.playerCharacter.domain.model.CharacterFeat;
 import com.dungeoneer.playerCharacter.domain.model.ClassProgression;
 import com.dungeoneer.playerCharacter.domain.model.Feat;
+import com.dungeoneer.playerCharacter.domain.model.FeatChargeCalculator;
 import com.dungeoneer.playerCharacter.domain.model.MechanicalEffects;
 import com.dungeoneer.playerCharacter.domain.model.PlayerCharacter;
 import com.dungeoneer.playerCharacter.domain.model.RestType;
@@ -169,11 +170,35 @@ public class RestService implements RestUseCase {
                 .findFirst()
                 .orElseThrow(() -> new NoSuchElementException("Character feat not found: " + characterFeatId));
 
-        if (feat.getMaxCharges() != null && feat.getMaxCharges() > 0) {
-            if (feat.getCurrentCharges() == null || feat.getCurrentCharges() <= 0) {
+        CharacterFeat workingFeat = feat;
+        if (workingFeat.getMaxCharges() == null) {
+            Feat featDef = referenceDataRepository != null
+                    ? referenceDataRepository.findFeatById(workingFeat.getFeatId()).orElse(null)
+                    : null;
+            MechanicalEffects effects = featDef != null ? featDef.getMechanicalEffects() : null;
+            if (effects != null) {
+                RulesEngine rulesEngine = RulesEngine.forRuleset(character.getRuleset());
+                int pb = rulesEngine.calculateProficiencyBonus(character.getLevel());
+                Integer calculatedMax = FeatChargeCalculator.calculateMaxCharges(
+                        effects,
+                        character.getAbilityScores(),
+                        pb,
+                        character.getLevel()
+                );
+                if (calculatedMax != null && calculatedMax > 0) {
+                    workingFeat = workingFeat.withMaxCharges(calculatedMax);
+                    if (workingFeat.getCurrentCharges() == null) {
+                        workingFeat = workingFeat.withCurrentCharges(calculatedMax);
+                    }
+                }
+            }
+        }
+
+        if (workingFeat.getMaxCharges() != null && workingFeat.getMaxCharges() > 0) {
+            if (workingFeat.getCurrentCharges() == null || workingFeat.getCurrentCharges() <= 0) {
                 throw new IllegalStateException("No charges remaining for feat");
             }
-            characterRepository.saveCharacterFeat(feat.withCurrentCharges(feat.getCurrentCharges() - 1));
+            characterRepository.saveCharacterFeat(workingFeat.withCurrentCharges(workingFeat.getCurrentCharges() - 1));
         }
 
         PlayerCharacter fresh = getCharacter(characterId, userId);
@@ -183,17 +208,35 @@ public class RestService implements RestUseCase {
     private void recoverFeats(UUID characterId, PlayerCharacter character, RestType restType, int proficiencyBonus) {
         List<CharacterFeat> feats = characterRepository.findFeatsByCharacterId(characterId);
         for (CharacterFeat feat : feats) {
-            if (feat.getMaxCharges() != null && feat.getMaxCharges() > 0) {
-                Feat featDef = referenceDataRepository != null
-                        ? referenceDataRepository.findFeatById(feat.getFeatId()).orElse(null)
-                        : null;
-                MechanicalEffects effects = featDef != null ? featDef.getMechanicalEffects() : null;
-                CharacterFeat recovered = feat.recoverCharges(
-                        restType,
+            Feat featDef = referenceDataRepository != null
+                    ? referenceDataRepository.findFeatById(feat.getFeatId()).orElse(null)
+                    : null;
+            MechanicalEffects effects = featDef != null ? featDef.getMechanicalEffects() : null;
+
+            CharacterFeat workingFeat = feat;
+            if (workingFeat.getMaxCharges() == null && effects != null) {
+                Integer calculatedMax = FeatChargeCalculator.calculateMaxCharges(
                         effects,
                         character.getAbilityScores(),
                         proficiencyBonus,
                         character.getLevel()
+                );
+                if (calculatedMax != null && calculatedMax > 0) {
+                    workingFeat = workingFeat.withMaxCharges(calculatedMax);
+                    if (workingFeat.getCurrentCharges() == null) {
+                        workingFeat = workingFeat.withCurrentCharges(0);
+                    }
+                }
+            }
+
+            if (workingFeat.getMaxCharges() != null && workingFeat.getMaxCharges() > 0) {
+                CharacterFeat recovered = workingFeat.recoverCharges(
+                        restType,
+                        effects,
+                        character.getAbilityScores(),
+                        proficiencyBonus,
+                        character.getLevel(),
+                        character.getRuleset()
                 );
                 characterRepository.saveCharacterFeat(recovered);
             }
